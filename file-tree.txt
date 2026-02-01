@@ -1,0 +1,81 @@
+.
+├── docs
+│   └── ENV_VARS.md
+├── public
+│   └── images
+│       ├── hoptira-icon.svg
+│       └── hoptira-logo.svg
+├── src
+│   ├── components
+│   │   ├── auth
+│   │   │   └── ProtectedRoute.jsx
+│   │   ├── common
+│   │   │   ├── ErrorBoundary.jsx
+│   │   │   ├── LoadingSpinner.jsx
+│   │   │   ├── MarkdownRenderer.jsx
+│   │   │   └── ScrollToTop.jsx
+│   │   ├── layout
+│   │   │   ├── Footer.jsx
+│   │   │   ├── Header.jsx
+│   │   │   ├── Layout.jsx
+│   │   │   ├── MobileMenu.jsx
+│   │   │   └── Navigation.jsx
+│   │   ├── test
+│   │   │   └── FirebaseTest.jsx
+│   │   └── ui
+│   │       ├── badge.jsx
+│   │       ├── button.jsx
+│   │       ├── card.jsx
+│   │       ├── navigation-menu.jsx
+│   │       ├── theme-toggle.jsx
+│   │       └── tooltip.jsx
+│   ├── config
+│   │   ├── firebase.js
+│   │   └── routes.js
+│   ├── data
+│   │   ├── initial-db-structure.json
+│   │   ├── privacy-policy.md
+│   │   └── terms.md
+│   ├── hooks
+│   │   ├── useAuth.js
+│   │   └── useTheme.js
+│   ├── lib
+│   │   └── utils.js
+│   ├── pages
+│   │   ├── Home.jsx
+│   │   ├── Login.jsx
+│   │   ├── NotFound.jsx
+│   │   ├── Privacy.jsx
+│   │   └── Terms.jsx
+│   ├── routes
+│   │   └── AppRouter.jsx
+│   ├── services
+│   │   ├── auth.service.js
+│   │   └── database.service.js
+│   ├── stores
+│   │   ├── useAuthStore.js
+│   │   └── useSettingsStore.js
+│   ├── styles
+│   │   └── index.css
+│   ├── utils
+│   │   ├── markdownUtils.js
+│   │   └── theme.js
+│   ├── App.jsx
+│   └── main.jsx
+├── tools
+│   ├── generate-jsconfig.js
+│   ├── update-tree.js
+│   └── update-version.js
+├── .firebaserc
+├── .gitignore
+├── components.json
+├── database.rules.json
+├── eslint.config.js
+├── file-tree.txt
+├── firebase.json
+├── index.html
+├── jsconfig.json
+├── package.json
+├── pglite-debug.log
+├── README.md
+├── vite.config.js

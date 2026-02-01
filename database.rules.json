@@ -1,0 +1,30 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": "auth != null",
+
+    "game-state": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "teams": {
+      ".read": true,
+      ".write": "auth != null",
+      "$teamId": {
+        ".validate": "newData.hasChildren(['name', 'status', 'current-prize', 'question-set-id'])"
+      }
+    },
+
+    "prize-structure": {
+      ".read": true,
+      ".write": "auth != null",
+      ".validate": "newData.isString() || newData.hasChildren()"
+    },
+
+    "config": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}
