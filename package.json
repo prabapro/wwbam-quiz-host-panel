@@ -6,8 +6,9 @@
   "scripts": {
     "build:viz": "pnpm dlx vite-bundle-visualizer --report dist/stats.json --output dist/bundle-visualizer.html",
     "build": "vite build",
-    "dev": "vite",
+    "deploy:firebase": "pnpm build && firebase deploy --only hosting",
     "dev:env": "infisical run -- pnpm dev",
+    "dev": "vite",
     "format": "prettier --write \"./**/*.{html,js,jsx,json,css,ts,tsx}\"",
     "generate-jsconfig": "node tools/generate-jsconfig.js",
     "lint": "eslint .",
