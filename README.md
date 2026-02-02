@@ -206,7 +206,7 @@ Refer to [Database_Architecture](/docs/DATABASE_ARCHITECTURE.md) for detailed da
 ## 🔧 Available Scripts
 
 ```bash
-pnpm dev              # Start development server
+pnpm dev             # Start development server
 pnpm build           # Build for production
 pnpm preview         # Preview production build
 pnpm lint            # Run ESLint
