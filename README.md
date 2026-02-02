@@ -93,9 +93,7 @@ firebase deploy --only database
 
 ### 3. Environment Variables
 
-Create `.env` file from the `.env.example`
-
-**⚠️ IMPORTANT:** Never commit `.env` to version control!
+Injected by [Infisical](https://app.infisical.com/organizations/08322636-151c-40e3-813a-dd4c7f65f606/projects/secret-management/07b598eb-bde8-47bc-8f6c-c9bedb5b6582/overview)
 
 ## 🎯 Development
 
@@ -191,22 +189,12 @@ The security rules allow:
 
 ### Deploy to Firebase Hosting
 
-```bash
-# Build the app
-pnpm build
-
-# Deploy to Firebase
-firebase deploy
-
-# Or deploy only hosting
-firebase deploy --only hosting
-```
-
-Your app will be available at: `https://wwbam-quiz.web.app`
+- CICD configured with GitHub actions to deploy the app to the Firebase.
+- App will be available at: `https://wwbam-quiz.web.app`
 
 ## 📚 Database Architecture
 
-Refer to `Quiz_Competition_Database_Architecture.md` for detailed database structure and operations.
+Refer to [Database_Architecture](/docs/DATABASE_ARCHITECTURE.md) for detailed database structure and operations.
 
 ### Key Database Paths
 
