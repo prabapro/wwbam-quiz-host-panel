@@ -1,0 +1,56 @@
+# Deploy to Firebase Hosting on PR
+# Creates preview URLs for each pull request
+name: Deploy to Firebase Hosting on PR
+
+on: pull_request
+
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  build_and_preview:
+    # Only run if PR is from same repository (security measure)
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+
+    # Reference the Staging environment
+    environment:
+      name: Staging
+      url: https://wwbam-quiz--pr-${{ github.event.pull_request.number }}.web.app
+
+    steps:
+      # Checkout code
+      - uses: actions/checkout@v4
+
+      # Install pnpm
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      # Install dependencies
+      - name: Install dependencies
+        run: pnpm install
+
+      # Build with environment variables from Staging environment
+      - name: Build
+        run: pnpm build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+          VITE_ENVIRONMENT: ${{ secrets.VITE_ENVIRONMENT }}
+
+      # Deploy to preview channel
+      - name: Deploy to Firebase Hosting preview channel
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_WWBAM_QUIZ }}
+          projectId: wwbam-quiz
+          # Note: channelId is automatically generated for PRs (pr-###)
