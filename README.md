@@ -217,7 +217,7 @@ pnpm format          # Format code with Prettier
 
 ### Firebase Connection Issues
 
-1. Check `.env` file exists and has correct values
+1. Check environment variables are injected properly by Infisical
 2. Verify Firebase project is active in console
 3. Check browser console for detailed error messages
 4. Ensure database rules are deployed

@@ -1,6 +1,9 @@
 .
+├── .firebase
+│   └── hosting.ZGlzdA.cache
 ├── docs
-│   └── ENV_VARS.md
+│   ├── DATABASE_ARCHITECTURE.md
+│   └── USER_JOURNEY.md
 ├── public
 │   └── images
 │       ├── hoptira-icon.svg
@@ -68,6 +71,7 @@
 │   └── update-version.js
 ├── .firebaserc
 ├── .gitignore
+├── .infisical.json
 ├── components.json
 ├── database.rules.json
 ├── eslint.config.js
