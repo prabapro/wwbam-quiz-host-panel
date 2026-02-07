@@ -10,7 +10,7 @@ export default function Footer() {
     <>
       <footer className="border-t border-border/30 bg-muted/5 mt-auto">
         <div className="container mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+          <div className="flex flex-col items-center justify-center space-y-4">
             {/* Copyright */}
             <div className="text-center">
               <p className="text-sm md:text-sm text-muted-foreground/70 leading-relaxed">
