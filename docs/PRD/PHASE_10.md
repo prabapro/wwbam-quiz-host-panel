@@ -1,7 +1,7 @@
 # Phase 10: Documentation & Deployment
 
-**Dependencies:** Phase 9 (Testing complete)
-**Status:** Pending
+- **Dependencies:** Phase 9 (Testing complete)
+- **Status:** Pending
 
 | Requirement ID  | Description                  | User Story                                                                        | Expected Behavior/Outcome                                                                                                                                |
 | --------------- | ---------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |

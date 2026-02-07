@@ -1,7 +1,7 @@
 # Phase 9: Testing & Optimization
 
-**Dependencies:** Phase 8 (All features complete)
-**Status:** Pending
+- **Dependencies:** Phase 8 (All features complete)
+- **Status:** Pending
 
 | Requirement ID | Description                  | User Story                                                                    | Expected Behavior/Outcome                                                                                                                                                              |
 | -------------- | ---------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

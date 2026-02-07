@@ -1,7 +1,7 @@
 # Phase 6: UI/UX Polish & Prize Tracking
 
-**Dependencies:** Phase 5 (Core features complete)
-**Status:** Pending
+- **Dependencies:** Phase 5 (Core features complete)
+- **Status:** Pending
 
 | Requirement ID | Description                 | User Story                                                                        | Expected Behavior/Outcome                                                                                                                                                                                   |
 | -------------- | --------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

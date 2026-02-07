@@ -1,7 +1,7 @@
 # Phase 2: Pre-Event Setup
 
-**Dependencies:** Phase 1 (All stores and services)
-**Status:** Pending
+- **Dependencies:** Phase 1 (All stores and services)
+- **Status:** Pending
 
 | Requirement ID | Description                 | User Story                                                                                        | Expected Behavior/Outcome                                                                                                                          |
 | -------------- | --------------------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -1,7 +1,7 @@
 # Phase 5: Team Management & Lifelines
 
-**Dependencies:** Phase 4 (Core gameplay functional)
-**Status:** Pending
+- **Dependencies:** Phase 4 (Core gameplay functional)
+- **Status:** Pending
 
 | Requirement ID | Description                    | User Story                                                                              | Expected Behavior/Outcome                                                                                                                                                                                     |
 | -------------- | ------------------------------ | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

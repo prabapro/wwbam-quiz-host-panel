@@ -1,7 +1,7 @@
 # Phase 8: Post-Game & Analytics
 
-**Dependencies:** Phase 7 (Edge cases handled)
-**Status:** Pending
+- **Dependencies:** Phase 7 (Edge cases handled)
+- **Status:** Pending
 
 | Requirement ID | Description                          | User Story                                                                    | Expected Behavior/Outcome                                                                                                                                                                |
 | -------------- | ------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

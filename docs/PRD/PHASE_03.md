@@ -1,7 +1,7 @@
 # Phase 3: Game Initialization
 
-**Dependencies:** Phase 2 (Teams configured, Questions uploaded)
-**Status:** Pending
+- **Dependencies:** Phase 2 (Teams configured, Questions uploaded)
+- **Status:** Pending
 
 | Requirement ID | Description                      | User Story                                                                                    | Expected Behavior/Outcome                                                                                                                             |
 | -------------- | -------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |

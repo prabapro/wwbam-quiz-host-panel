@@ -1,7 +1,7 @@
 # Phase 4: Core Game Play - Question Flow
 
-**Dependencies:** Phase 3 (Game initialized and started)
-**Status:** Pending
+- **Dependencies:** Phase 3 (Game initialized and started)
+- **Status:** Pending
 
 | Requirement ID | Description                        | User Story                                                                        | Expected Behavior/Outcome                                                                                                                                                                                           |
 | -------------- | ---------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
