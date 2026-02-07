@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
-import Navigation from './Navigation';
 import { ThemeToggle } from '@components/ui/theme-toggle';
 
 const appName = import.meta.env.VITE_APP_NAME_CLEANED;
@@ -52,11 +51,6 @@ export default function MobileMenu({ isOpen, onClose }) {
               aria-label="Close menu">
               <X className="w-5 h-5" />
             </button>
-          </div>
-
-          {/* Navigation */}
-          <div className="flex-1 p-6 overflow-y-auto">
-            <Navigation mobile onItemClick={onClose} />
           </div>
 
           {/* Footer with Theme Toggle */}

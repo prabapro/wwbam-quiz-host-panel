@@ -2,7 +2,6 @@
 
 import { Link } from 'react-router-dom';
 import { Menu } from 'lucide-react';
-import Navigation from './Navigation';
 import { ThemeToggle } from '@components/ui/theme-toggle';
 
 export default function Header({ onMobileMenuToggle, isMobileMenuOpen }) {
@@ -22,11 +21,6 @@ export default function Header({ onMobileMenuToggle, isMobileMenuOpen }) {
                 className="h-8 w-auto transition-opacity duration-200"
               />
             </Link>
-          </div>
-
-          {/* Desktop Navigation - Center */}
-          <div className="hidden md:flex items-center">
-            <Navigation />
           </div>
 
           {/* Theme Toggle - Right */}

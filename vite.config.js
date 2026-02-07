@@ -94,11 +94,7 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
 
           // Radix UI components
-          'radix-ui': [
-            '@radix-ui/react-slot',
-            '@radix-ui/react-tooltip',
-            '@radix-ui/react-navigation-menu',
-          ],
+          'radix-ui': ['@radix-ui/react-slot', '@radix-ui/react-tooltip'],
 
           // Utilities
           'utils-vendor': ['clsx', 'tailwind-merge'],
@@ -108,9 +104,6 @@ export default defineConfig({
 
           // Zustand (state management)
           state: ['zustand'],
-
-          // Markdown processing
-          markdown: ['react-markdown'],
         },
       },
     },

@@ -15,21 +15,18 @@
 │   │   ├── common
 │   │   │   ├── ErrorBoundary.jsx
 │   │   │   ├── LoadingSpinner.jsx
-│   │   │   ├── MarkdownRenderer.jsx
 │   │   │   └── ScrollToTop.jsx
 │   │   ├── layout
 │   │   │   ├── Footer.jsx
 │   │   │   ├── Header.jsx
 │   │   │   ├── Layout.jsx
-│   │   │   ├── MobileMenu.jsx
-│   │   │   └── Navigation.jsx
+│   │   │   └── MobileMenu.jsx
 │   │   ├── test
 │   │   │   └── FirebaseTest.jsx
 │   │   └── ui
 │   │       ├── badge.jsx
 │   │       ├── button.jsx
 │   │       ├── card.jsx
-│   │       ├── navigation-menu.jsx
 │   │       ├── theme-toggle.jsx
 │   │       └── tooltip.jsx
 │   ├── config
@@ -47,9 +44,7 @@
 │   ├── pages
 │   │   ├── Home.jsx
 │   │   ├── Login.jsx
-│   │   ├── NotFound.jsx
-│   │   ├── Privacy.jsx
-│   │   └── Terms.jsx
+│   │   └── NotFound.jsx
 │   ├── routes
 │   │   └── AppRouter.jsx
 │   ├── services
@@ -61,7 +56,6 @@
 │   ├── styles
 │   │   └── index.css
 │   ├── utils
-│   │   ├── markdownUtils.js
 │   │   └── theme.js
 │   ├── App.jsx
 │   └── main.jsx
@@ -79,6 +73,7 @@
 ├── firebase.json
 ├── index.html
 ├── jsconfig.json
+├── jsconfig.json.backup
 ├── package.json
 ├── pglite-debug.log
 ├── README.md
