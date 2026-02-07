@@ -32,9 +32,7 @@
 │   │   ├── firebase.js
 │   │   └── routes.js
 │   ├── data
-│   │   ├── initial-db-structure.json
-│   │   ├── privacy-policy.md
-│   │   └── terms.md
+│   │   └── initial-db-structure.json
 │   ├── hooks
 │   │   ├── useAuth.js
 │   │   └── useTheme.js

@@ -1,3 +1,0 @@
-Last updated: Month DD, YYYY
-
-This Privacy Policy describes ...
