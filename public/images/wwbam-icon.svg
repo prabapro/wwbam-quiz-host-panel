@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg viewBox="0 0 67 67" xmlns="http://www.w3.org/2000/svg">
+  <g transform="matrix(1.000357, 0, 0, 1.000357, -206.30864, -288.746153)" style="transform-origin: 206.309px 288.746px;">
+    <g style="" transform="matrix(0.670038, 0, 0, 0.670038, 130.232437, 156.679535)">
+      <title>icon</title>
+      <circle cx="163.54" cy="247.103" r="50" fill="#F15922"/>
+      <circle cx="163.54" cy="247.103" r="30" fill="#ffffff"/>
+      <rect x="181.099" y="265.602" width="19.435" height="19.435" rx="4" style="fill: rgb(255, 255, 255);"/>
+    </g>
+  </g>
+</svg>
