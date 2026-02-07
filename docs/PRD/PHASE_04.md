@@ -1,0 +1,30 @@
+# Phase 4: Core Game Play - Question Flow
+
+**Dependencies:** Phase 3 (Game initialized and started)
+**Status:** Pending
+
+| Requirement ID | Description                        | User Story                                                                        | Expected Behavior/Outcome                                                                                                                                                                                           |
+| -------------- | ---------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P4-REQ-001** | Question Control Panel Component   | As a host, I need a question control panel so that I can manage question display  | - Compact panel with all controls<br>- Question preview (host only)<br>- Action buttons: Load, Show, Lock<br>- Current question number indicator                                                                    |
+| **P4-REQ-002** | Load Question Functionality        | As a host, I need to load questions so that I can preview before showing          | - Fetch next question from localStorage<br>- Show question text + options to HOST<br>- Display correct answer (green indicator)<br>- Enable "Show Question" button                                                  |
+| **P4-REQ-003** | Show Question to Public            | As a host, I need to display questions so that teams can see them                 | - Push question to Firebase (WITHOUT correct answer)<br>- Set question-visible = true<br>- Options-visible = true<br>- Public display updates instantly                                                             |
+| **P4-REQ-004** | Answer Pad Component               | As a host, I need an answer input so that I can register team's answer            | - 4 buttons: A, B, C, D<br>- Click to select (yellow highlight)<br>- Can change selection before lock<br>- Visual feedback on selection                                                                             |
+| **P4-REQ-005** | Lock Answer Functionality          | As a host, I need to lock answers so that validation occurs                       | - "Lock Answer" button<br>- Disabled until answer selected<br>- Triggers automatic validation<br>- Cannot unlock after validation                                                                                   |
+| **P4-REQ-006** | Automatic Answer Validation        | As a system, I need to validate answers so that correct/incorrect is determined   | - Compare selected vs localStorage correct answer<br>- Return boolean + correct answer<br>- Trigger appropriate flow (correct/incorrect)<br>- Log validation event                                                  |
+| **P4-REQ-007** | Correct Answer Flow                | As a system, I need to handle correct answers so that teams progress              | - Push correct-option to Firebase<br>- Set answer-revealed = true<br>- Update team's current-prize<br>- Increment current-question-number<br>- Increment team's questions-answered<br>- Show "Next Question" button |
+| **P4-REQ-008** | Correct Answer Visual Feedback     | As a host/team, I need visual confirmation so that success is celebrated          | - Green checkmark animation<br>- Highlight correct option (green)<br>- Show confetti effect<br>- Display new prize amount<br>- Prize ladder advances                                                                |
+| **P4-REQ-009** | Incorrect Answer Detection         | As a system, I need to detect wrong answers so that appropriate actions are taken | - Determine answer is incorrect<br>- Check team's lifeline status<br>- Branch: Has lifelines → Offer choice<br>- Branch: No lifelines → Auto-eliminate                                                              |
+| **P4-REQ-010** | Incorrect Answer with Lifelines    | As a host, I need to offer lifelines so that teams get second chances             | - Show dialog: "Wrong Answer - Lifelines Available"<br>- Display available lifelines<br>- Buttons: "Offer Lifeline" or "Eliminate Team"<br>- Do NOT reveal correct answer yet                                       |
+| **P4-REQ-011** | Incorrect Answer without Lifelines | As a system, I need to eliminate teams so that game rules are enforced            | - Show X animation<br>- Reveal correct answer (green)<br>- Set team status = 'eliminated'<br>- Freeze final prize<br>- Show "Next Team" button                                                                      |
+| **P4-REQ-012** | Next Question Navigation           | As a host, I need to proceed to next question so that gameplay continues          | - "Next Question" button<br>- Clear current question display<br>- Reset answer pad<br>- Return to "Load Question" state<br>- Update question counter UI                                                             |
+| **P4-REQ-013** | Question Progress Indicator        | As a host, I need to track progress so that I know how far team has advanced      | - "Question X/20" display<br>- Progress bar (optional)<br>- Highlight current prize level<br>- Color code by milestone                                                                                              |
+| **P4-REQ-014** | Host Question View                 | As a host, I need to see correct answers so that I can validate responses         | - Question text (large, readable)<br>- All 4 options clearly labeled<br>- Correct answer marked (✓ green indicator)<br>- "Visible to HOST ONLY" badge<br>- Cannot be shared to public display                       |
+
+**Phase 4 Acceptance Criteria:**
+
+- ✅ Questions load from localStorage correctly
+- ✅ Only question/options pushed to Firebase (no answer)
+- ✅ Answer validation is accurate
+- ✅ Correct flow updates prize and progresses
+- ✅ Incorrect flow checks lifelines appropriately
+- ✅ UI clearly distinguishes host vs public view
