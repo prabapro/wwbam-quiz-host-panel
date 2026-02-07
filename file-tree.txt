@@ -6,8 +6,8 @@
 │   └── USER_JOURNEY.md
 ├── public
 │   └── images
-│       ├── hoptira-icon.svg
-│       └── hoptira-logo.svg
+│       ├── wwbam-icon.svg
+│       └── wwbam-logo.svg
 ├── src
 │   ├── components
 │   │   ├── auth
