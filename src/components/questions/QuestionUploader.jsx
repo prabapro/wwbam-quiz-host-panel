@@ -13,6 +13,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Download,
+  Info,
 } from 'lucide-react';
 
 export default function QuestionUploader({ onUploadSuccess }) {
@@ -189,6 +190,40 @@ export default function QuestionUploader({ onUploadSuccess }) {
           />
         </div>
 
+        {/* JSON Structure */}
+        <div className="mt-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>JSON Structure Required</AlertTitle>
+            <AlertDescription>
+              <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
+                {`{
+  "setId": "sample-set-1",
+  "setName": "Sample Set 1",
+  "totalQuestions": 20,
+  "questions": [
+    {
+      "id": "q1",
+      "number": 1,
+      "text": "What is the capital of France?",
+      "options": {
+        "A": "London",
+        "B": "Paris",
+        "C": "Berlin",
+        "D": "Rome"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Geography"
+    }
+    // ... 19 more questions
+  ]
+}`}
+              </pre>
+            </AlertDescription>
+          </Alert>
+        </div>
+
         {/* Requirements */}
         <div className="mt-4 p-4 bg-muted/30 rounded-lg">
           <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
@@ -202,7 +237,9 @@ export default function QuestionUploader({ onUploadSuccess }) {
               • Each question must have: text, 4 options (A/B/C/D), correct
               answer
             </li>
-            <li>• Valid setId and setName required</li>
+            <li>
+              • Valid <code>setId</code> and <code>setName</code> required
+            </li>
           </ul>
         </div>
 
