@@ -5,7 +5,7 @@ import { localStorageService } from '@services/localStorage.service';
 import QuestionUploader from '@components/questions/QuestionUploader';
 import QuestionSetList from '@components/questions/QuestionSetList';
 import { Alert, AlertDescription, AlertTitle } from '@components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, FileJson } from 'lucide-react';
 
 export default function QuestionManagement() {
   const [questionSets, setQuestionSets] = useState([]);
@@ -53,7 +53,10 @@ export default function QuestionManagement() {
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Question Management</h1>
+        <div className="flex items-center gap-3 mb-2">
+          <FileJson className="w-8 h-8 text-primary" />
+          <h1 className="text-3xl font-bold">Question Management</h1>
+        </div>
         <p className="text-muted-foreground">
           Upload and manage question sets for the quiz competition
         </p>
