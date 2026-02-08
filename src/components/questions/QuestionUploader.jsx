@@ -7,7 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { Button } from '@components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@components/ui/alert';
 import { Progress } from '@components/ui/progress';
-import { Upload, FileJson, AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+  Upload,
+  FileJson,
+  AlertCircle,
+  CheckCircle2,
+  Download,
+  Info,
+} from 'lucide-react';
 
 export default function QuestionUploader({ onUploadSuccess }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -183,11 +190,45 @@ export default function QuestionUploader({ onUploadSuccess }) {
           />
         </div>
 
+        {/* JSON Structure */}
+        <div className="mt-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>JSON Structure Required</AlertTitle>
+            <AlertDescription>
+              <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
+                {`{
+  "setId": "sample-set-1",
+  "setName": "Sample Set 1",
+  "totalQuestions": 20,
+  "questions": [
+    {
+      "id": "q1",
+      "number": 1,
+      "text": "What is the capital of France?",
+      "options": {
+        "A": "London",
+        "B": "Paris",
+        "C": "Berlin",
+        "D": "Rome"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Geography"
+    }
+    // ... 19 more questions
+  ]
+}`}
+              </pre>
+            </AlertDescription>
+          </Alert>
+        </div>
+
         {/* Requirements */}
         <div className="mt-4 p-4 bg-muted/30 rounded-lg">
           <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-600" />
-            Requirements
+            Upload Requirements
           </h4>
           <ul className="text-sm text-muted-foreground space-y-1">
             <li>• File format: JSON (.json)</li>
@@ -196,8 +237,40 @@ export default function QuestionUploader({ onUploadSuccess }) {
               • Each question must have: text, 4 options (A/B/C/D), correct
               answer
             </li>
-            <li>• Valid setId and setName required</li>
+            <li>
+              • Valid <code>setId</code> and <code>setName</code> required
+            </li>
           </ul>
+        </div>
+
+        {/* Sample Files Download */}
+        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 border-2 border-blue-200 dark:border-blue-800 rounded-lg space-y-3">
+          <div className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+            <Download className="w-5 h-5" />
+            <h4 className="text-sm font-semibold">Sample Templates</h4>
+          </div>
+
+          <p className="text-xs text-blue-800 dark:text-blue-200">
+            Download sample question sets to use as templates:
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <a
+              href="/sample-data/sample-question-set-01.json"
+              download
+              className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-blue-900 dark:text-blue-100 bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-md transition-colors">
+              <FileJson className="w-4 h-4" />
+              Single Question Set (.json)
+            </a>
+
+            <a
+              href="/sample-data/sample-question-sets.zip"
+              download
+              className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-blue-900 dark:text-blue-100 bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-md transition-colors">
+              <Download className="w-4 h-4" />
+              Multiple Sets (.zip)
+            </a>
+          </div>
         </div>
       </CardContent>
     </Card>

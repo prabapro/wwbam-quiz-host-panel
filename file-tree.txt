@@ -1,6 +1,4 @@
 .
-├── .firebase
-│   └── hosting.ZGlzdA.cache
 ├── docs
 │   ├── PRD
 │   │   ├── PHASE_01.md
@@ -17,10 +15,12 @@
 │   ├── DATABASE_ARCHITECTURE.md
 │   └── USER_JOURNEY.md
 ├── public
-│   └── images
-│       └── wwbam-logo.svg
-├── sample-data
-│   └── sample-question-sets.zip
+│   ├── images
+│   │   └── wwbam-logo.svg
+│   └── sample-data
+│       ├── sample-question-set-01.json
+│       ├── sample-question-sets.zip
+│       └── sample-teams.json
 ├── src
 │   ├── components
 │   │   ├── auth
@@ -45,7 +45,8 @@
 │   │   │   ├── DeleteTeamDialog.jsx
 │   │   │   ├── TeamCard.jsx
 │   │   │   ├── TeamConfigList.jsx
-│   │   │   └── TeamForm.jsx
+│   │   │   ├── TeamForm.jsx
+│   │   │   └── TeamUploader.jsx
 │   │   ├── test
 │   │   │   └── FirebaseTest.jsx
 │   │   └── ui
@@ -98,6 +99,7 @@
 │   │   └── index.css
 │   ├── utils
 │   │   ├── setupValidation.js
+│   │   ├── teamValidation.js
 │   │   ├── theme.js
 │   │   └── validation.js
 │   ├── App.jsx

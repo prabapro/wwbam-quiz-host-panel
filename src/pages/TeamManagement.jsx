@@ -3,14 +3,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import TeamForm from '@components/teams/TeamForm';
+import TeamUploader from '@components/teams/TeamUploader';
 import TeamConfigList from '@components/teams/TeamConfigList';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { Alert, AlertDescription } from '@components/ui/alert';
-import { Users, AlertCircle } from 'lucide-react';
+import { Users, AlertCircle, Upload } from 'lucide-react';
 
 export default function TeamManagement() {
   const [editingTeam, setEditingTeam] = useState(null);
   const [formKey, setFormKey] = useState(0); // Force form re-render on cancel
+  const [uploadSuccess, setUploadSuccess] = useState(null);
 
   // Select teams object and actions
   const teamsObject = useTeamsStore((state) => state.teams);
@@ -62,6 +64,15 @@ export default function TeamManagement() {
     }
   };
 
+  const handleUploadSuccess = (result) => {
+    setUploadSuccess(result);
+
+    // Clear success message after 5 seconds
+    setTimeout(() => {
+      setUploadSuccess(null);
+    }, 5000);
+  };
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       {/* Page Header */}
@@ -75,14 +86,44 @@ export default function TeamManagement() {
         </p>
       </div>
 
+      {/* Upload Success Alert */}
+      {uploadSuccess && (
+        <Alert className="mb-6 border-green-500 bg-green-50 dark:bg-green-950">
+          <AlertCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-600">
+            Successfully uploaded {uploadSuccess.teamCount} team(s) from "
+            {uploadSuccess.fileName}"
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Info Alert */}
       <Alert className="mb-6">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Add all participating teams before initializing the game. Each team
-          will be assigned a unique question set during game initialization.
+          Add teams individually using the form below, or upload multiple teams
+          at once using a JSON file. All teams must be configured before
+          initializing the game.
         </AlertDescription>
       </Alert>
+
+      {/* Bulk Upload Section */}
+      <div className="mb-6">
+        <TeamUploader onUploadSuccess={handleUploadSuccess} />
+      </div>
+
+      {/* Divider with Icon */}
+      <div className="relative mb-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border"></div>
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-4 text-sm text-muted-foreground flex items-center gap-2">
+            <Upload className="w-4 h-4" />
+            Or add teams manually
+          </span>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Team Form */}
