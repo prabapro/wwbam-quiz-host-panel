@@ -2,6 +2,18 @@
 ├── .firebase
 │   └── hosting.ZGlzdA.cache
 ├── docs
+│   ├── PRD
+│   │   ├── PHASE_01.md
+│   │   ├── PHASE_02.md
+│   │   ├── PHASE_03.md
+│   │   ├── PHASE_04.md
+│   │   ├── PHASE_05.md
+│   │   ├── PHASE_06.md
+│   │   ├── PHASE_07.md
+│   │   ├── PHASE_08.md
+│   │   ├── PHASE_09.md
+│   │   ├── PHASE_10.md
+│   │   └── README.md
 │   ├── DATABASE_ARCHITECTURE.md
 │   └── USER_JOURNEY.md
 ├── public
@@ -31,6 +43,10 @@
 │   ├── config
 │   │   ├── firebase.js
 │   │   └── routes.js
+│   ├── constants
+│   │   ├── gameStates.js
+│   │   ├── prizeStructure.js
+│   │   └── teamStates.js
 │   ├── data
 │   │   └── initial-db-structure.json
 │   ├── hooks
@@ -46,14 +62,19 @@
 │   │   └── AppRouter.jsx
 │   ├── services
 │   │   ├── auth.service.js
-│   │   └── database.service.js
+│   │   ├── database.service.js
+│   │   └── localStorage.service.js
 │   ├── stores
 │   │   ├── useAuthStore.js
-│   │   └── useSettingsStore.js
+│   │   ├── useGameStore.js
+│   │   ├── useQuestionsStore.js
+│   │   ├── useSettingsStore.js
+│   │   └── useTeamsStore.js
 │   ├── styles
 │   │   └── index.css
 │   ├── utils
-│   │   └── theme.js
+│   │   ├── theme.js
+│   │   └── validation.js
 │   ├── App.jsx
 │   └── main.jsx
 ├── tools
