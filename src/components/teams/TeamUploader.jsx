@@ -144,7 +144,9 @@ export default function TeamUploader({ onUploadSuccess }) {
             );
 
             // Update progress
-            const fileProgress = (fileIndex + 0.4 + 0.6 * ((teamIndex + 1) / totalTeams)) / files.length;
+            const fileProgress =
+              (fileIndex + 0.4 + 0.6 * ((teamIndex + 1) / totalTeams)) /
+              files.length;
             setUploadProgress(fileProgress * 100);
           } catch (uploadError) {
             // Unexpected error during upload - rollback
