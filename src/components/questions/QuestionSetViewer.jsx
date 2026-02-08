@@ -12,7 +12,7 @@ import {
 import { Button } from '@components/ui/button';
 import { Badge } from '@components/ui/badge';
 import { ScrollArea } from '@components/ui/scroll-area';
-import { ChevronLeft, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Award } from 'lucide-react';
 
 export default function QuestionSetViewer({ setId, open, onOpenChange }) {
   const [questionSet, setQuestionSet] = useState(null);
@@ -87,7 +87,7 @@ export default function QuestionSetViewer({ setId, open, onOpenChange }) {
           </div>
         ) : (
           <>
-            {/* Question Navigator */}
+            {/* Question Navigator - Grid Layout (10 per row) */}
             <div className="border-b pb-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium text-muted-foreground">
@@ -98,20 +98,19 @@ export default function QuestionSetViewer({ setId, open, onOpenChange }) {
                 </span>
               </div>
 
-              <ScrollArea className="w-full">
-                <div className="flex gap-2 pb-2">
-                  {questionSet.questions.map((q, idx) => (
-                    <Button
-                      key={q.id}
-                      variant={idx === currentIndex ? 'default' : 'outline'}
-                      size="sm"
-                      className="min-w-[40px]"
-                      onClick={() => handleQuestionSelect(idx)}>
-                      {idx + 1}
-                    </Button>
-                  ))}
-                </div>
-              </ScrollArea>
+              {/* Grid: 10 buttons per row */}
+              <div className="grid grid-cols-10 gap-2">
+                {questionSet.questions.map((q, idx) => (
+                  <Button
+                    key={q.id}
+                    variant={idx === currentIndex ? 'default' : 'outline'}
+                    size="sm"
+                    className="w-full"
+                    onClick={() => handleQuestionSelect(idx)}>
+                    {idx + 1}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {/* Question Display */}
@@ -190,11 +189,11 @@ export default function QuestionSetViewer({ setId, open, onOpenChange }) {
                     })}
                   </div>
 
-                  {/* Correct Answer Indicator */}
-                  <div className="p-4 bg-green-50 dark:bg-green-950 border-2 border-green-500 rounded-lg">
+                  {/* Correct Answer Indicator - Purple/Violet */}
+                  <div className="p-4 bg-violet-50 dark:bg-violet-950 border-2 border-violet-500 rounded-lg">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                      <span className="font-semibold text-green-900 dark:text-green-100">
+                      <Award className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                      <span className="font-semibold text-violet-900 dark:text-violet-100">
                         Correct Answer: {currentQuestion.correctAnswer}
                       </span>
                     </div>
