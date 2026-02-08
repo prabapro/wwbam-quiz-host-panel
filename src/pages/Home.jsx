@@ -3,6 +3,7 @@
 import { Button } from '@components/ui/button';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@hooks/useAuth';
+import SetupVerification from '@components/setup/SetupVerification';
 import FirebaseTest from '@components/test/FirebaseTest';
 
 export default function Home() {
@@ -13,7 +14,8 @@ export default function Home() {
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
+    <main className="container mx-auto py-8 px-4 max-w-7xl space-y-8">
+      {/* Header */}
       <div className="text-center space-y-4">
         <h1 className="text-3xl font-bold">Quiz Host Panel</h1>
 
@@ -26,7 +28,7 @@ export default function Home() {
               onClick={handleLogout}
               variant="outline"
               size="sm"
-              className="flex items-center space-x-2">
+              className="inline-flex items-center space-x-2">
               <LogOut className="w-4 h-4" />
               <span>Logout</span>
             </Button>
@@ -34,20 +36,24 @@ export default function Home() {
         )}
       </div>
 
-      {/* Firebase Integration Test */}
-      <div className="w-full max-w-2xl">
-        <FirebaseTest />
+      {/* Setup Verification Dashboard */}
+      <div className="max-w-4xl mx-auto">
+        <SetupVerification />
       </div>
 
-      {/* Development Info */}
+      {/* Development - Firebase Integration Test */}
       {import.meta.env.DEV && (
-        <div className="p-4 bg-muted/30 rounded-lg max-w-2xl">
-          <h3 className="text-sm font-medium mb-2">Development Mode</h3>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Firebase integration is ready</li>
-            <li>• Test read/write operations above</li>
-            <li>• Check browser console for detailed logs</li>
-          </ul>
+        <div className="max-w-2xl mx-auto space-y-4">
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <h3 className="text-sm font-medium mb-2">Development Mode</h3>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li>• Firebase integration is ready</li>
+              <li>• Test read/write operations below</li>
+              <li>• Check browser console for detailed logs</li>
+            </ul>
+          </div>
+
+          <FirebaseTest />
         </div>
       )}
     </main>
