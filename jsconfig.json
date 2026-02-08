@@ -2,63 +2,25 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "@components/*": [
-        "src/components/*"
-      ],
-      "@ui/*": [
-        "src/components/ui/*"
-      ],
-      "@assets/*": [
-        "src/assets/*"
-      ],
-      "@styles/*": [
-        "src/styles/*"
-      ],
-      "@hooks/*": [
-        "src/hooks/*"
-      ],
-      "@utils/*": [
-        "src/utils/*"
-      ],
-      "@context/*": [
-        "src/context/*"
-      ],
-      "@pages/*": [
-        "src/pages/*"
-      ],
-      "@routes/*": [
-        "src/routes/*"
-      ],
-      "@stores/*": [
-        "src/stores/*"
-      ],
-      "@services/*": [
-        "src/services/*"
-      ],
-      "@constants/*": [
-        "src/constants/*"
-      ],
-      "@data/*": [
-        "src/data/*"
-      ],
-      "@events/*": [
-        "src/events/*"
-      ],
-      "@lib/*": [
-        "src/lib/*"
-      ],
-      "@types/*": [
-        "src/types/*"
-      ],
-      "@config/*": [
-        "src/config/*"
-      ]
+      "@/*": ["src/*"],
+      "@components/*": ["src/components/*"],
+      "@ui/*": ["src/components/ui/*"],
+      "@assets/*": ["src/assets/*"],
+      "@styles/*": ["src/styles/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@utils/*": ["src/utils/*"],
+      "@context/*": ["src/context/*"],
+      "@pages/*": ["src/pages/*"],
+      "@routes/*": ["src/routes/*"],
+      "@stores/*": ["src/stores/*"],
+      "@services/*": ["src/services/*"],
+      "@constants/*": ["src/constants/*"],
+      "@data/*": ["src/data/*"],
+      "@events/*": ["src/events/*"],
+      "@lib/*": ["src/lib/*"],
+      "@types/*": ["src/types/*"],
+      "@config/*": ["src/config/*"]
     }
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

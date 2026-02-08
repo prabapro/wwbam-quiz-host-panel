@@ -95,11 +95,7 @@ export const validateQuestion = (question, expectedNumber) => {
   });
 
   // Validate question number
-  if (
-    expectedNumber &&
-    question.number &&
-    question.number !== expectedNumber
-  ) {
+  if (expectedNumber && question.number && question.number !== expectedNumber) {
     errors.push(
       `Question number mismatch: expected ${expectedNumber}, got ${question.number}`,
     );
@@ -148,9 +144,7 @@ export const validateQuestion = (question, expectedNumber) => {
   if (question.correctAnswer) {
     const normalized = question.correctAnswer.toString().trim().toUpperCase();
     if (!VALID_OPTIONS.includes(normalized)) {
-      errors.push(
-        `Correct answer must be one of: ${VALID_OPTIONS.join(', ')}`,
-      );
+      errors.push(`Correct answer must be one of: ${VALID_OPTIONS.join(', ')}`);
     }
   }
 
@@ -224,8 +218,7 @@ export const validateQuestionSet = (questionSet) => {
   return {
     isValid: errors.length === 0 && invalidQuestions.length === 0,
     errors: errors.length > 0 ? errors : null,
-    questionErrors:
-      invalidQuestions.length > 0 ? invalidQuestions : null,
+    questionErrors: invalidQuestions.length > 0 ? invalidQuestions : null,
     totalQuestions: questionSet.questions.length,
     invalidCount: invalidQuestions.length,
   };

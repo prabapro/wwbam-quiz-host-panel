@@ -121,9 +121,7 @@ export const isValidTeamStatus = (status) => {
  * @returns {boolean} True if status is terminal
  */
 export const isTerminalStatus = (status) => {
-  return (
-    status === TEAM_STATUS.ELIMINATED || status === TEAM_STATUS.COMPLETED
-  );
+  return status === TEAM_STATUS.ELIMINATED || status === TEAM_STATUS.COMPLETED;
 };
 
 /**

@@ -112,9 +112,7 @@ export const useQuestionsStore = create()(
           validationResult: null,
         });
 
-        console.log(
-          `📝 Host question loaded: ${setId} Q${questionIndex + 1}`,
-        );
+        console.log(`📝 Host question loaded: ${setId} Q${questionIndex + 1}`);
 
         return { success: true, question };
       },
@@ -211,7 +209,9 @@ export const useQuestionsStore = create()(
         );
 
         // Randomly select 2 incorrect options to remove
-        const toRemove = incorrectOptions.sort(() => Math.random() - 0.5).slice(0, 2);
+        const toRemove = incorrectOptions
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 2);
 
         // Keep correct answer and one random incorrect
         const remainingOptions = allOptions.filter(
@@ -256,7 +256,8 @@ export const useQuestionsStore = create()(
         return {
           setId: questionSet.setId,
           setName: questionSet.setName,
-          totalQuestions: questionSet.totalQuestions || questionSet.questions.length,
+          totalQuestions:
+            questionSet.totalQuestions || questionSet.questions.length,
           uploadedAt: questionSet.uploadedAt,
           lastModified: questionSet.lastModified,
         };

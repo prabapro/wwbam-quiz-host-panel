@@ -382,7 +382,10 @@ export const useTeamsStore = create()(
 
         onRehydrateStorage: () => (state, error) => {
           if (error) {
-            console.warn('👥 Teams: Failed to hydrate from localStorage:', error);
+            console.warn(
+              '👥 Teams: Failed to hydrate from localStorage:',
+              error,
+            );
             return;
           }
 

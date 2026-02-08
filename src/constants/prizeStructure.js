@@ -101,9 +101,7 @@ export const formatPrize = (amount, currency = 'Rs.') => {
  * @param {number[]} [prizeStructure=DEFAULT_PRIZE_STRUCTURE] - Prize structure
  * @returns {number} Total prize pool
  */
-export const getTotalPrizePool = (
-  prizeStructure = DEFAULT_PRIZE_STRUCTURE,
-) => {
+export const getTotalPrizePool = (prizeStructure = DEFAULT_PRIZE_STRUCTURE) => {
   return prizeStructure.reduce((sum, prize) => sum + prize, 0);
 };
 

@@ -239,7 +239,8 @@ export const getQuestionSetsMetadata = () => {
       sets: setIds.map((id) => ({
         setId: id,
         setName: allSets[id].setName,
-        totalQuestions: allSets[id].totalQuestions || allSets[id].questions?.length || 0,
+        totalQuestions:
+          allSets[id].totalQuestions || allSets[id].questions?.length || 0,
         uploadedAt: allSets[id].uploadedAt,
         lastModified: allSets[id].lastModified,
       })),
