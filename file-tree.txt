@@ -32,12 +32,24 @@
 │   │   │   ├── Header.jsx
 │   │   │   ├── Layout.jsx
 │   │   │   └── MobileMenu.jsx
+│   │   ├── questions
+│   │   │   ├── QuestionSetCard.jsx
+│   │   │   ├── QuestionSetList.jsx
+│   │   │   ├── QuestionSetViewer.jsx
+│   │   │   └── QuestionUploader.jsx
+│   │   ├── setup
+│   │   ├── teams
 │   │   ├── test
 │   │   │   └── FirebaseTest.jsx
 │   │   └── ui
+│   │       ├── alert-dialog.jsx
+│   │       ├── alert.jsx
 │   │       ├── badge.jsx
 │   │       ├── button.jsx
 │   │       ├── card.jsx
+│   │       ├── dialog.jsx
+│   │       ├── progress.jsx
+│   │       ├── scroll-area.jsx
 │   │       ├── theme-toggle.jsx
 │   │       └── tooltip.jsx
 │   ├── config
@@ -57,7 +69,8 @@
 │   ├── pages
 │   │   ├── Home.jsx
 │   │   ├── Login.jsx
-│   │   └── NotFound.jsx
+│   │   ├── NotFound.jsx
+│   │   └── QuestionManagement.jsx
 │   ├── routes
 │   │   └── AppRouter.jsx
 │   ├── services

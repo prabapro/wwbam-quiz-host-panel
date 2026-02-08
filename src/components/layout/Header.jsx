@@ -1,43 +1,88 @@
 // src/components/layout/Header.jsx
 
-import { Link } from 'react-router-dom';
-import { Menu } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@components/ui/button';
 import { ThemeToggle } from '@components/ui/theme-toggle';
+import { useAuth } from '@hooks/useAuth';
+import { getNavigationRoutes } from '@config/routes';
+import { LogOut, Menu } from 'lucide-react';
 
-export default function Header({ onMobileMenuToggle, isMobileMenuOpen }) {
+export default function Header({ onMenuClick }) {
+  const location = useLocation();
+  const { isAuthenticated, logout, userEmail } = useAuth();
+
+  // Get navigation routes
+  const navRoutes = getNavigationRoutes();
+  const mainRoutes = navRoutes.main || [];
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
+  const isActivePath = (path) => {
+    return location.pathname === path;
+  };
+
   return (
-    <header className="border-b border-border/40 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
-      <div className="container mx-auto px-6 py-4">
-        <div className="flex items-center justify-between">
-          {/* Logo - Left */}
-          <div className="flex items-center">
-            <Link
-              to="/"
-              className="flex items-center space-x-2 hover:opacity-70 transition-opacity duration-200"
-              aria-label="WWBAM - Go to homepage">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container max-w-7xl mx-auto px-6">
+        <div className="flex h-16 items-center justify-between">
+          {/* Left: Logo + Navigation */}
+          <div className="flex items-center gap-8">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2">
               <img
-                src="images/wwbam-logo.svg"
+                src="/images/wwbam-logo.svg"
                 alt="WWBAM Logo"
-                className="h-8 w-auto transition-opacity duration-200"
+                className="h-8 w-8"
               />
+              <span className="text-xl font-bold">WWBAM</span>
             </Link>
+
+            {/* Desktop Navigation */}
+            {isAuthenticated && mainRoutes.length > 0 && (
+              <nav className="hidden md:flex items-center gap-1">
+                {mainRoutes.map((route) => (
+                  <Link key={route.path} to={route.path}>
+                    <Button
+                      variant={isActivePath(route.path) ? 'secondary' : 'ghost'}
+                      size="sm">
+                      {route.title}
+                    </Button>
+                  </Link>
+                ))}
+              </nav>
+            )}
           </div>
 
-          {/* Theme Toggle - Right */}
-          <div className="hidden md:flex items-center">
+          {/* Right: Theme Toggle + User Info + Actions */}
+          <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
             <ThemeToggle />
-          </div>
 
-          {/* Mobile controls - Right */}
-          <div className="md:hidden flex items-center space-x-3">
-            <ThemeToggle />
-            <button
-              onClick={onMobileMenuToggle}
-              className="p-2 text-muted-foreground/70 hover:text-foreground hover:bg-accent/50 transition-all duration-200 rounded-lg"
-              aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={isMobileMenuOpen}>
-              <Menu className="w-5 h-5" />
-            </button>
+            {/* User Info & Logout (Desktop) */}
+            {isAuthenticated && (
+              <>
+                <div className="hidden md:flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">
+                    {userEmail}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
+
+                {/* Mobile Menu Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="md:hidden"
+                  onClick={onMenuClick}>
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

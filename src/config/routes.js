@@ -14,6 +14,7 @@ import { lazy } from 'react';
 // Lazy load all page components
 const Home = lazy(() => import('@pages/Home'));
 const Login = lazy(() => import('@pages/Login'));
+const QuestionManagement = lazy(() => import('@pages/QuestionManagement'));
 const NotFound = lazy(() => import('@pages/NotFound'));
 
 /**
@@ -27,9 +28,23 @@ export const ROUTE_CONFIG = {
     component: Home,
     isIndex: true,
     title: 'Home',
-    showInNav: false,
+    showInNav: true,
+    category: 'main',
     requiresAuth: true, // Protected route
     sitemap_priority: 1.0,
+    sitemap_changefreq: 'weekly',
+  },
+
+  // Question Management
+  QUESTIONS: {
+    path: '/questions',
+    component: QuestionManagement,
+    title: 'Questions',
+    description: 'Manage question sets',
+    showInNav: true,
+    category: 'main',
+    requiresAuth: true, // Protected route
+    sitemap_priority: 0.8,
     sitemap_changefreq: 'weekly',
   },
 
@@ -89,6 +104,7 @@ export const getNavigationRoutes = () => {
   const routes = Object.values(ROUTE_CONFIG).filter((route) => route.showInNav);
 
   return {
+    main: routes.filter((route) => route.category === 'main'),
     tools: routes.filter((route) => route.category === 'tools'),
     info: routes.filter((route) => route.category === 'info'),
     legal: routes.filter((route) => route.category === 'legal'),

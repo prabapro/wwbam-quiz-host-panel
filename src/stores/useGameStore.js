@@ -368,7 +368,10 @@ export const useGameStore = create()(
 
         onRehydrateStorage: () => (state, error) => {
           if (error) {
-            console.warn('🎮 Game: Failed to hydrate from localStorage:', error);
+            console.warn(
+              '🎮 Game: Failed to hydrate from localStorage:',
+              error,
+            );
             return;
           }
 
