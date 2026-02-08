@@ -12,7 +12,8 @@
       ".read": true,
       ".write": "auth != null",
       "$teamId": {
-        ".validate": "newData.hasChildren(['name', 'status', 'current-prize', 'question-set-id'])"
+        ".read": true,
+        ".write": "auth != null"
       }
     },
 

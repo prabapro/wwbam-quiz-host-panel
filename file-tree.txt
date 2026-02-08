@@ -39,6 +39,10 @@
 │   │   │   └── QuestionUploader.jsx
 │   │   ├── setup
 │   │   ├── teams
+│   │   │   ├── DeleteTeamDialog.jsx
+│   │   │   ├── TeamCard.jsx
+│   │   │   ├── TeamConfigList.jsx
+│   │   │   └── TeamForm.jsx
 │   │   ├── test
 │   │   │   └── FirebaseTest.jsx
 │   │   └── ui
@@ -48,6 +52,8 @@
 │   │       ├── button.jsx
 │   │       ├── card.jsx
 │   │       ├── dialog.jsx
+│   │       ├── input.jsx
+│   │       ├── label.jsx
 │   │       ├── progress.jsx
 │   │       ├── scroll-area.jsx
 │   │       ├── theme-toggle.jsx
@@ -70,7 +76,8 @@
 │   │   ├── Home.jsx
 │   │   ├── Login.jsx
 │   │   ├── NotFound.jsx
-│   │   └── QuestionManagement.jsx
+│   │   ├── QuestionManagement.jsx
+│   │   └── TeamManagement.jsx
 │   ├── routes
 │   │   └── AppRouter.jsx
 │   ├── services
