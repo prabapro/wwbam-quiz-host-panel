@@ -1,6 +1,6 @@
 // src/pages/TeamManagement.jsx
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import TeamForm from '@components/teams/TeamForm';
 import TeamConfigList from '@components/teams/TeamConfigList';
@@ -12,12 +12,33 @@ export default function TeamManagement() {
   const [editingTeam, setEditingTeam] = useState(null);
   const [formKey, setFormKey] = useState(0); // Force form re-render on cancel
 
-  // FIX: Select the teams object directly, not the getter function
+  // Select teams object and actions
   const teamsObject = useTeamsStore((state) => state.teams);
   const deleteTeam = useTeamsStore((state) => state.deleteTeam);
+  const syncTeamsFromFirebase = useTeamsStore(
+    (state) => state.syncTeamsFromFirebase,
+  );
+  const startTeamsListener = useTeamsStore((state) => state.startTeamsListener);
+  const isLoading = useTeamsStore((state) => state.isLoading);
 
   // Convert to array using useMemo to prevent unnecessary recalculations
   const teams = useMemo(() => Object.values(teamsObject), [teamsObject]);
+
+  // Sync teams from Firebase on mount and setup real-time listener
+  useEffect(() => {
+    // Initial sync
+    syncTeamsFromFirebase();
+
+    // Start real-time listener
+    const unsubscribe = startTeamsListener();
+
+    // Cleanup listener on unmount
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [syncTeamsFromFirebase, startTeamsListener]);
 
   const handleEditTeam = (team) => {
     setEditingTeam(team);
@@ -33,8 +54,8 @@ export default function TeamManagement() {
     setFormKey((prev) => prev + 1);
   };
 
-  const handleDeleteTeam = (teamId) => {
-    const result = deleteTeam(teamId);
+  const handleDeleteTeam = async (teamId) => {
+    const result = await deleteTeam(teamId);
 
     if (!result.success) {
       console.error('Failed to delete team:', result.error);
@@ -89,6 +110,7 @@ export default function TeamManagement() {
             teams={teams}
             onEdit={handleEditTeam}
             onDelete={handleDeleteTeam}
+            isLoading={isLoading}
           />
         </div>
       </div>

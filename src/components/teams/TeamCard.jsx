@@ -17,6 +17,7 @@ import { Users, Phone, Edit, Trash2 } from 'lucide-react';
 
 export default function TeamCard({ team, onEdit, onDelete }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const gameStatus = useGameStore((state) => state.gameStatus);
   const isGameActive = gameStatus === 'active' || gameStatus === 'initialized';
@@ -27,9 +28,16 @@ export default function TeamCard({ team, onEdit, onDelete }) {
     onEdit(team);
   };
 
-  const handleDeleteConfirm = () => {
-    onDelete(team.id);
-    setShowDeleteDialog(false);
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete(team.id);
+      setShowDeleteDialog(false);
+    } catch (error) {
+      console.error('Delete failed:', error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const formatDate = (timestamp) => {
@@ -112,7 +120,7 @@ export default function TeamCard({ team, onEdit, onDelete }) {
             size="sm"
             className="flex-1"
             onClick={handleEdit}
-            disabled={isGameActive}>
+            disabled={isGameActive || isDeleting}>
             <Edit className="w-4 h-4 mr-2" />
             Edit
           </Button>
@@ -121,7 +129,7 @@ export default function TeamCard({ team, onEdit, onDelete }) {
             variant="outline"
             size="sm"
             onClick={() => setShowDeleteDialog(true)}
-            disabled={isGameActive}>
+            disabled={isGameActive || isDeleting}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </CardFooter>
@@ -133,6 +141,7 @@ export default function TeamCard({ team, onEdit, onDelete }) {
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDeleteConfirm}
+        isDeleting={isDeleting}
       />
     </>
   );

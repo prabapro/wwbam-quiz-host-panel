@@ -31,6 +31,80 @@ export const DB_PATHS = {
 };
 
 // ============================================================================
+// KEY CONVERSION UTILITIES
+// ============================================================================
+
+/**
+ * Convert camelCase to kebab-case
+ * @param {string} str - camelCase string
+ * @returns {string} kebab-case string
+ */
+const camelToKebab = (str) => {
+  return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+};
+
+/**
+ * Convert kebab-case to camelCase
+ * @param {string} str - kebab-case string
+ * @returns {string} camelCase string
+ */
+const kebabToCamel = (str) => {
+  return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+};
+
+/**
+ * Convert object keys from camelCase to kebab-case
+ * @param {Object} obj - Object with camelCase keys
+ * @returns {Object} Object with kebab-case keys
+ */
+const convertKeysToKebab = (obj) => {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    return obj;
+  }
+
+  const result = {};
+  Object.keys(obj).forEach((key) => {
+    const kebabKey = camelToKebab(key);
+    const value = obj[key];
+
+    // Recursively convert nested objects
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result[kebabKey] = convertKeysToKebab(value);
+    } else {
+      result[kebabKey] = value;
+    }
+  });
+
+  return result;
+};
+
+/**
+ * Convert object keys from kebab-case to camelCase
+ * @param {Object} obj - Object with kebab-case keys
+ * @returns {Object} Object with camelCase keys
+ */
+const convertKeysToCamel = (obj) => {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    return obj;
+  }
+
+  const result = {};
+  Object.keys(obj).forEach((key) => {
+    const camelKey = kebabToCamel(key);
+    const value = obj[key];
+
+    // Recursively convert nested objects
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result[camelKey] = convertKeysToCamel(value);
+    } else {
+      result[camelKey] = value;
+    }
+  });
+
+  return result;
+};
+
+// ============================================================================
 // GAME STATE OPERATIONS
 // ============================================================================
 
@@ -41,7 +115,7 @@ export const DB_PATHS = {
 export const getGameState = async () => {
   try {
     const snapshot = await get(ref(database, DB_PATHS.GAME_STATE));
-    return snapshot.exists() ? snapshot.val() : null;
+    return snapshot.exists() ? convertKeysToCamel(snapshot.val()) : null;
   } catch (error) {
     console.error('Error fetching game state:', error);
     throw error;
@@ -55,9 +129,11 @@ export const getGameState = async () => {
  */
 export const updateGameState = async (updates) => {
   try {
+    const kebabUpdates = convertKeysToKebab(updates);
     const updatePath = {};
-    Object.keys(updates).forEach((key) => {
-      updatePath[`${DB_PATHS.GAME_STATE}/${key}`] = updates[key];
+
+    Object.keys(kebabUpdates).forEach((key) => {
+      updatePath[`${DB_PATHS.GAME_STATE}/${key}`] = kebabUpdates[key];
     });
 
     // Add last-updated timestamp
@@ -80,12 +156,12 @@ export const updateGameState = async (updates) => {
 export const setCurrentQuestion = async (questionData, questionNumber) => {
   try {
     await updateGameState({
-      'current-question': questionData,
-      'current-question-number': questionNumber,
-      'question-visible': true,
-      'options-visible': true,
-      'answer-revealed': false,
-      'correct-option': null,
+      currentQuestion: questionData,
+      currentQuestionNumber: questionNumber,
+      questionVisible: true,
+      optionsVisible: true,
+      answerRevealed: false,
+      correctOption: null,
     });
   } catch (error) {
     console.error('Error setting current question:', error);
@@ -101,8 +177,8 @@ export const setCurrentQuestion = async (questionData, questionNumber) => {
 export const revealAnswer = async (correctOption) => {
   try {
     await updateGameState({
-      'answer-revealed': true,
-      'correct-option': correctOption,
+      answerRevealed: true,
+      correctOption: correctOption,
     });
   } catch (error) {
     console.error('Error revealing answer:', error);
@@ -116,17 +192,19 @@ export const revealAnswer = async (correctOption) => {
  */
 export const resetGameState = async () => {
   try {
-    await set(ref(database, DB_PATHS.GAME_STATE), {
-      'current-team-id': null,
-      'current-question-number': 0,
-      'current-question': null,
-      'question-visible': false,
-      'options-visible': false,
-      'answer-revealed': false,
-      'correct-option': null,
-      'game-status': 'paused',
-      'last-updated': serverTimestamp(),
+    const resetData = convertKeysToKebab({
+      currentTeamId: null,
+      currentQuestionNumber: 0,
+      currentQuestion: null,
+      questionVisible: false,
+      optionsVisible: false,
+      answerRevealed: false,
+      correctOption: null,
+      gameStatus: 'paused',
+      lastUpdated: serverTimestamp(),
     });
+
+    await set(ref(database, DB_PATHS.GAME_STATE), resetData);
     console.log('✅ Game state reset');
   } catch (error) {
     console.error('Error resetting game state:', error);
@@ -142,7 +220,7 @@ export const resetGameState = async () => {
 export const onGameStateChange = (callback) => {
   const gameStateRef = ref(database, DB_PATHS.GAME_STATE);
   onValue(gameStateRef, (snapshot) => {
-    const data = snapshot.exists() ? snapshot.val() : null;
+    const data = snapshot.exists() ? convertKeysToCamel(snapshot.val()) : null;
     callback(data);
   });
 
@@ -161,7 +239,20 @@ export const onGameStateChange = (callback) => {
 export const getTeams = async () => {
   try {
     const snapshot = await get(ref(database, DB_PATHS.TEAMS));
-    return snapshot.exists() ? snapshot.val() : null;
+    if (!snapshot.exists()) return null;
+
+    const teams = snapshot.val();
+    const convertedTeams = {};
+
+    // Convert each team's keys from kebab-case to camelCase
+    Object.keys(teams).forEach((teamId) => {
+      convertedTeams[teamId] = {
+        id: teamId,
+        ...convertKeysToCamel(teams[teamId]),
+      };
+    });
+
+    return convertedTeams;
   } catch (error) {
     console.error('Error fetching teams:', error);
     throw error;
@@ -176,7 +267,9 @@ export const getTeams = async () => {
 export const getTeam = async (teamId) => {
   try {
     const snapshot = await get(ref(database, `${DB_PATHS.TEAMS}/${teamId}`));
-    return snapshot.exists() ? snapshot.val() : null;
+    return snapshot.exists()
+      ? { id: teamId, ...convertKeysToCamel(snapshot.val()) }
+      : null;
   } catch (error) {
     console.error('Error fetching team:', error);
     throw error;
@@ -195,6 +288,8 @@ export const createTeam = async (teamData) => {
 
     const team = {
       name: teamData.name,
+      participants: teamData.participants || '',
+      contact: teamData.contact || '',
       status: 'waiting',
       'current-prize': 0,
       'question-set-id': teamData.questionSetId || `set-${teamId}`,
@@ -219,15 +314,21 @@ export const createTeam = async (teamData) => {
 /**
  * Update team data
  * @param {string} teamId - Team ID
- * @param {Object} updates - Fields to update
+ * @param {Object} updates - Fields to update (camelCase)
  * @returns {Promise<void>}
  */
 export const updateTeam = async (teamId, updates) => {
   try {
+    // Convert camelCase updates to kebab-case
+    const kebabUpdates = convertKeysToKebab(updates);
+
     const updatePath = {};
-    Object.keys(updates).forEach((key) => {
-      updatePath[`${DB_PATHS.TEAMS}/${teamId}/${key}`] = updates[key];
+    Object.keys(kebabUpdates).forEach((key) => {
+      updatePath[`${DB_PATHS.TEAMS}/${teamId}/${key}`] = kebabUpdates[key];
     });
+
+    // Add last-updated timestamp
+    updatePath[`${DB_PATHS.TEAMS}/${teamId}/last-updated`] = serverTimestamp();
 
     await update(ref(database), updatePath);
     console.log('✅ Team updated:', teamId);
@@ -279,7 +380,7 @@ export const eliminateTeam = async (teamId) => {
   try {
     await updateTeam(teamId, {
       status: 'eliminated',
-      'eliminated-at': serverTimestamp(),
+      eliminatedAt: serverTimestamp(),
     });
   } catch (error) {
     console.error('Error eliminating team:', error);
@@ -295,8 +396,23 @@ export const eliminateTeam = async (teamId) => {
 export const onTeamsChange = (callback) => {
   const teamsRef = ref(database, DB_PATHS.TEAMS);
   onValue(teamsRef, (snapshot) => {
-    const data = snapshot.exists() ? snapshot.val() : null;
-    callback(data);
+    if (!snapshot.exists()) {
+      callback(null);
+      return;
+    }
+
+    const teams = snapshot.val();
+    const convertedTeams = {};
+
+    // Convert each team's keys from kebab-case to camelCase
+    Object.keys(teams).forEach((teamId) => {
+      convertedTeams[teamId] = {
+        id: teamId,
+        ...convertKeysToCamel(teams[teamId]),
+      };
+    });
+
+    callback(convertedTeams);
   });
 
   return () => off(teamsRef);
@@ -346,7 +462,7 @@ export const setPrizeStructure = async (prizes) => {
 export const getConfig = async () => {
   try {
     const snapshot = await get(ref(database, DB_PATHS.CONFIG));
-    return snapshot.exists() ? snapshot.val() : null;
+    return snapshot.exists() ? convertKeysToCamel(snapshot.val()) : null;
   } catch (error) {
     console.error('Error fetching config:', error);
     throw error;
@@ -360,7 +476,8 @@ export const getConfig = async () => {
  */
 export const updateConfig = async (updates) => {
   try {
-    await update(ref(database, DB_PATHS.CONFIG), updates);
+    const kebabUpdates = convertKeysToKebab(updates);
+    await update(ref(database, DB_PATHS.CONFIG), kebabUpdates);
     console.log('✅ Config updated');
   } catch (error) {
     console.error('Error updating config:', error);

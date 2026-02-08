@@ -19,12 +19,13 @@ export default function DeleteTeamDialog({
   open,
   onOpenChange,
   onConfirm,
+  isDeleting = false,
 }) {
   const gameStatus = useGameStore((state) => state.gameStatus);
   const isGameActive = gameStatus === 'active' || gameStatus === 'initialized';
 
   const handleConfirm = () => {
-    if (!isGameActive) {
+    if (!isGameActive && !isDeleting) {
       onConfirm();
     }
   };
@@ -60,18 +61,18 @@ export default function DeleteTeamDialog({
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               This action cannot be undone. The team and all associated data
-              will be permanently removed.
+              will be permanently removed from both Firebase and local storage.
             </AlertDescription>
           </Alert>
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={isGameActive}
+            disabled={isGameActive || isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Delete Team
+            {isDeleting ? 'Deleting...' : 'Delete Team'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

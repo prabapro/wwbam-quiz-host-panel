@@ -8,12 +8,14 @@ import {
   isValidTeamTransition,
   LIFELINE_TYPE,
 } from '@constants/teamStates';
+import { databaseService } from '@services/database.service';
 
 const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
 
 /**
  * Teams Store
  * Manages all team data including statuses, prizes, progress, and lifelines
+ * Syncs with Firebase Realtime Database
  */
 export const useTeamsStore = create()(
   devtools(
@@ -26,14 +28,20 @@ export const useTeamsStore = create()(
         // Teams object: { teamId: teamData }
         teams: {},
 
+        // Loading state for Firebase operations
+        isLoading: false,
+
+        // Error state
+        error: null,
+
         // ============================================================
         // ACTIONS
         // ============================================================
 
         /**
-         * Add a new team
+         * Add a new team (syncs with Firebase)
          */
-        addTeam: (teamData) => {
+        addTeam: async (teamData) => {
           const { teams } = get();
           const teamId = teamData.id || `team-${Date.now()}`;
 
@@ -43,40 +51,57 @@ export const useTeamsStore = create()(
             return { success: false, error: 'Team already exists' };
           }
 
-          const newTeam = {
-            id: teamId,
-            name: teamData.name,
-            participants: teamData.participants || '',
-            contact: teamData.contact || '',
-            status: DEFAULT_TEAM_STATUS,
-            currentPrize: 0,
-            questionSetId: null,
-            currentQuestionIndex: 0,
-            questionsAnswered: 0,
-            lifelines: {
-              [LIFELINE_TYPE.PHONE_A_FRIEND]: true,
-              [LIFELINE_TYPE.FIFTY_FIFTY]: true,
-            },
-            createdAt: Date.now(),
-            lastUpdated: Date.now(),
-          };
+          set({ isLoading: true, error: null });
 
-          set({
-            teams: {
-              ...teams,
-              [teamId]: newTeam,
-            },
-          });
+          try {
+            const newTeam = {
+              id: teamId,
+              name: teamData.name,
+              participants: teamData.participants || '',
+              contact: teamData.contact || '',
+              status: DEFAULT_TEAM_STATUS,
+              currentPrize: 0,
+              questionSetId: null,
+              currentQuestionIndex: 0,
+              questionsAnswered: 0,
+              lifelines: {
+                [LIFELINE_TYPE.PHONE_A_FRIEND]: true,
+                [LIFELINE_TYPE.FIFTY_FIFTY]: true,
+              },
+              createdAt: Date.now(),
+              lastUpdated: Date.now(),
+            };
 
-          console.log(`✅ Team added: ${teamId} (${newTeam.name})`);
+            // Save to Firebase
+            await databaseService.createTeam({
+              name: newTeam.name,
+              participants: newTeam.participants,
+              contact: newTeam.contact,
+            });
 
-          return { success: true, teamId, team: newTeam };
+            // Update local state
+            set({
+              teams: {
+                ...teams,
+                [teamId]: newTeam,
+              },
+              isLoading: false,
+            });
+
+            console.log(`✅ Team added: ${teamId} (${newTeam.name})`);
+
+            return { success: true, teamId, team: newTeam };
+          } catch (error) {
+            console.error('Failed to add team:', error);
+            set({ isLoading: false, error: error.message });
+            return { success: false, error: error.message };
+          }
         },
 
         /**
-         * Update team data
+         * Update team data (syncs with Firebase)
          */
-        updateTeam: (teamId, updates) => {
+        updateTeam: async (teamId, updates) => {
           const { teams } = get();
 
           if (!teams[teamId]) {
@@ -97,28 +122,41 @@ export const useTeamsStore = create()(
             }
           }
 
-          const updatedTeam = {
-            ...teams[teamId],
-            ...updates,
-            lastUpdated: Date.now(),
-          };
+          set({ isLoading: true, error: null });
 
-          set({
-            teams: {
-              ...teams,
-              [teamId]: updatedTeam,
-            },
-          });
+          try {
+            const updatedTeam = {
+              ...teams[teamId],
+              ...updates,
+              lastUpdated: Date.now(),
+            };
 
-          console.log(`✅ Team updated: ${teamId}`);
+            // Sync to Firebase
+            await databaseService.updateTeam(teamId, updates);
 
-          return { success: true, team: updatedTeam };
+            // Update local state
+            set({
+              teams: {
+                ...teams,
+                [teamId]: updatedTeam,
+              },
+              isLoading: false,
+            });
+
+            console.log(`✅ Team updated: ${teamId}`);
+
+            return { success: true, team: updatedTeam };
+          } catch (error) {
+            console.error('Failed to update team:', error);
+            set({ isLoading: false, error: error.message });
+            return { success: false, error: error.message };
+          }
         },
 
         /**
-         * Delete a team
+         * Delete a team (syncs with Firebase)
          */
-        deleteTeam: (teamId) => {
+        deleteTeam: async (teamId) => {
           const { teams } = get();
 
           if (!teams[teamId]) {
@@ -126,13 +164,64 @@ export const useTeamsStore = create()(
             return { success: false, error: 'Team not found' };
           }
 
-          const { [teamId]: removed, ...remainingTeams } = teams;
+          set({ isLoading: true, error: null });
 
-          set({ teams: remainingTeams });
+          try {
+            // Delete from Firebase
+            await databaseService.deleteTeam(teamId);
 
-          console.log(`✅ Team deleted: ${teamId}`);
+            // Remove from local state
+            const { [teamId]: removed, ...remainingTeams } = teams;
 
-          return { success: true };
+            set({ teams: remainingTeams, isLoading: false });
+
+            console.log(`✅ Team deleted: ${teamId}`);
+
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to delete team:', error);
+            set({ isLoading: false, error: error.message });
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Sync teams from Firebase to local state
+         */
+        syncTeamsFromFirebase: async () => {
+          set({ isLoading: true, error: null });
+
+          try {
+            const firebaseTeams = await databaseService.getTeams();
+
+            if (firebaseTeams) {
+              set({ teams: firebaseTeams, isLoading: false });
+              console.log('✅ Teams synced from Firebase');
+              return { success: true, teams: firebaseTeams };
+            } else {
+              set({ teams: {}, isLoading: false });
+              return { success: true, teams: {} };
+            }
+          } catch (error) {
+            console.error('Failed to sync teams from Firebase:', error);
+            set({ isLoading: false, error: error.message });
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Listen to Firebase teams changes (real-time sync)
+         */
+        startTeamsListener: () => {
+          const unsubscribe = databaseService.onTeamsChange((firebaseTeams) => {
+            if (firebaseTeams) {
+              set({ teams: firebaseTeams });
+              console.log('🔄 Teams updated from Firebase');
+            }
+          });
+
+          // Return unsubscribe function
+          return unsubscribe;
         },
 
         /**
@@ -335,13 +424,13 @@ export const useTeamsStore = create()(
         /**
          * Reset all teams progress
          */
-        resetAllTeamsProgress: () => {
+        resetAllTeamsProgress: async () => {
           const { teams } = get();
           const teamIds = Object.keys(teams);
 
-          teamIds.forEach((teamId) => {
-            get().resetTeamProgress(teamId);
-          });
+          for (const teamId of teamIds) {
+            await get().resetTeamProgress(teamId);
+          }
 
           console.log('🔄 All teams progress reset');
         },

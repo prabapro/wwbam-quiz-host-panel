@@ -97,15 +97,15 @@ export default function TeamForm({ editingTeam, onSuccess, onCancel }) {
       let result;
 
       if (isEditMode) {
-        // Update existing team
-        result = updateTeam(editingTeam.id, {
+        // Update existing team (async)
+        result = await updateTeam(editingTeam.id, {
           name: formData.name.trim(),
           participants: formData.participants.trim(),
           contact: formData.contact.trim(),
         });
       } else {
-        // Add new team
-        result = addTeam({
+        // Add new team (async)
+        result = await addTeam({
           name: formData.name.trim(),
           participants: formData.participants.trim(),
           contact: formData.contact.trim(),
