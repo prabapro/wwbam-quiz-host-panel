@@ -38,6 +38,7 @@
 │   │   │   ├── QuestionSetViewer.jsx
 │   │   │   └── QuestionUploader.jsx
 │   │   ├── setup
+│   │   │   └── SetupVerification.jsx
 │   │   ├── teams
 │   │   │   ├── DeleteTeamDialog.jsx
 │   │   │   ├── TeamCard.jsx
@@ -69,6 +70,7 @@
 │   │   └── initial-db-structure.json
 │   ├── hooks
 │   │   ├── useAuth.js
+│   │   ├── useSetupVerification.js
 │   │   └── useTheme.js
 │   ├── lib
 │   │   └── utils.js
@@ -93,6 +95,7 @@
 │   ├── styles
 │   │   └── index.css
 │   ├── utils
+│   │   ├── setupValidation.js
 │   │   ├── theme.js
 │   │   └── validation.js
 │   ├── App.jsx

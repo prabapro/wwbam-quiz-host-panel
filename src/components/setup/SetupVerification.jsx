@@ -76,7 +76,9 @@ export default function SetupVerification() {
           )}
 
           {!isReady && hasWarnings && (
-            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+            <Badge
+              variant="secondary"
+              className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
               <AlertTriangle className="w-4 h-4 mr-1" />
               Warnings
             </Badge>
@@ -101,7 +103,9 @@ export default function SetupVerification() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{summary.teams}</p>
-                <p className="text-sm text-muted-foreground">Teams Configured</p>
+                <p className="text-sm text-muted-foreground">
+                  Teams Configured
+                </p>
               </div>
             </div>
           </div>
@@ -120,11 +124,12 @@ export default function SetupVerification() {
 
           <div className="p-4 bg-muted/30 rounded-lg">
             <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                summary.criticalIssues === 0 
-                  ? 'bg-green-100 dark:bg-green-900' 
-                  : 'bg-red-100 dark:bg-red-900'
-              }`}>
+              <div
+                className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                  summary.criticalIssues === 0
+                    ? 'bg-green-100 dark:bg-green-900'
+                    : 'bg-red-100 dark:bg-red-900'
+                }`}>
                 {summary.criticalIssues === 0 ? (
                   <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
                 ) : (
@@ -170,7 +175,9 @@ export default function SetupVerification() {
                   </div>
                 </div>
 
-                <Badge variant={getStatusBadgeVariant(check.status)} className="capitalize">
+                <Badge
+                  variant={getStatusBadgeVariant(check.status)}
+                  className="capitalize">
                   {check.status}
                 </Badge>
               </div>
@@ -198,8 +205,8 @@ export default function SetupVerification() {
               All Checks Passed!
             </AlertTitle>
             <AlertDescription className="text-green-700 dark:text-green-300">
-              Your setup is complete and ready. You can now proceed to initialize
-              the game.
+              Your setup is complete and ready. You can now proceed to
+              initialize the game.
             </AlertDescription>
           </Alert>
         )}

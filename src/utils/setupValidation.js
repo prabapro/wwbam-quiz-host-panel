@@ -238,8 +238,7 @@ export const validateCompleteSetup = (teamsObject, questionSets) => {
     {
       id: 'teams-valid',
       label: 'Team Data Valid',
-      status:
-        teamsValidation.invalidTeams.length === 0 ? 'pass' : 'warning',
+      status: teamsValidation.invalidTeams.length === 0 ? 'pass' : 'warning',
       message:
         teamsValidation.invalidTeams.length === 0
           ? 'All teams have valid data'
@@ -285,12 +284,8 @@ export const validateCompleteSetup = (teamsObject, questionSets) => {
   ];
 
   // Overall readiness
-  const criticalChecks = allChecks.filter(
-    (check) => check.status === 'fail',
-  );
-  const warningChecks = allChecks.filter(
-    (check) => check.status === 'warning',
-  );
+  const criticalChecks = allChecks.filter((check) => check.status === 'fail');
+  const warningChecks = allChecks.filter((check) => check.status === 'warning');
 
   const isReady = criticalChecks.length === 0 && warningChecks.length === 0;
   const hasWarnings = warningChecks.length > 0;
