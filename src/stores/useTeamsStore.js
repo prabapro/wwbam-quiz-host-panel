@@ -42,20 +42,19 @@ export const useTeamsStore = create()(
          * Add a new team (syncs with Firebase)
          */
         addTeam: async (teamData) => {
-          const { teams } = get();
-          const teamId = teamData.id || `team-${Date.now()}`;
-
-          // Check if team already exists
-          if (teams[teamId]) {
-            console.warn(`Team ${teamId} already exists`);
-            return { success: false, error: 'Team already exists' };
-          }
-
           set({ isLoading: true, error: null });
 
           try {
+            // Create team in Firebase first - Firebase generates the ID
+            const firebaseTeamId = await databaseService.createTeam({
+              name: teamData.name,
+              participants: teamData.participants,
+              contact: teamData.contact,
+            });
+
+            // Use the Firebase-generated ID for local state
             const newTeam = {
-              id: teamId,
+              id: firebaseTeamId, // ← Use Firebase ID
               name: teamData.name,
               participants: teamData.participants || '',
               contact: teamData.contact || '',
@@ -72,25 +71,18 @@ export const useTeamsStore = create()(
               lastUpdated: Date.now(),
             };
 
-            // Save to Firebase
-            await databaseService.createTeam({
-              name: newTeam.name,
-              participants: newTeam.participants,
-              contact: newTeam.contact,
-            });
-
-            // Update local state
-            set({
+            // Update local state with Firebase ID
+            set((state) => ({
               teams: {
-                ...teams,
-                [teamId]: newTeam,
+                ...state.teams,
+                [firebaseTeamId]: newTeam, // ← Use Firebase ID
               },
               isLoading: false,
-            });
+            }));
 
-            console.log(`✅ Team added: ${teamId} (${newTeam.name})`);
+            console.log(`✅ Team added: ${firebaseTeamId} (${newTeam.name})`);
 
-            return { success: true, teamId, team: newTeam };
+            return { success: true, teamId: firebaseTeamId, team: newTeam };
           } catch (error) {
             console.error('Failed to add team:', error);
             set({ isLoading: false, error: error.message });
@@ -125,16 +117,16 @@ export const useTeamsStore = create()(
           set({ isLoading: true, error: null });
 
           try {
+            // Sync to Firebase first
+            await databaseService.updateTeam(teamId, updates);
+
+            // Then update local state
             const updatedTeam = {
               ...teams[teamId],
               ...updates,
               lastUpdated: Date.now(),
             };
 
-            // Sync to Firebase
-            await databaseService.updateTeam(teamId, updates);
-
-            // Update local state
             set({
               teams: {
                 ...teams,
