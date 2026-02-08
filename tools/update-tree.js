@@ -46,6 +46,7 @@ const DEFAULT_EXCLUDES = [
   '.env*',
   '*.code-workspace',
   'pnpm*',
+  '.firebase',
 ];
 
 // Configuration
