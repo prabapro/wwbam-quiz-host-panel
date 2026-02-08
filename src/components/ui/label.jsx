@@ -1,3 +1,4 @@
+// src/components/ui/label.jsx
 import * as React from 'react';
 import { Label as LabelPrimitive } from 'radix-ui';
 

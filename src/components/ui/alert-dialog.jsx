@@ -1,3 +1,4 @@
+// src/components/ui/alert-dialog.jsx
 import * as React from 'react';
 import { AlertDialog as AlertDialogPrimitive } from 'radix-ui';
 
