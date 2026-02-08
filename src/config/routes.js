@@ -15,6 +15,7 @@ import { lazy } from 'react';
 const Home = lazy(() => import('@pages/Home'));
 const Login = lazy(() => import('@pages/Login'));
 const QuestionManagement = lazy(() => import('@pages/QuestionManagement'));
+const TeamManagement = lazy(() => import('@pages/TeamManagement'));
 const NotFound = lazy(() => import('@pages/NotFound'));
 
 /**
@@ -41,6 +42,19 @@ export const ROUTE_CONFIG = {
     component: QuestionManagement,
     title: 'Questions',
     description: 'Manage question sets',
+    showInNav: true,
+    category: 'main',
+    requiresAuth: true, // Protected route
+    sitemap_priority: 0.8,
+    sitemap_changefreq: 'weekly',
+  },
+
+  // Team Management
+  TEAMS: {
+    path: '/teams',
+    component: TeamManagement,
+    title: 'Teams',
+    description: 'Configure participating teams',
     showInNav: true,
     category: 'main',
     requiresAuth: true, // Protected route
