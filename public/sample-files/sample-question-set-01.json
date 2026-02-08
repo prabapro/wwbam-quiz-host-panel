@@ -1,0 +1,287 @@
+{
+  "setId": "sample-set-1",
+  "setName": "Sample Set 1",
+  "totalQuestions": 20,
+  "questions": [
+    {
+      "id": "q1",
+      "number": 1,
+      "text": "What is the capital of France?",
+      "options": {
+        "A": "London",
+        "B": "Paris",
+        "C": "Berlin",
+        "D": "Rome"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q2",
+      "number": 2,
+      "text": "Who wrote 'Romeo and Juliet'?",
+      "options": {
+        "A": "Charles Dickens",
+        "B": "William Shakespeare",
+        "C": "Mark Twain",
+        "D": "Jane Austen"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Literature"
+    },
+    {
+      "id": "q3",
+      "number": 3,
+      "text": "What is the largest planet in our solar system?",
+      "options": {
+        "A": "Earth",
+        "B": "Mars",
+        "C": "Jupiter",
+        "D": "Saturn"
+      },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Science"
+    },
+    {
+      "id": "q4",
+      "number": 4,
+      "text": "In which year did World War II end?",
+      "options": {
+        "A": "1943",
+        "B": "1944",
+        "C": "1945",
+        "D": "1946"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "History"
+    },
+    {
+      "id": "q5",
+      "number": 5,
+      "text": "What is the chemical symbol for gold?",
+      "options": {
+        "A": "Go",
+        "B": "Au",
+        "C": "Gd",
+        "D": "Ag"
+      },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Science"
+    },
+    {
+      "id": "q6",
+      "number": 6,
+      "text": "Which ocean is the largest?",
+      "options": {
+        "A": "Atlantic Ocean",
+        "B": "Indian Ocean",
+        "C": "Arctic Ocean",
+        "D": "Pacific Ocean"
+      },
+      "correctAnswer": "D",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q7",
+      "number": 7,
+      "text": "Who painted the Mona Lisa?",
+      "options": {
+        "A": "Vincent van Gogh",
+        "B": "Pablo Picasso",
+        "C": "Leonardo da Vinci",
+        "D": "Michelangelo"
+      },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Art"
+    },
+    {
+      "id": "q8",
+      "number": 8,
+      "text": "What is the speed of light in vacuum?",
+      "options": {
+        "A": "300,000 km/s",
+        "B": "150,000 km/s",
+        "C": "450,000 km/s",
+        "D": "600,000 km/s"
+      },
+      "correctAnswer": "A",
+      "difficulty": "medium",
+      "category": "Science"
+    },
+    {
+      "id": "q9",
+      "number": 9,
+      "text": "Which country is known as the Land of the Rising Sun?",
+      "options": {
+        "A": "China",
+        "B": "South Korea",
+        "C": "Japan",
+        "D": "Thailand"
+      },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q10",
+      "number": 10,
+      "text": "What is the smallest prime number?",
+      "options": {
+        "A": "0",
+        "B": "1",
+        "C": "2",
+        "D": "3"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q11",
+      "number": 11,
+      "text": "Who is the author of 'Harry Potter' series?",
+      "options": {
+        "A": "J.R.R. Tolkien",
+        "B": "J.K. Rowling",
+        "C": "C.S. Lewis",
+        "D": "George R.R. Martin"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Literature"
+    },
+    {
+      "id": "q12",
+      "number": 12,
+      "text": "What is the capital of Australia?",
+      "options": {
+        "A": "Sydney",
+        "B": "Melbourne",
+        "C": "Canberra",
+        "D": "Brisbane"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Geography"
+    },
+    {
+      "id": "q13",
+      "number": 13,
+      "text": "In which year was the first iPhone released?",
+      "options": {
+        "A": "2005",
+        "B": "2006",
+        "C": "2007",
+        "D": "2008"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Technology"
+    },
+    {
+      "id": "q14",
+      "number": 14,
+      "text": "What is the hardest natural substance on Earth?",
+      "options": {
+        "A": "Gold",
+        "B": "Iron",
+        "C": "Diamond",
+        "D": "Platinum"
+      },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Science"
+    },
+    {
+      "id": "q15",
+      "number": 15,
+      "text": "How many continents are there?",
+      "options": {
+        "A": "5",
+        "B": "6",
+        "C": "7",
+        "D": "8"
+      },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q16",
+      "number": 16,
+      "text": "Who discovered penicillin?",
+      "options": {
+        "A": "Marie Curie",
+        "B": "Alexander Fleming",
+        "C": "Louis Pasteur",
+        "D": "Isaac Newton"
+      },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Science"
+    },
+    {
+      "id": "q17",
+      "number": 17,
+      "text": "What is the longest river in the world?",
+      "options": {
+        "A": "Amazon River",
+        "B": "Nile River",
+        "C": "Yangtze River",
+        "D": "Mississippi River"
+      },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Geography"
+    },
+    {
+      "id": "q18",
+      "number": 18,
+      "text": "In which country would you find the Great Barrier Reef?",
+      "options": {
+        "A": "Philippines",
+        "B": "Indonesia",
+        "C": "Australia",
+        "D": "Thailand"
+      },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q19",
+      "number": 19,
+      "text": "What is the square root of 144?",
+      "options": {
+        "A": "10",
+        "B": "11",
+        "C": "12",
+        "D": "13"
+      },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q20",
+      "number": 20,
+      "text": "Who was the first person to walk on the moon?",
+      "options": {
+        "A": "Buzz Aldrin",
+        "B": "Neil Armstrong",
+        "C": "Yuri Gagarin",
+        "D": "John Glenn"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "History"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "teams": [
+    {
+      "name": "Team Alpha",
+      "participants": "John Doe, Sarah Smith",
+      "contact": "+94 77 123 4567"
+    },
+    {
+      "name": "Team Beta",
+      "participants": "Michael Johnson, Emily Davis, David Wilson",
+      "contact": "0771234568"
+    },
+    {
+      "name": "Team Gamma",
+      "participants": "Robert Brown, Jessica Martinez",
+      "contact": "+1 (555) 123-4569"
+    },
+    {
+      "name": "Team Delta",
+      "participants": "Christopher Lee, Amanda Taylor, Daniel Anderson",
+      "contact": "+44 20 7123 4570"
+    }
+  ]
+}
