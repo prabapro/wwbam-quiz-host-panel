@@ -11,11 +11,11 @@ import { validateCompleteSetup } from '@utils/setupValidation';
  * Monitors teams, question sets, and prize structure stores and provides real-time validation status
  */
 export const useSetupVerification = () => {
-  // Get teams from store
-  const teamsObject = useTeamsStore((state) => state.teams);
+  // Get teams from store with safe default
+  const teamsObject = useTeamsStore((state) => state.teams) || {};
 
-  // Get prize structure from store
-  const prizeStructure = usePrizeStore((state) => state.prizeStructure);
+  // Get prize structure from store with safe default
+  const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
 
   // Get question sets metadata from localStorage
   const questionSetsMetadata = useMemo(() => {
@@ -48,9 +48,9 @@ export const useSetupVerification = () => {
     summary: validation.summary,
 
     // Raw data for additional UI needs
-    teams: Object.values(teamsObject),
+    teams: Object.values(teamsObject || {}),
     questionSets: questionSetsMetadata,
-    prizeStructure: prizeStructure,
+    prizeStructure: prizeStructure || [],
   };
 };
 
