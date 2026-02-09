@@ -167,10 +167,10 @@ export const validateQuestionSetMeta = (questionSet) => {
     errors.push('Set name is required');
   }
 
-  // Use questions array length instead of totalQuestions field
-  const questionCount = Array.isArray(questionSet.questions)
-    ? questionSet.questions.length
-    : 0;
+  // Check totalQuestions field (from metadata) OR questions array length (from full set)
+  const questionCount =
+    questionSet.totalQuestions ??
+    (Array.isArray(questionSet.questions) ? questionSet.questions.length : 0);
 
   if (questionCount !== QUESTIONS_PER_SET) {
     errors.push(
