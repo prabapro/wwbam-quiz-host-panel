@@ -15,7 +15,6 @@ import {
 
 import {
   REQUIRED_TEAM_FIELDS,
-  REQUIRED_QUESTION_SET_FIELDS,
   isValidPhoneNumber,
   isValidLength,
   MIN_TEAM_NAME_LENGTH,

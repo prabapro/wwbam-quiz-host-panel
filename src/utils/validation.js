@@ -9,7 +9,6 @@ import { ANSWER_OPTIONS, QUESTIONS_PER_SET } from '@constants/config';
 
 import {
   REQUIRED_QUESTION_FIELDS,
-  REQUIRED_QUESTION_SET_FIELDS,
   isValidAnswerOption,
   normalizeAnswerOption,
   isValidSetId,
@@ -17,7 +16,6 @@ import {
   isValidLength,
   MIN_QUESTION_TEXT_LENGTH,
   MIN_OPTION_TEXT_LENGTH,
-  VALIDATION_ERRORS,
 } from '@constants/validationRules';
 
 // Export for backward compatibility
