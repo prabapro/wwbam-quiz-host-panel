@@ -5,31 +5,19 @@
  * Handles team structure validation, uniqueness checks, and batch validation
  */
 
-/**
- * Required team fields
- */
-const REQUIRED_TEAM_FIELDS = ['name', 'participants', 'contact'];
+import {
+  MIN_TEAM_NAME_LENGTH,
+  MAX_TEAM_NAME_LENGTH,
+  MIN_PARTICIPANTS_LENGTH,
+} from '@constants/config';
 
-/**
- * Validate phone number format
- * Accepts: +94771234567, 0771234567, +1 (555) 123-4567, etc.
- * @param {string} phone - Phone number to validate
- * @returns {boolean} True if valid format
- */
-const isValidPhoneNumber = (phone) => {
-  if (!phone || typeof phone !== 'string') {
-    return false;
-  }
-
-  // Allow: digits, spaces, +, -, (, )
-  const phonePattern = /^\+?[\d\s\-()]+$/;
-  const cleanedPhone = phone.trim();
-
-  // Must have at least 7 digits (minimum valid phone number)
-  const digitCount = (cleanedPhone.match(/\d/g) || []).length;
-
-  return phonePattern.test(cleanedPhone) && digitCount >= 7;
-};
+import {
+  REQUIRED_TEAM_FIELDS,
+  isValidPhoneNumber,
+  isValidLength,
+  isRequired,
+  VALIDATION_ERRORS,
+} from '@constants/validationRules';
 
 /**
  * Validate a single team object structure
@@ -51,44 +39,41 @@ export const validateTeamStructure = (team, index = 0) => {
 
   // Check required fields
   REQUIRED_TEAM_FIELDS.forEach((field) => {
-    if (!(field in team)) {
+    if (!isRequired(team[field])) {
       errors.push(`${teamLabel}: Missing required field '${field}'`);
-    } else if (
-      typeof team[field] !== 'string' ||
-      team[field].trim().length === 0
-    ) {
-      errors.push(`${teamLabel}: Field '${field}' cannot be empty`);
     }
   });
 
   // Validate team name
   if (team.name) {
     const name = team.name.trim();
-    if (name.length < 2) {
-      errors.push(`${teamLabel}: Team name must be at least 2 characters`);
-    }
-    if (name.length > 100) {
-      errors.push(`${teamLabel}: Team name cannot exceed 100 characters`);
+
+    if (name.length < MIN_TEAM_NAME_LENGTH) {
+      errors.push(
+        `${teamLabel}: Team name must be at least ${MIN_TEAM_NAME_LENGTH} characters`,
+      );
+    } else if (name.length > MAX_TEAM_NAME_LENGTH) {
+      errors.push(
+        `${teamLabel}: Team name cannot exceed ${MAX_TEAM_NAME_LENGTH} characters`,
+      );
     }
   }
 
   // Validate participants
   if (team.participants) {
     const participants = team.participants.trim();
-    if (participants.length < 2) {
+    if (participants.length < MIN_PARTICIPANTS_LENGTH) {
       errors.push(
-        `${teamLabel}: Participants must be at least 2 characters long`,
+        `${teamLabel}: Participants must be at least ${MIN_PARTICIPANTS_LENGTH} characters long`,
       );
     }
   }
 
   // Validate contact (phone number)
-  if (team.contact) {
-    if (!isValidPhoneNumber(team.contact)) {
-      errors.push(
-        `${teamLabel}: Invalid phone number format for contact '${team.contact}'`,
-      );
-    }
+  if (team.contact && !isValidPhoneNumber(team.contact)) {
+    errors.push(
+      `${teamLabel}: Invalid phone number format for contact '${team.contact}'`,
+    );
   }
 
   return {
@@ -324,15 +309,15 @@ export const validateTeamFormData = (
   const errors = {};
 
   // Validate name
-  if (!teamData.name || teamData.name.trim().length === 0) {
-    errors.name = 'Team name is required';
+  if (!isRequired(teamData.name)) {
+    errors.name = VALIDATION_ERRORS.TEAM_NAME_REQUIRED;
   } else {
     const name = teamData.name.trim();
 
-    if (name.length < 2) {
-      errors.name = 'Team name must be at least 2 characters';
-    } else if (name.length > 100) {
-      errors.name = 'Team name cannot exceed 100 characters';
+    if (name.length < MIN_TEAM_NAME_LENGTH) {
+      errors.name = VALIDATION_ERRORS.TEAM_NAME_TOO_SHORT;
+    } else if (name.length > MAX_TEAM_NAME_LENGTH) {
+      errors.name = VALIDATION_ERRORS.TEAM_NAME_TOO_LONG;
     } else {
       // Check uniqueness (excluding current team if editing)
       const isDuplicate = Object.entries(existingTeams).some(
@@ -346,23 +331,23 @@ export const validateTeamFormData = (
       );
 
       if (isDuplicate) {
-        errors.name = 'Team name already exists';
+        errors.name = VALIDATION_ERRORS.TEAM_NAME_DUPLICATE;
       }
     }
   }
 
   // Validate participants
-  if (!teamData.participants || teamData.participants.trim().length === 0) {
-    errors.participants = 'Participants are required';
-  } else if (teamData.participants.trim().length < 2) {
-    errors.participants = 'Participants must be at least 2 characters';
+  if (!isRequired(teamData.participants)) {
+    errors.participants = VALIDATION_ERRORS.PARTICIPANTS_REQUIRED;
+  } else if (!isValidLength(teamData.participants, MIN_PARTICIPANTS_LENGTH)) {
+    errors.participants = VALIDATION_ERRORS.PARTICIPANTS_TOO_SHORT;
   }
 
   // Validate contact
-  if (!teamData.contact || teamData.contact.trim().length === 0) {
-    errors.contact = 'Contact number is required';
+  if (!isRequired(teamData.contact)) {
+    errors.contact = VALIDATION_ERRORS.CONTACT_REQUIRED;
   } else if (!isValidPhoneNumber(teamData.contact)) {
-    errors.contact = 'Please enter a valid phone number';
+    errors.contact = VALIDATION_ERRORS.CONTACT_INVALID;
   }
 
   return {

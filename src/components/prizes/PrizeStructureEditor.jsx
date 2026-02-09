@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePrizeStore } from '@stores/usePrizeStore';
+import { useTeamsStore } from '@stores/useTeamsStore';
 import { useGameStore } from '@stores/useGameStore';
 import PrizeStructureLadder from './PrizeStructureLadder';
 import PrizeStructureTable from './PrizeStructureTable';
@@ -28,7 +29,7 @@ import {
   Info,
   AlertTriangle,
 } from 'lucide-react';
-import { formatPrize } from '@constants/prizeStructure';
+import { formatPrize, getTotalPrizePool } from '@constants/prizeStructure';
 
 export default function PrizeStructureEditor({ onSaveSuccess }) {
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -53,11 +54,21 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
   );
   const getPrizeSummary = usePrizeStore((state) => state.getPrizeSummary);
 
+  // Get team count for total prize pool calculation
+  const teams = useTeamsStore((state) => state.teams);
+  const teamCount = Object.keys(teams).length;
+
   const gameStatus = useGameStore((state) => state.gameStatus);
   const isGameActive = gameStatus === 'active' || gameStatus === 'initialized';
 
   const validation = validatePrizeStructure();
   const summary = getPrizeSummary();
+
+  // Calculate total prize pool based on team count
+  const totalPrizePool =
+    teamCount > 0
+      ? getTotalPrizePool(teamCount, editedPrizeStructure)
+      : summary.maxPrizePerTeam;
 
   const handleSave = async () => {
     if (!validation.isValid) {
@@ -120,13 +131,16 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Prize Pool
+              {teamCount > 0 ? 'Total Prize Pool' : 'Max Prize Per Team'}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              {formatPrize(summary.totalPrizePool)}
-            </p>
+            <p className="text-2xl font-bold">{formatPrize(totalPrizePool)}</p>
+            {teamCount > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatPrize(summary.maxPrizePerTeam)} × {teamCount} teams
+              </p>
+            )}
           </CardContent>
         </Card>
 
