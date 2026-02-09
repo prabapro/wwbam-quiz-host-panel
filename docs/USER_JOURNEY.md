@@ -615,7 +615,6 @@ For uploading question sets to localStorage:
 {
   "setId": "set-1",
   "setName": "General Knowledge Set 1",
-  "totalQuestions": 20,
   "questions": [
     {
       "id": "q1",

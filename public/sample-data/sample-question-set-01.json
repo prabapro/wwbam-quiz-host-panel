@@ -1,7 +1,6 @@
 {
   "setId": "sample-set-1",
   "setName": "Sample Set 1",
-  "totalQuestions": 20,
   "questions": [
     {
       "id": "q1",

@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { localStorageService } from '@services/localStorage.service';
 import { getValidationSummary } from '@utils/validation';
+import { QUESTIONS_PER_SET } from '@constants/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { Button } from '@components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@components/ui/alert';
@@ -200,7 +201,6 @@ export default function QuestionUploader({ onUploadSuccess }) {
                 {`{
   "setId": "sample-set-1",
   "setName": "Sample Set 1",
-  "totalQuestions": 20,
   "questions": [
     {
       "id": "q1",
@@ -216,7 +216,7 @@ export default function QuestionUploader({ onUploadSuccess }) {
       "difficulty": "easy",
       "category": "Geography"
     }
-    // ... 19 more questions
+    // ... ${QUESTIONS_PER_SET - 1} more questions
   ]
 }`}
               </pre>
@@ -232,7 +232,7 @@ export default function QuestionUploader({ onUploadSuccess }) {
           </h4>
           <ul className="text-sm text-muted-foreground space-y-1">
             <li>• File format: JSON (.json)</li>
-            <li>• Exactly 20 questions per set</li>
+            <li>• Exactly {QUESTIONS_PER_SET} questions per set</li>
             <li>
               • Each question must have: text, 4 options (A/B/C/D), correct
               answer

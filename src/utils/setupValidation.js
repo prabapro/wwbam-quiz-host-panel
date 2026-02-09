@@ -167,7 +167,11 @@ export const validateQuestionSetMeta = (questionSet) => {
     errors.push('Set name is required');
   }
 
-  const questionCount = questionSet.totalQuestions || 0;
+  // Use questions array length instead of totalQuestions field
+  const questionCount = Array.isArray(questionSet.questions)
+    ? questionSet.questions.length
+    : 0;
+
   if (questionCount !== QUESTIONS_PER_SET) {
     errors.push(
       `Must have exactly ${QUESTIONS_PER_SET} questions (found ${questionCount})`,
@@ -225,7 +229,8 @@ export const validateQuestionSets = (questionSets) => {
       !hasMinimum || !allValid
         ? [
             !hasMinimum && 'At least 1 question set required',
-            !allValid && `${invalidSets.length} set(s) have invalid data`,
+            !allValid &&
+              `${invalidSets.length} question set(s) have invalid data`,
           ].filter(Boolean)
         : null,
   };
@@ -233,231 +238,63 @@ export const validateQuestionSets = (questionSets) => {
 
 /**
  * Validate prize structure
- * @param {Array} prizeStructure - Prize structure array from Firebase/store
- * @returns {Object} Validation summary
+ * @param {Array} prizes - Array of prize objects
+ * @returns {Object} Validation result
  */
-export const validatePrizeStructure = (prizeStructure) => {
+export const validatePrizeStructure = (prizes) => {
   const errors = [];
 
-  // Check if prize structure exists
-  if (!prizeStructure) {
+  if (!Array.isArray(prizes)) {
     return {
       isValid: false,
-      count: 0,
-      hasMinimum: false,
-      allPositive: false,
-      errors: ['Prize structure not configured'],
-    };
-  }
-
-  // Check if it's an array
-  if (!Array.isArray(prizeStructure)) {
-    return {
-      isValid: false,
-      count: 0,
-      hasMinimum: false,
-      allPositive: false,
       errors: ['Prize structure must be an array'],
     };
   }
 
-  const count = prizeStructure.length;
-
-  // Check minimum levels
-  const hasMinimum = count >= MIN_PRIZE_LEVELS;
-  if (!hasMinimum) {
+  if (prizes.length < MIN_PRIZE_LEVELS) {
     errors.push(`At least ${MIN_PRIZE_LEVELS} prize level required`);
   }
 
-  // Check each prize value
-  const invalidPrizes = [];
-  prizeStructure.forEach((prize, index) => {
-    if (typeof prize !== 'number' || isNaN(prize)) {
-      invalidPrizes.push({
-        level: index + 1,
-        value: prize,
-        error: 'Must be a number',
-      });
-    } else if (!isPositiveNumber(prize) && prize !== 0) {
-      invalidPrizes.push({
-        level: index + 1,
-        value: prize,
-        error: 'Cannot be negative',
-      });
+  // Check each prize
+  prizes.forEach((prize, index) => {
+    if (!isPositiveNumber(prize.amount)) {
+      errors.push(`Prize level ${index + 1}: Invalid amount`);
+    }
+
+    if (!isRequired(prize.label)) {
+      errors.push(`Prize level ${index + 1}: Label is required`);
     }
   });
 
-  const allPositive = invalidPrizes.length === 0;
-
-  if (invalidPrizes.length > 0) {
-    errors.push(`${invalidPrizes.length} prize level(s) have invalid values`);
-  }
-
-  // Calculate statistics
-  const maxPrize = Math.max(
-    ...prizeStructure.filter((p) => typeof p === 'number' && !isNaN(p)),
-  );
-  const minPrize = Math.min(
-    ...prizeStructure.filter((p) => typeof p === 'number' && !isNaN(p)),
-  );
-
   return {
-    isValid: hasMinimum && allPositive,
-    count,
-    hasMinimum,
-    allPositive,
-    invalidPrizes,
-    // Note: totalPrizePool requires team count, calculated at validation summary level
-    minPrize: isFinite(minPrize) ? minPrize : 0,
-    maxPrize: isFinite(maxPrize) ? maxPrize : 0,
+    isValid: errors.length === 0,
     errors: errors.length > 0 ? errors : null,
   };
 };
 
 /**
- * Check if there are sufficient question sets for teams
- * @param {number} teamCount - Number of teams
- * @param {number} questionSetCount - Number of question sets
- * @returns {Object} Sufficiency check result
+ * Validate complete setup (teams, questions, prizes)
+ * @param {Object} setup - Setup object with teams, questionSets, prizes
+ * @returns {Object} Comprehensive validation result
  */
-export const checkSufficientQuestionSets = (teamCount, questionSetCount) => {
-  const isSufficient = questionSetCount >= teamCount;
+export const validateCompleteSetup = (setup) => {
+  const { teams, questionSets, prizes } = setup || {};
+
+  const teamsValidation = validateTeams(teams);
+  const questionsValidation = validateQuestionSets(questionSets);
+  const prizesValidation = validatePrizeStructure(prizes);
+
+  const isValid =
+    teamsValidation.isValid &&
+    questionsValidation.isValid &&
+    prizesValidation.isValid;
 
   return {
-    isSufficient,
-    teamCount,
-    questionSetCount,
-    deficit: isSufficient ? 0 : teamCount - questionSetCount,
-    message: isSufficient
-      ? `${questionSetCount} sets available for ${teamCount} team(s)`
-      : `Need ${teamCount - questionSetCount} more set(s) (${questionSetCount}/${teamCount})`,
-  };
-};
-
-/**
- * Perform complete setup validation
- * @param {Object} teamsObject - Teams object from store
- * @param {Array} questionSets - Question sets metadata array
- * @param {Array} prizeStructure - Prize structure array from Firebase/store
- * @returns {Object} Complete validation result
- */
-export const validateCompleteSetup = (
-  teamsObject,
-  questionSets,
-  prizeStructure = null,
-) => {
-  const teamsValidation = validateTeams(teamsObject);
-  const questionSetsValidation = validateQuestionSets(questionSets);
-  const prizeValidation = validatePrizeStructure(prizeStructure);
-  const sufficiencyCheck = checkSufficientQuestionSets(
-    teamsValidation.count,
-    questionSetsValidation.count,
-  );
-
-  const allChecks = [
-    {
-      id: 'teams-configured',
-      label: 'Teams Configured',
-      status: teamsValidation.hasMinimum ? 'pass' : 'fail',
-      message: teamsValidation.hasMinimum
-        ? `${teamsValidation.count} team(s) ready`
-        : teamsValidation.errors?.[0] || 'No teams configured',
-      details: teamsValidation,
-    },
-    {
-      id: 'teams-valid',
-      label: 'Team Data Valid',
-      status: teamsValidation.invalidTeams.length === 0 ? 'pass' : 'warning',
-      message:
-        teamsValidation.invalidTeams.length === 0
-          ? 'All teams have valid data'
-          : `${teamsValidation.invalidTeams.length} team(s) have issues`,
-      details: teamsValidation.invalidTeams,
-    },
-    {
-      id: 'teams-ideal',
-      label: 'Ideal Team Count',
-      status: teamsValidation.hasIdeal ? 'pass' : 'info',
-      message: teamsValidation.hasIdeal
-        ? `${teamsValidation.count} teams (ideal: ${IDEAL_MIN_TEAMS}+)`
-        : `${teamsValidation.count} teams (recommended: ${IDEAL_MIN_TEAMS}-${MAX_TEAMS})`,
-      details: null,
-    },
-    {
-      id: 'question-sets-uploaded',
-      label: 'Question Sets Uploaded',
-      status: questionSetsValidation.hasMinimum ? 'pass' : 'fail',
-      message: questionSetsValidation.hasMinimum
-        ? `${questionSetsValidation.count} set(s) uploaded`
-        : questionSetsValidation.errors?.[0] || 'No question sets uploaded',
-      details: questionSetsValidation,
-    },
-    {
-      id: 'question-sets-valid',
-      label: 'Question Sets Valid',
-      status:
-        questionSetsValidation.invalidSets.length === 0 ? 'pass' : 'warning',
-      message:
-        questionSetsValidation.invalidSets.length === 0
-          ? `All sets have ${QUESTIONS_PER_SET} questions`
-          : `${questionSetsValidation.invalidSets.length} set(s) have issues`,
-      details: questionSetsValidation.invalidSets,
-    },
-    {
-      id: 'sufficient-sets',
-      label: 'Sufficient Question Sets',
-      status: sufficiencyCheck.isSufficient ? 'pass' : 'fail',
-      message: sufficiencyCheck.message,
-      details: sufficiencyCheck,
-    },
-    {
-      id: 'prize-structure-configured',
-      label: 'Prize Structure Configured',
-      status: prizeValidation.hasMinimum ? 'pass' : 'fail',
-      message: prizeValidation.hasMinimum
-        ? `${prizeValidation.count} prize level(s) configured`
-        : prizeValidation.errors?.[0] || 'Prize structure not configured',
-      details: prizeValidation,
-    },
-    {
-      id: 'prize-structure-valid',
-      label: 'Prize Values Valid',
-      status: prizeValidation.allPositive ? 'pass' : 'warning',
-      message: prizeValidation.allPositive
-        ? `All prizes are valid (Max prize per team: Rs.${prizeValidation.maxPrize.toLocaleString()})`
-        : `${prizeValidation.invalidPrizes?.length || 0} invalid prize value(s)`,
-      details: prizeValidation.invalidPrizes,
-    },
-  ];
-
-  // Overall readiness
-  const criticalChecks = allChecks.filter((check) => check.status === 'fail');
-  const warningChecks = allChecks.filter((check) => check.status === 'warning');
-
-  const isReady = criticalChecks.length === 0 && warningChecks.length === 0;
-  const hasWarnings = warningChecks.length > 0;
-
-  // Calculate total prize pool based on team count and max prize
-  const totalPrizePool =
-    teamsValidation.count > 0
-      ? prizeValidation.maxPrize * teamsValidation.count
-      : 0;
-
-  return {
-    isReady,
-    hasWarnings,
-    teamsValidation,
-    questionSetsValidation,
-    prizeValidation,
-    sufficiencyCheck,
-    checks: allChecks,
-    summary: {
-      teams: teamsValidation.count,
-      questionSets: questionSetsValidation.count,
-      prizeLevels: prizeValidation.count,
-      totalPrizePool,
-      criticalIssues: criticalChecks.length,
-      warnings: warningChecks.length,
-    },
+    isValid,
+    teams: teamsValidation,
+    questions: questionsValidation,
+    prizes: prizesValidation,
+    readyToStart:
+      isValid && teamsValidation.hasIdeal && questionsValidation.count >= 1,
   };
 };
