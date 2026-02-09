@@ -5,6 +5,17 @@
  * Defines prize values for each question level and helper functions
  */
 
+import {
+  TOTAL_QUESTIONS,
+  MILESTONE_QUESTIONS,
+  CURRENCY_SYMBOL,
+  NUMBER_FORMAT_LOCALE,
+  isMilestoneQuestion as checkMilestone,
+} from './config';
+
+// Re-export for convenience
+export { MILESTONE_QUESTIONS, TOTAL_QUESTIONS };
+
 /**
  * Default prize structure (20 levels)
  * Index 0 = Question 1, Index 19 = Question 20
@@ -34,10 +45,11 @@ export const DEFAULT_PRIZE_STRUCTURE = [
 ];
 
 /**
- * Milestone question numbers (1-indexed)
- * These are significant checkpoints in the game
+ * Check if a question number is a milestone
+ * @param {number} questionNumber - Question number (1-20)
+ * @returns {boolean} True if question is a milestone
  */
-export const MILESTONE_QUESTIONS = [5, 10, 15, 20];
+export const isMilestoneQuestion = checkMilestone;
 
 /**
  * Get prize amount for a specific question number
@@ -75,25 +87,16 @@ export const getPrizeByIndex = (
 };
 
 /**
- * Check if a question number is a milestone
- * @param {number} questionNumber - Question number (1-20)
- * @returns {boolean} True if question is a milestone
- */
-export const isMilestoneQuestion = (questionNumber) => {
-  return MILESTONE_QUESTIONS.includes(questionNumber);
-};
-
-/**
  * Format prize amount for display
  * @param {number} amount - Prize amount
- * @param {string} [currency='Rs.'] - Currency symbol
+ * @param {string} [currency=CURRENCY_SYMBOL] - Currency symbol
  * @returns {string} Formatted prize string (e.g., "Rs.1,000,000")
  */
-export const formatPrize = (amount, currency = 'Rs.') => {
+export const formatPrize = (amount, currency = CURRENCY_SYMBOL) => {
   if (typeof amount !== 'number' || isNaN(amount)) {
     return `${currency}0`;
   }
-  return `${currency}${amount.toLocaleString('en-US')}`;
+  return `${currency}${amount.toLocaleString(NUMBER_FORMAT_LOCALE)}`;
 };
 
 /**
@@ -168,11 +171,6 @@ export const getPreviousPrize = (
   }
   return prizeStructure[currentQuestionNumber - 2]; // Previous question's prize (0-indexed)
 };
-
-/**
- * Number of questions in default structure
- */
-export const TOTAL_QUESTIONS = DEFAULT_PRIZE_STRUCTURE.length;
 
 /**
  * Maximum possible prize

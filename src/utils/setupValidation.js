@@ -5,22 +5,33 @@
  * Helper functions for validating pre-event setup requirements
  */
 
-/**
- * Minimum and maximum team counts
- */
-export const MIN_TEAMS = 1;
-export const IDEAL_MIN_TEAMS = 7;
-export const MAX_TEAMS = 10;
+import {
+  MIN_TEAMS,
+  IDEAL_MIN_TEAMS,
+  MAX_TEAMS,
+  QUESTIONS_PER_SET,
+  MIN_PRIZE_LEVELS,
+} from '@constants/config';
+
+import {
+  REQUIRED_TEAM_FIELDS,
+  REQUIRED_QUESTION_SET_FIELDS,
+  isValidPhoneNumber,
+  isValidLength,
+  MIN_TEAM_NAME_LENGTH,
+  MAX_TEAM_NAME_LENGTH,
+  MIN_PARTICIPANTS_LENGTH,
+  isRequired,
+  isPositiveNumber,
+} from '@constants/validationRules';
+
+// Export constants for backward compatibility
+export { MIN_TEAMS, IDEAL_MIN_TEAMS, MAX_TEAMS };
 
 /**
  * Required questions per set
  */
-export const REQUIRED_QUESTIONS_PER_SET = 20;
-
-/**
- * Minimum prize levels
- */
-export const MIN_PRIZE_LEVELS = 1;
+export const REQUIRED_QUESTIONS_PER_SET = QUESTIONS_PER_SET;
 
 /**
  * Validate team object
@@ -35,16 +46,41 @@ export const validateTeam = (team) => {
   }
 
   // Check required fields
-  if (!team.name || team.name.trim().length === 0) {
-    errors.push('Team name is required');
+  REQUIRED_TEAM_FIELDS.forEach((field) => {
+    if (!isRequired(team[field])) {
+      errors.push(
+        `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
+      );
+    }
+  });
+
+  // Validate name length
+  if (
+    team.name &&
+    !isValidLength(team.name, MIN_TEAM_NAME_LENGTH, MAX_TEAM_NAME_LENGTH)
+  ) {
+    if (team.name.trim().length < MIN_TEAM_NAME_LENGTH) {
+      errors.push(
+        `Team name must be at least ${MIN_TEAM_NAME_LENGTH} characters`,
+      );
+    } else {
+      errors.push(`Team name cannot exceed ${MAX_TEAM_NAME_LENGTH} characters`);
+    }
   }
 
-  if (!team.participants || team.participants.trim().length === 0) {
-    errors.push('Participants are required');
+  // Validate participants length
+  if (
+    team.participants &&
+    !isValidLength(team.participants, MIN_PARTICIPANTS_LENGTH)
+  ) {
+    errors.push(
+      `Participants must be at least ${MIN_PARTICIPANTS_LENGTH} characters`,
+    );
   }
 
-  if (!team.contact || team.contact.trim().length === 0) {
-    errors.push('Contact number is required');
+  // Validate contact (phone number)
+  if (team.contact && !isValidPhoneNumber(team.contact)) {
+    errors.push('Contact number is invalid');
   }
 
   return {
@@ -124,18 +160,18 @@ export const validateQuestionSetMeta = (questionSet) => {
     return { isValid: false, errors: ['Question set is missing'] };
   }
 
-  if (!questionSet.setId || questionSet.setId.trim().length === 0) {
+  if (!isRequired(questionSet.setId)) {
     errors.push('Set ID is required');
   }
 
-  if (!questionSet.setName || questionSet.setName.trim().length === 0) {
+  if (!isRequired(questionSet.setName)) {
     errors.push('Set name is required');
   }
 
   const questionCount = questionSet.totalQuestions || 0;
-  if (questionCount !== REQUIRED_QUESTIONS_PER_SET) {
+  if (questionCount !== QUESTIONS_PER_SET) {
     errors.push(
-      `Must have exactly ${REQUIRED_QUESTIONS_PER_SET} questions (found ${questionCount})`,
+      `Must have exactly ${QUESTIONS_PER_SET} questions (found ${questionCount})`,
     );
   }
 
@@ -243,7 +279,7 @@ export const validatePrizeStructure = (prizeStructure) => {
         value: prize,
         error: 'Must be a number',
       });
-    } else if (prize < 0) {
+    } else if (!isPositiveNumber(prize) && prize !== 0) {
       invalidPrizes.push({
         level: index + 1,
         value: prize,
@@ -368,7 +404,7 @@ export const validateCompleteSetup = (
         questionSetsValidation.invalidSets.length === 0 ? 'pass' : 'warning',
       message:
         questionSetsValidation.invalidSets.length === 0
-          ? 'All sets have 20 questions'
+          ? `All sets have ${QUESTIONS_PER_SET} questions`
           : `${questionSetsValidation.invalidSets.length} set(s) have issues`,
       details: questionSetsValidation.invalidSets,
     },

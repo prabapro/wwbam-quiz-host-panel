@@ -1,15 +1,16 @@
 // src/services/localStorage.service.js
 
 import { validateQuestionSet, isValidSetId } from '@utils/validation';
+import {
+  QUESTION_SETS_KEY,
+  METADATA_KEY,
+  getStorageUsage,
+} from '@constants/storage';
 
 /**
  * localStorage Service
  * Manages question sets in browser's localStorage with validation
  */
-
-const STORAGE_PREFIX = 'wwbam-quiz-';
-const QUESTION_SETS_KEY = `${STORAGE_PREFIX}question-sets`;
-const METADATA_KEY = `${STORAGE_PREFIX}metadata`;
 
 /**
  * Get all question sets from localStorage
@@ -287,27 +288,20 @@ export const questionSetExists = (setId) => {
  */
 export const getStorageInfo = () => {
   try {
-    // Estimate storage usage
+    // Use centralized storage utility
+    const usage = getStorageUsage();
+
+    if (!usage) {
+      return null;
+    }
+
+    // Add question sets specific info
     const allSets = getAllQuestionSets();
     const setsSize = JSON.stringify(allSets).length;
 
-    // Calculate approximate total localStorage usage
-    let total = 0;
-    for (let key in localStorage) {
-      if (localStorage.hasOwnProperty(key)) {
-        total += localStorage[key].length + key.length;
-      }
-    }
-
-    // Most browsers limit localStorage to ~5-10MB
-    const limit = 5 * 1024 * 1024; // 5MB estimate
-
     return {
+      ...usage,
       questionSetsSize: setsSize,
-      totalUsed: total,
-      estimatedLimit: limit,
-      percentUsed: ((total / limit) * 100).toFixed(2),
-      availableSpace: limit - total,
     };
   } catch (error) {
     console.error('Failed to get storage info:', error);

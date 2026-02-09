@@ -5,21 +5,28 @@
  * Handles answer validation and question set schema validation
  */
 
-/**
- * Valid answer options
- */
-const VALID_OPTIONS = ['A', 'B', 'C', 'D'];
+import { ANSWER_OPTIONS, QUESTIONS_PER_SET } from '@constants/config';
+
+import {
+  REQUIRED_QUESTION_FIELDS,
+  REQUIRED_QUESTION_SET_FIELDS,
+  isValidAnswerOption,
+  normalizeAnswerOption,
+  isValidSetId,
+  isRequired,
+  isValidLength,
+  MIN_QUESTION_TEXT_LENGTH,
+  MIN_OPTION_TEXT_LENGTH,
+  VALIDATION_ERRORS,
+} from '@constants/validationRules';
+
+// Export for backward compatibility
+export { isValidSetId, normalizeAnswerOption as normalizeOption };
 
 /**
- * Required question fields
+ * Valid answer options (exported for backward compatibility)
  */
-const REQUIRED_QUESTION_FIELDS = [
-  'id',
-  'number',
-  'text',
-  'options',
-  'correctAnswer',
-];
+const VALID_OPTIONS = ANSWER_OPTIONS;
 
 /**
  * Validate a team's answer against the correct answer
@@ -38,11 +45,11 @@ export const validateAnswer = (selectedAnswer, correctAnswer) => {
   }
 
   // Normalize answers (uppercase, trim)
-  const normalizedSelected = selectedAnswer.toString().trim().toUpperCase();
-  const normalizedCorrect = correctAnswer.toString().trim().toUpperCase();
+  const normalizedSelected = normalizeAnswerOption(selectedAnswer);
+  const normalizedCorrect = normalizeAnswerOption(correctAnswer);
 
   // Check if answers are valid options
-  if (!VALID_OPTIONS.includes(normalizedSelected)) {
+  if (!normalizedSelected) {
     return {
       isValid: false,
       isCorrect: false,
@@ -50,7 +57,7 @@ export const validateAnswer = (selectedAnswer, correctAnswer) => {
     };
   }
 
-  if (!VALID_OPTIONS.includes(normalizedCorrect)) {
+  if (!normalizedCorrect) {
     return {
       isValid: false,
       isCorrect: false,
@@ -102,12 +109,12 @@ export const validateQuestion = (question, expectedNumber) => {
   }
 
   // Validate question text
-  if (question.text && typeof question.text !== 'string') {
-    errors.push('Question text must be a string');
-  }
-
-  if (question.text && question.text.trim().length === 0) {
-    errors.push('Question text cannot be empty');
+  if (question.text) {
+    if (typeof question.text !== 'string') {
+      errors.push('Question text must be a string');
+    } else if (!isValidLength(question.text, MIN_QUESTION_TEXT_LENGTH)) {
+      errors.push('Question text cannot be empty');
+    }
   }
 
   // Validate options
@@ -116,23 +123,27 @@ export const validateQuestion = (question, expectedNumber) => {
       errors.push('Options must be an object or array');
     } else {
       const optionKeys = Object.keys(question.options);
-      const hasAllOptions = VALID_OPTIONS.every((opt) =>
+      const hasAllOptions = ANSWER_OPTIONS.every((opt) =>
         optionKeys.includes(opt),
       );
 
       if (!hasAllOptions) {
-        errors.push('Options must include all choices: A, B, C, D');
+        errors.push(
+          `Options must include all choices: ${ANSWER_OPTIONS.join(', ')}`,
+        );
       }
 
       // Check each option has text
-      VALID_OPTIONS.forEach((opt) => {
+      ANSWER_OPTIONS.forEach((opt) => {
         if (question.options[opt]) {
           const optText =
             typeof question.options[opt] === 'string'
               ? question.options[opt]
               : question.options[opt];
 
-          if (!optText || optText.toString().trim().length === 0) {
+          if (
+            !isValidLength(optText?.toString() || '', MIN_OPTION_TEXT_LENGTH)
+          ) {
             errors.push(`Option ${opt} cannot be empty`);
           }
         }
@@ -141,11 +152,8 @@ export const validateQuestion = (question, expectedNumber) => {
   }
 
   // Validate correct answer
-  if (question.correctAnswer) {
-    const normalized = question.correctAnswer.toString().trim().toUpperCase();
-    if (!VALID_OPTIONS.includes(normalized)) {
-      errors.push(`Correct answer must be one of: ${VALID_OPTIONS.join(', ')}`);
-    }
+  if (question.correctAnswer && !isValidAnswerOption(question.correctAnswer)) {
+    errors.push(`Correct answer must be one of: ${ANSWER_OPTIONS.join(', ')}`);
   }
 
   return {
@@ -172,11 +180,18 @@ export const validateQuestionSet = (questionSet) => {
   }
 
   // Check for required top-level fields
-  if (!questionSet.setId || typeof questionSet.setId !== 'string') {
+  if (!isRequired(questionSet.setId) || typeof questionSet.setId !== 'string') {
     errors.push('Missing or invalid setId');
+  } else if (!isValidSetId(questionSet.setId)) {
+    errors.push(
+      `Invalid setId format: must be 3-50 alphanumeric characters with hyphens/underscores`,
+    );
   }
 
-  if (!questionSet.setName || typeof questionSet.setName !== 'string') {
+  if (
+    !isRequired(questionSet.setName) ||
+    typeof questionSet.setName !== 'string'
+  ) {
     errors.push('Missing or invalid setName');
   }
 
@@ -189,10 +204,10 @@ export const validateQuestionSet = (questionSet) => {
     };
   }
 
-  // Check questions count (must be exactly 20)
-  if (questionSet.questions.length !== 20) {
+  // Check questions count
+  if (questionSet.questions.length !== QUESTIONS_PER_SET) {
     errors.push(
-      `Question set must contain exactly 20 questions, found ${questionSet.questions.length}`,
+      `Question set must contain exactly ${QUESTIONS_PER_SET} questions, found ${questionSet.questions.length}`,
     );
   }
 
@@ -222,21 +237,6 @@ export const validateQuestionSet = (questionSet) => {
     totalQuestions: questionSet.questions.length,
     invalidCount: invalidQuestions.length,
   };
-};
-
-/**
- * Validate question set ID format
- * @param {string} setId - Question set ID
- * @returns {boolean} True if valid
- */
-export const isValidSetId = (setId) => {
-  if (!setId || typeof setId !== 'string') {
-    return false;
-  }
-
-  // Must be alphanumeric with hyphens/underscores, 3-50 chars
-  const validPattern = /^[a-zA-Z0-9_-]{3,50}$/;
-  return validPattern.test(setId);
 };
 
 /**
@@ -275,18 +275,5 @@ export const getValidationSummary = (validationResult) => {
  * @returns {boolean} True if valid
  */
 export const isValidOption = (option) => {
-  if (!option) return false;
-  const normalized = option.toString().trim().toUpperCase();
-  return VALID_OPTIONS.includes(normalized);
-};
-
-/**
- * Normalize answer option
- * @param {string} option - Option to normalize
- * @returns {string|null} Normalized option or null if invalid
- */
-export const normalizeOption = (option) => {
-  if (!option) return null;
-  const normalized = option.toString().trim().toUpperCase();
-  return VALID_OPTIONS.includes(normalized) ? normalized : null;
+  return isValidAnswerOption(option);
 };
