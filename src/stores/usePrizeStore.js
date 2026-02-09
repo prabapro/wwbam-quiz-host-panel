@@ -215,20 +215,18 @@ export const usePrizeStore = create()(
 
         /**
          * Get prize structure summary
+         * Note: Total prize pool = maxPrizePerTeam × teamCount
+         * Use getTotalPrizePool(teamCount, editedPrizeStructure) for actual pool calculation
          */
         getPrizeSummary: () => {
           const { editedPrizeStructure } = get();
 
-          const total = editedPrizeStructure.reduce(
-            (sum, prize) => sum + prize,
-            0,
-          );
           const min = Math.min(...editedPrizeStructure);
           const max = Math.max(...editedPrizeStructure);
 
           return {
             totalQuestions: editedPrizeStructure.length,
-            totalPrizePool: total,
+            maxPrizePerTeam: max,
             minPrize: min,
             maxPrize: max,
           };

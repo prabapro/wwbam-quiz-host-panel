@@ -294,14 +294,10 @@ export const validatePrizeStructure = (prizeStructure) => {
   }
 
   // Calculate statistics
-  const totalPrizePool = prizeStructure
-    .filter((p) => typeof p === 'number' && !isNaN(p))
-    .reduce((sum, p) => sum + p, 0);
-
-  const minPrize = Math.min(
+  const maxPrize = Math.max(
     ...prizeStructure.filter((p) => typeof p === 'number' && !isNaN(p)),
   );
-  const maxPrize = Math.max(
+  const minPrize = Math.min(
     ...prizeStructure.filter((p) => typeof p === 'number' && !isNaN(p)),
   );
 
@@ -311,7 +307,7 @@ export const validatePrizeStructure = (prizeStructure) => {
     hasMinimum,
     allPositive,
     invalidPrizes,
-    totalPrizePool,
+    // Note: totalPrizePool requires team count, calculated at validation summary level
     minPrize: isFinite(minPrize) ? minPrize : 0,
     maxPrize: isFinite(maxPrize) ? maxPrize : 0,
     errors: errors.length > 0 ? errors : null,
@@ -428,7 +424,7 @@ export const validateCompleteSetup = (
       label: 'Prize Values Valid',
       status: prizeValidation.allPositive ? 'pass' : 'warning',
       message: prizeValidation.allPositive
-        ? `All prizes are valid (Total: Rs.${prizeValidation.totalPrizePool.toLocaleString()})`
+        ? `All prizes are valid (Max prize per team: Rs.${prizeValidation.maxPrize.toLocaleString()})`
         : `${prizeValidation.invalidPrizes?.length || 0} invalid prize value(s)`,
       details: prizeValidation.invalidPrizes,
     },
@@ -440,6 +436,12 @@ export const validateCompleteSetup = (
 
   const isReady = criticalChecks.length === 0 && warningChecks.length === 0;
   const hasWarnings = warningChecks.length > 0;
+
+  // Calculate total prize pool based on team count and max prize
+  const totalPrizePool =
+    teamsValidation.count > 0
+      ? prizeValidation.maxPrize * teamsValidation.count
+      : 0;
 
   return {
     isReady,
@@ -453,7 +455,7 @@ export const validateCompleteSetup = (
       teams: teamsValidation.count,
       questionSets: questionSetsValidation.count,
       prizeLevels: prizeValidation.count,
-      totalPrizePool: prizeValidation.totalPrizePool,
+      totalPrizePool,
       criticalIssues: criticalChecks.length,
       warnings: warningChecks.length,
     },

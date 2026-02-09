@@ -100,12 +100,23 @@ export const formatPrize = (amount, currency = CURRENCY_SYMBOL) => {
 };
 
 /**
- * Get total prize distribution (sum of all prizes)
+ * Get total prize pool (maximum possible payout)
+ * Each team can win up to the maximum prize, so total pool = max_prize × team_count
+ * @param {number} teamCount - Number of teams competing
  * @param {number[]} [prizeStructure=DEFAULT_PRIZE_STRUCTURE] - Prize structure
  * @returns {number} Total prize pool
  */
-export const getTotalPrizePool = (prizeStructure = DEFAULT_PRIZE_STRUCTURE) => {
-  return prizeStructure.reduce((sum, prize) => sum + prize, 0);
+export const getTotalPrizePool = (
+  teamCount,
+  prizeStructure = DEFAULT_PRIZE_STRUCTURE,
+) => {
+  if (!teamCount || teamCount < 0) {
+    console.warn('Invalid team count for prize pool calculation');
+    return 0;
+  }
+
+  const maxPrize = Math.max(...prizeStructure);
+  return maxPrize * teamCount;
 };
 
 /**
