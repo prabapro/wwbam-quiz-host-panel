@@ -18,6 +18,7 @@
 │   ├── images
 │   │   └── wwbam-logo.svg
 │   └── sample-data
+│       ├── initial-db-structure.json
 │       ├── sample-question-set-01.json
 │       ├── sample-question-sets.zip
 │       └── sample-teams.json
@@ -70,7 +71,6 @@
 │   │   ├── prizeStructure.js
 │   │   └── teamStates.js
 │   ├── data
-│   │   └── initial-db-structure.json
 │   ├── hooks
 │   │   ├── useAuth.js
 │   │   ├── useSetupVerification.js

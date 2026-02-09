@@ -42,44 +42,7 @@ npm install
 
 #### B. Initialize Firebase Database
 
-Go to Realtime Database in Firebase Console and import this initial structure:
-
-```json
-{
-  "game-state": {
-    "current-team-id": null,
-    "current-question-number": 0,
-    "current-question": null,
-    "question-visible": false,
-    "options-visible": false,
-    "answer-revealed": false,
-    "correct-option": null,
-    "game-status": "paused",
-    "last-updated": 0
-  },
-  "teams": {},
-  "prize-structure": [
-    100, 200, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000,
-    500000, 1000000, 2000000, 4000000, 8000000, 16000000, 32000000, 64000000
-  ],
-  "config": {
-    "max-teams": 10,
-    "questions-per-team": 20,
-    "lifelines-enabled": {
-      "phone-a-friend": true,
-      "fifty-fifty": true,
-      "audience-poll": false
-    },
-    "display-settings": {
-      "show-prize-ladder": true,
-      "show-team-list": true,
-      "animation-duration": 500
-    },
-    "timer-enabled": false,
-    "timer-duration": 60
-  }
-}
-```
+Go to Realtime Database in Firebase Console and import the initial structure from [here](/public/sample-data/initial-db-structure.json)
 
 #### C. Deploy Database Rules
 

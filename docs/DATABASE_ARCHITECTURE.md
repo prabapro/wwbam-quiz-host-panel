@@ -184,26 +184,26 @@ Array defining prize values for each question level. Index 0 = Question 1.
 ```json
 {
   "prize-structure": [
-    100, // Question 1
-    200, // Question 2
-    500, // Question 3
-    1000, // Question 4
-    2000, // Question 5
-    4000, // Question 6
-    8000, // Question 7
-    16000, // Question 8
-    32000, // Question 9
-    64000, // Question 10
-    125000, // Question 11
-    250000, // Question 12
-    500000, // Question 13
-    1000000, // Question 14
-    2000000, // Question 15
-    4000000, // Question 16
-    8000000, // Question 17
-    16000000, // Question 18
-    32000000, // Question 19
-    64000000 // Question 20
+    500, // Question 1
+    1000, // Question 2
+    1500, // Question 3
+    2000, // Question 4
+    2500, // Question 5 - First Milestone
+    3000, // Question 6
+    3500, // Question 7
+    4000, // Question 8
+    4500, // Question 9
+    5000, // Question 10 - Second Milestone
+    5500, // Question 11
+    6000, // Question 12
+    6500, // Question 13
+    7000, // Question 14
+    7500, // Question 15 - Third Milestone
+    8000, // Question 16
+    8500, // Question 17
+    9000, // Question 18
+    9500, // Question 19
+    10000 // Question 20 - Maximum Prize
   ]
 }
 ```
@@ -379,44 +379,7 @@ updates['game-state/last-updated'] = firebase.database.ServerValue.TIMESTAMP;
 
 ### 7.1 Initial Database Setup
 
-Use this structure to initialize your Firebase Realtime Database:
-
-```json
-{
-  "game-state": {
-    "current-team-id": null,
-    "current-question-number": 0,
-    "current-question": null,
-    "question-visible": false,
-    "options-visible": false,
-    "answer-revealed": false,
-    "correct-option": null,
-    "game-status": "paused",
-    "last-updated": 0
-  },
-  "teams": {},
-  "prize-structure": [
-    100, 200, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000,
-    500000, 1000000, 2000000, 4000000, 8000000, 16000000, 32000000, 64000000
-  ],
-  "config": {
-    "max-teams": 10,
-    "questions-per-team": 20,
-    "lifelines-enabled": {
-      "phone-a-friend": true,
-      "fifty-fifty": true,
-      "audience-poll": false
-    },
-    "display-settings": {
-      "show-prize-ladder": true,
-      "show-team-list": true,
-      "animation-duration": 500
-    },
-    "timer-enabled": false,
-    "timer-duration": 60
-  }
-}
-```
+Go to Realtime Database in Firebase Console and import the initial structure from [here](/public/sample-data/initial-db-structure.json)
 
 ### 7.2 Question JSON Format (localStorage)
 
