@@ -35,6 +35,10 @@
 │   │   │   ├── Header.jsx
 │   │   │   ├── Layout.jsx
 │   │   │   └── MobileMenu.jsx
+│   │   ├── prizes
+│   │   │   ├── PrizeStructureEditor.jsx
+│   │   │   ├── PrizeStructureLadder.jsx
+│   │   │   └── PrizeStructureTable.jsx
 │   │   ├── questions
 │   │   │   ├── QuestionSetCard.jsx
 │   │   │   ├── QuestionSetList.jsx
@@ -61,6 +65,7 @@
 │   │       ├── label.jsx
 │   │       ├── progress.jsx
 │   │       ├── scroll-area.jsx
+│   │       ├── table.jsx
 │   │       ├── theme-toggle.jsx
 │   │       └── tooltip.jsx
 │   ├── config
@@ -81,6 +86,7 @@
 │   │   ├── Home.jsx
 │   │   ├── Login.jsx
 │   │   ├── NotFound.jsx
+│   │   ├── PrizeManagement.jsx
 │   │   ├── QuestionManagement.jsx
 │   │   └── TeamManagement.jsx
 │   ├── routes
@@ -92,6 +98,7 @@
 │   ├── stores
 │   │   ├── useAuthStore.js
 │   │   ├── useGameStore.js
+│   │   ├── usePrizeStore.js
 │   │   ├── useQuestionsStore.js
 │   │   ├── useSettingsStore.js
 │   │   └── useTeamsStore.js

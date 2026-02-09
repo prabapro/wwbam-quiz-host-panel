@@ -18,6 +18,11 @@ export const MAX_TEAMS = 10;
 export const REQUIRED_QUESTIONS_PER_SET = 20;
 
 /**
+ * Minimum prize levels
+ */
+export const MIN_PRIZE_LEVELS = 1;
+
+/**
  * Validate team object
  * @param {Object} team - Team object to validate
  * @returns {Object} Validation result
@@ -192,6 +197,93 @@ export const validateQuestionSets = (questionSets) => {
 };
 
 /**
+ * Validate prize structure
+ * @param {Array} prizeStructure - Prize structure array from Firebase/store
+ * @returns {Object} Validation summary
+ */
+export const validatePrizeStructure = (prizeStructure) => {
+  const errors = [];
+
+  // Check if prize structure exists
+  if (!prizeStructure) {
+    return {
+      isValid: false,
+      count: 0,
+      hasMinimum: false,
+      allPositive: false,
+      errors: ['Prize structure not configured'],
+    };
+  }
+
+  // Check if it's an array
+  if (!Array.isArray(prizeStructure)) {
+    return {
+      isValid: false,
+      count: 0,
+      hasMinimum: false,
+      allPositive: false,
+      errors: ['Prize structure must be an array'],
+    };
+  }
+
+  const count = prizeStructure.length;
+
+  // Check minimum levels
+  const hasMinimum = count >= MIN_PRIZE_LEVELS;
+  if (!hasMinimum) {
+    errors.push(`At least ${MIN_PRIZE_LEVELS} prize level required`);
+  }
+
+  // Check each prize value
+  const invalidPrizes = [];
+  prizeStructure.forEach((prize, index) => {
+    if (typeof prize !== 'number' || isNaN(prize)) {
+      invalidPrizes.push({
+        level: index + 1,
+        value: prize,
+        error: 'Must be a number',
+      });
+    } else if (prize < 0) {
+      invalidPrizes.push({
+        level: index + 1,
+        value: prize,
+        error: 'Cannot be negative',
+      });
+    }
+  });
+
+  const allPositive = invalidPrizes.length === 0;
+
+  if (invalidPrizes.length > 0) {
+    errors.push(`${invalidPrizes.length} prize level(s) have invalid values`);
+  }
+
+  // Calculate statistics
+  const totalPrizePool = prizeStructure
+    .filter((p) => typeof p === 'number' && !isNaN(p))
+    .reduce((sum, p) => sum + p, 0);
+
+  const minPrize = Math.min(
+    ...prizeStructure.filter((p) => typeof p === 'number' && !isNaN(p)),
+  );
+  const maxPrize = Math.max(
+    ...prizeStructure.filter((p) => typeof p === 'number' && !isNaN(p)),
+  );
+
+  return {
+    isValid: hasMinimum && allPositive,
+    count,
+    hasMinimum,
+    allPositive,
+    invalidPrizes,
+    totalPrizePool,
+    minPrize: isFinite(minPrize) ? minPrize : 0,
+    maxPrize: isFinite(maxPrize) ? maxPrize : 0,
+    errors: errors.length > 0 ? errors : null,
+  };
+};
+
+/**
  * Check if there are sufficient question sets for teams
  * @param {number} teamCount - Number of teams
  * @param {number} questionSetCount - Number of question sets
@@ -215,11 +307,17 @@ export const checkSufficientQuestionSets = (teamCount, questionSetCount) => {
  * Perform complete setup validation
  * @param {Object} teamsObject - Teams object from store
  * @param {Array} questionSets - Question sets metadata array
+ * @param {Array} prizeStructure - Prize structure array from Firebase/store
  * @returns {Object} Complete validation result
  */
-export const validateCompleteSetup = (teamsObject, questionSets) => {
+export const validateCompleteSetup = (
+  teamsObject,
+  questionSets,
+  prizeStructure = null,
+) => {
   const teamsValidation = validateTeams(teamsObject);
   const questionSetsValidation = validateQuestionSets(questionSets);
+  const prizeValidation = validatePrizeStructure(prizeStructure);
   const sufficiencyCheck = checkSufficientQuestionSets(
     teamsValidation.count,
     questionSetsValidation.count,
@@ -281,6 +379,24 @@ export const validateCompleteSetup = (teamsObject, questionSets) => {
       message: sufficiencyCheck.message,
       details: sufficiencyCheck,
     },
+    {
+      id: 'prize-structure-configured',
+      label: 'Prize Structure Configured',
+      status: prizeValidation.hasMinimum ? 'pass' : 'fail',
+      message: prizeValidation.hasMinimum
+        ? `${prizeValidation.count} prize level(s) configured`
+        : prizeValidation.errors?.[0] || 'Prize structure not configured',
+      details: prizeValidation,
+    },
+    {
+      id: 'prize-structure-valid',
+      label: 'Prize Values Valid',
+      status: prizeValidation.allPositive ? 'pass' : 'warning',
+      message: prizeValidation.allPositive
+        ? `All prizes are valid (Total: Rs.${prizeValidation.totalPrizePool.toLocaleString()})`
+        : `${prizeValidation.invalidPrizes?.length || 0} invalid prize value(s)`,
+      details: prizeValidation.invalidPrizes,
+    },
   ];
 
   // Overall readiness
@@ -295,11 +411,14 @@ export const validateCompleteSetup = (teamsObject, questionSets) => {
     hasWarnings,
     teamsValidation,
     questionSetsValidation,
+    prizeValidation,
     sufficiencyCheck,
     checks: allChecks,
     summary: {
       teams: teamsValidation.count,
       questionSets: questionSetsValidation.count,
+      prizeLevels: prizeValidation.count,
+      totalPrizePool: prizeValidation.totalPrizePool,
       criticalIssues: criticalChecks.length,
       warnings: warningChecks.length,
     },
