@@ -167,7 +167,11 @@ export const validateQuestionSetMeta = (questionSet) => {
     errors.push('Set name is required');
   }
 
-  const questionCount = questionSet.totalQuestions || 0;
+  // Check totalQuestions field (from metadata) OR questions array length (from full set)
+  const questionCount =
+    questionSet.totalQuestions ??
+    (Array.isArray(questionSet.questions) ? questionSet.questions.length : 0);
+
   if (questionCount !== QUESTIONS_PER_SET) {
     errors.push(
       `Must have exactly ${QUESTIONS_PER_SET} questions (found ${questionCount})`,
@@ -225,7 +229,8 @@ export const validateQuestionSets = (questionSets) => {
       !hasMinimum || !allValid
         ? [
             !hasMinimum && 'At least 1 question set required',
-            !allValid && `${invalidSets.length} set(s) have invalid data`,
+            !allValid &&
+              `${invalidSets.length} question set(s) have invalid data`,
           ].filter(Boolean)
         : null,
   };
@@ -246,6 +251,8 @@ export const validatePrizeStructure = (prizeStructure) => {
       count: 0,
       hasMinimum: false,
       allPositive: false,
+      maxPrize: 0,
+      minPrize: 0,
       errors: ['Prize structure not configured'],
     };
   }
@@ -257,6 +264,8 @@ export const validatePrizeStructure = (prizeStructure) => {
       count: 0,
       hasMinimum: false,
       allPositive: false,
+      maxPrize: 0,
+      minPrize: 0,
       errors: ['Prize structure must be an array'],
     };
   }

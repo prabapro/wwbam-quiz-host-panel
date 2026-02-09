@@ -1,107 +1,123 @@
 // src/services/localStorage.service.js
 
-import { validateQuestionSet, isValidSetId } from '@utils/validation';
+/**
+ * LocalStorage Service
+ * Handles persistent storage of question sets using browser localStorage
+ * Provides CRUD operations with validation
+ */
+
+import { validateQuestionSet } from '@utils/validation';
+import { isValidSetId } from '@constants/validationRules';
 import {
   QUESTION_SETS_KEY,
   METADATA_KEY,
+  STORAGE_LIMIT_BYTES,
   getStorageUsage,
 } from '@constants/storage';
 
 /**
- * localStorage Service
- * Manages question sets in browser's localStorage with validation
- */
-
-/**
  * Get all question sets from localStorage
- * @returns {Object} Object with set IDs as keys
+ * @returns {Object} Object with setId as keys
  */
 export const getAllQuestionSets = () => {
   try {
     const stored = localStorage.getItem(QUESTION_SETS_KEY);
-    if (!stored) {
-      return {};
-    }
-    return JSON.parse(stored);
+    return stored ? JSON.parse(stored) : {};
   } catch (error) {
-    console.error('Failed to retrieve question sets:', error);
+    console.error('Failed to get question sets:', error);
     return {};
   }
 };
 
 /**
- * Get a single question set by ID
+ * Get a specific question set by ID
  * @param {string} setId - Question set ID
  * @returns {Object|null} Question set or null if not found
  */
 export const getQuestionSet = (setId) => {
   if (!isValidSetId(setId)) {
-    console.warn(`Invalid set ID: ${setId}`);
+    console.warn('Invalid set ID:', setId);
     return null;
   }
 
-  try {
-    const allSets = getAllQuestionSets();
-    return allSets[setId] || null;
-  } catch (error) {
-    console.error(`Failed to retrieve question set ${setId}:`, error);
-    return null;
-  }
+  const allSets = getAllQuestionSets();
+  return allSets[setId] || null;
 };
 
 /**
- * Save a question set to localStorage
+ * Save a new question set to localStorage
  * @param {Object} questionSet - Question set object
- * @returns {Object} Result with success status and any errors
+ * @returns {Object} Result with success status
  */
 export const saveQuestionSet = (questionSet) => {
-  // Validate question set first
+  if (!questionSet || typeof questionSet !== 'object') {
+    return {
+      success: false,
+      error: 'Invalid question set',
+    };
+  }
+
+  // Validate question set
   const validation = validateQuestionSet(questionSet);
 
   if (!validation.isValid) {
     return {
       success: false,
-      error: 'Question set validation failed',
+      error: 'Validation failed',
       validationErrors: validation,
     };
   }
+
+  const { setId } = questionSet;
 
   try {
     const allSets = getAllQuestionSets();
 
     // Check if set already exists
-    if (allSets[questionSet.setId]) {
+    if (allSets[setId]) {
       return {
         success: false,
-        error: `Question set with ID '${questionSet.setId}' already exists`,
+        error: `Question set '${setId}' already exists. Please use a different ID or delete the existing set first.`,
       };
     }
 
-    // Add upload metadata
+    // Add timestamps
     const setWithMetadata = {
       ...questionSet,
       uploadedAt: Date.now(),
       lastModified: Date.now(),
     };
 
-    // Save to storage
-    allSets[questionSet.setId] = setWithMetadata;
+    // Check storage space before saving
+    const testData = JSON.stringify({
+      ...allSets,
+      [setId]: setWithMetadata,
+    });
+
+    if (testData.length * 2 > STORAGE_LIMIT_BYTES) {
+      return {
+        success: false,
+        error: 'Storage limit exceeded. Please delete some question sets.',
+      };
+    }
+
+    // Save to localStorage
+    allSets[setId] = setWithMetadata;
     localStorage.setItem(QUESTION_SETS_KEY, JSON.stringify(allSets));
 
     // Update metadata
     updateMetadata();
 
-    console.log(`✅ Question set saved: ${questionSet.setId}`);
+    console.log(`✅ Question set saved: ${setId}`);
 
     return {
       success: true,
-      setId: questionSet.setId,
+      setId,
       data: setWithMetadata,
     };
   } catch (error) {
-    console.error('Failed to save question set:', error);
+    console.error(`Failed to save question set ${setId}:`, error);
 
-    // Handle quota exceeded error
     if (error.name === 'QuotaExceededError') {
       return {
         success: false,
@@ -240,8 +256,10 @@ export const getQuestionSetsMetadata = () => {
       sets: setIds.map((id) => ({
         setId: id,
         setName: allSets[id].setName,
-        totalQuestions:
-          allSets[id].totalQuestions || allSets[id].questions?.length || 0,
+        // Use questions array length instead of totalQuestions field
+        totalQuestions: Array.isArray(allSets[id].questions)
+          ? allSets[id].questions.length
+          : 0,
         uploadedAt: allSets[id].uploadedAt,
         lastModified: allSets[id].lastModified,
       })),
