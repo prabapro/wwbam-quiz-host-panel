@@ -13,6 +13,7 @@ import {
   Info,
   Users,
   FileJson,
+  DollarSign,
   ArrowRight,
 } from 'lucide-react';
 
@@ -95,7 +96,7 @@ export default function SetupVerification() {
 
       <CardContent className="space-y-6">
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="p-4 bg-muted/30 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -124,6 +125,18 @@ export default function SetupVerification() {
 
           <div className="p-4 bg-muted/30 rounded-lg">
             <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{summary.prizeLevels}</p>
+                <p className="text-sm text-muted-foreground">Prize Levels</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <div className="flex items-center gap-3">
               <div
                 className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                   summary.criticalIssues === 0
@@ -143,6 +156,23 @@ export default function SetupVerification() {
             </div>
           </div>
         </div>
+
+        {/* Prize Pool Summary (if configured) */}
+        {summary.totalPrizePool > 0 && (
+          <div className="p-4 bg-amber-50 dark:bg-amber-950 border-2 border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <span className="font-semibold text-amber-900 dark:text-amber-100">
+                  Total Prize Pool
+                </span>
+              </div>
+              <span className="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                Rs.{summary.totalPrizePool.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Validation Checks */}
         <div>
@@ -228,6 +258,15 @@ export default function SetupVerification() {
             onClick={() => navigate('/questions')}>
             <FileJson className="w-4 h-4 mr-2" />
             Manage Questions
+            <ArrowRight className="w-4 h-4 ml-auto" />
+          </Button>
+
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => navigate('/prizes')}>
+            <DollarSign className="w-4 h-4 mr-2" />
+            Manage Prizes
             <ArrowRight className="w-4 h-4 ml-auto" />
           </Button>
         </div>
