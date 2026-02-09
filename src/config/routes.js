@@ -14,9 +14,10 @@ import { lazy } from 'react';
 // Lazy load all page components
 const Home = lazy(() => import('@pages/Home'));
 const Login = lazy(() => import('@pages/Login'));
+const NotFound = lazy(() => import('@pages/NotFound'));
+const PrizeManagement = lazy(() => import('@pages/PrizeManagement'));
 const QuestionManagement = lazy(() => import('@pages/QuestionManagement'));
 const TeamManagement = lazy(() => import('@pages/TeamManagement'));
-const NotFound = lazy(() => import('@pages/NotFound'));
 
 /**
  * Complete route configuration
@@ -58,6 +59,19 @@ export const ROUTE_CONFIG = {
     showInNav: true,
     category: 'main',
     requiresAuth: true, // Protected route
+    sitemap_priority: 0.8,
+    sitemap_changefreq: 'weekly',
+  },
+
+  // Prize Management
+  PRIZES: {
+    path: '/prizes',
+    component: PrizeManagement,
+    title: 'Prizes',
+    description: 'Configure prize structure',
+    showInNav: true,
+    category: 'main',
+    requiresAuth: true,
     sitemap_priority: 0.8,
     sitemap_changefreq: 'weekly',
   },
