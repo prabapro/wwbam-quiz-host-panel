@@ -78,7 +78,13 @@ const CheckItem = ({ check }) => (
       </div>
     </div>
 
-    <Badge variant={getStatusBadgeVariant(check.status)} className="capitalize">
+    <Badge
+      variant={getStatusBadgeVariant(check.status)}
+      className={`capitalize ${
+        check.status === 'pass'
+          ? 'bg-green-600 text-white hover:bg-green-700'
+          : ''
+      }`}>
       {check.status}
     </Badge>
   </div>
@@ -96,7 +102,7 @@ const CheckGroup = ({ title, icon: Icon, checks, onConfigure }) => (
           {title}
         </h3>
       </div>
-      <Button size="sm" onClick={onConfigure}>
+      <Button variant="secondary" size="sm" onClick={onConfigure}>
         Configure
         <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
@@ -165,9 +171,7 @@ export default function SetupVerification() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{summary.teams}</p>
-                <p className="text-sm text-muted-foreground">
-                  Teams Configured
-                </p>
+                <p className="text-sm text-muted-foreground">Teams</p>
               </div>
             </div>
           </div>
