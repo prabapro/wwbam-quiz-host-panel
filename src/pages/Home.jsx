@@ -3,23 +3,36 @@
 import { useState, useEffect } from 'react';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
+import { useGameStore } from '@stores/useGameStore';
 import SetupVerification from '@components/setup/SetupVerification';
+import GameControlPanel from '@components/game/GameControlPanel';
+import InitializeGameModal from '@components/game/InitializeGameModal';
 import FirebaseTest from '@components/test/FirebaseTest';
 import LoadingSpinner from '@components/common/LoadingSpinner';
+import { useSetupVerification } from '@hooks/useSetupVerification';
 import { Button } from '@components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
-import { ChevronDown, ChevronUp, Database } from 'lucide-react';
+import { ChevronDown, ChevronUp, Database, Rocket } from 'lucide-react';
+import { GAME_STATUS } from '@constants/gameStates';
 
 export default function Home() {
   const [showFirebaseDebug, setShowFirebaseDebug] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [showInitializeModal, setShowInitializeModal] = useState(false);
 
-  // Get loading states from both stores
+  // Get loading states from stores
   const teamsLoading = useTeamsStore((state) => state.isLoading);
   const prizesLoading = usePrizeStore((state) => state.isLoading);
+  const gameStatus = useGameStore((state) => state.gameStatus);
+
+  // Get setup verification
+  const { isReady } = useSetupVerification();
 
   // Track if initial data load is happening
   const isLoadingInitialData = teamsLoading || prizesLoading;
+
+  // Check if game is initialized
+  const isGameInitialized = gameStatus !== GAME_STATUS.NOT_STARTED;
 
   // Effect to track when initial loading is complete
   useEffect(() => {
@@ -52,9 +65,30 @@ export default function Home() {
         </div>
       )}
 
-      {/* Setup Verification Dashboard */}
-      <div className="max-w-4xl mx-auto">
-        <SetupVerification />
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Game Control Panel - Show ONLY when initialized */}
+        {isGameInitialized && <GameControlPanel />}
+
+        {/* Setup Verification Dashboard - Show ONLY when NOT initialized */}
+        {!isGameInitialized && (
+          <>
+            <SetupVerification />
+
+            {/* Initialize Game Button - Show when ready and not initialized */}
+            {isReady && (
+              <div className="flex justify-center">
+                <Button
+                  size="lg"
+                  className="w-full max-w-md"
+                  onClick={() => setShowInitializeModal(true)}>
+                  <Rocket className="w-5 h-5 mr-2" />
+                  Initialize Game
+                </Button>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Firebase Integration Debug (Collapsible) */}
@@ -94,6 +128,12 @@ export default function Home() {
           )}
         </Card>
       </div>
+
+      {/* Initialize Game Modal */}
+      <InitializeGameModal
+        open={showInitializeModal}
+        onOpenChange={setShowInitializeModal}
+      />
     </main>
   );
 }

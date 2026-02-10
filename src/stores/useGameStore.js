@@ -311,6 +311,16 @@ export const useGameStore = create()(
         },
 
         /**
+         * Uninitialize game (reset to NOT_STARTED state)
+         * Clears play queue and assignments but keeps teams/questions
+         * This is an alias for resetGame for clarity in the UI
+         */
+        uninitializeGame: () => {
+          get().resetGame();
+          console.log('🔄 Game uninitialized - ready for new initialization');
+        },
+
+        /**
          * Get question set ID for current team
          */
         getCurrentTeamQuestionSet: () => {
