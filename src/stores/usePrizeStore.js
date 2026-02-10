@@ -60,6 +60,7 @@ export const usePrizeStore = create()(
                 isLoading: false,
                 lastSyncedAt: Date.now(),
               });
+              console.log('✅ Prize structure loaded from Firebase');
             } else {
               // No prize structure in Firebase - use default
               set({
@@ -67,6 +68,7 @@ export const usePrizeStore = create()(
                 editedPrizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
                 isLoading: false,
               });
+              console.log('📋 No prize structure in Firebase - using default');
             }
 
             return { success: true };
@@ -258,9 +260,33 @@ export const usePrizeStore = create()(
 
           if (state) {
             console.log('💰 Prizes: Hydrated from localStorage');
+
             // Initialize edited structure with saved structure
             state.editedPrizeStructure = [...state.prizeStructure];
             state.hasUnsavedChanges = false;
+
+            // AUTO-LOAD: Check if prize structure is empty (cleared localStorage or first load)
+            const hasPrizes =
+              state.prizeStructure && state.prizeStructure.length > 0;
+
+            if (!hasPrizes) {
+              console.log(
+                '💰 Prizes: Empty state detected - auto-loading from Firebase...',
+              );
+
+              // Trigger async load - don't await to avoid blocking rehydration
+              state.loadPrizeStructure().then((result) => {
+                if (result.success) {
+                  console.log('💰 Prizes: Auto-load complete ✅');
+                } else {
+                  console.warn('💰 Prizes: Auto-load failed ⚠️', result.error);
+                }
+              });
+            } else {
+              console.log(
+                `💰 Prizes: ${state.prizeStructure.length} prize level(s) loaded from localStorage`,
+              );
+            }
           }
         },
       },
