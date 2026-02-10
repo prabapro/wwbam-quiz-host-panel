@@ -28,25 +28,15 @@ import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { localStorageService } from '@services/localStorage.service';
 import { getPlayQueuePreview } from '@utils/gameInitialization';
-import {
-  Play,
-  RotateCcw,
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
-  AlertTriangle,
-} from 'lucide-react';
+import { Play, RotateCcw, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 /**
  * Game Control Panel Component
  * Shown on homepage after game initialization
- * Contains: Status, Play Queue (collapsible), Play Game button, Uninitialize button
+ * Contains: Status, Play Queue (always visible), Play Game button, Uninitialize button
  */
 export default function GameControlPanel() {
   const navigate = useNavigate();
-
-  // Collapsible play queue state
-  const [isQueueExpanded, setIsQueueExpanded] = useState(false);
 
   // Uninitialize confirmation dialog state
   const [showUninitializeDialog, setShowUninitializeDialog] = useState(false);
@@ -126,34 +116,14 @@ export default function GameControlPanel() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Play Queue - Collapsible */}
-          <div className="border rounded-lg">
-            {/* Header */}
-            <button
-              onClick={() => setIsQueueExpanded(!isQueueExpanded)}
-              className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors rounded-t-lg">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-sm">Play Queue</h3>
-                <Badge variant="outline">{playQueue.length} Teams</Badge>
-              </div>
-              {isQueueExpanded ? (
-                <ChevronUp className="w-4 h-4 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              )}
-            </button>
-
-            {/* Expandable Content */}
-            {isQueueExpanded && (
-              <div className="p-3 border-t bg-muted/20">
-                <PlayQueueDisplay
-                  playQueuePreview={playQueuePreview}
-                  currentTeamId={currentTeamId}
-                  maxHeight="300px"
-                  showHeader={false}
-                />
-              </div>
-            )}
+          {/* Play Queue - Always Visible */}
+          <div className="border rounded-lg p-4 bg-muted/20">
+            <PlayQueueDisplay
+              playQueuePreview={playQueuePreview}
+              currentTeamId={currentTeamId}
+              maxHeight="auto"
+              showHeader={true}
+            />
           </div>
 
           {/* Action Buttons */}
