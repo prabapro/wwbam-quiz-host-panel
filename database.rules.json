@@ -1,8 +1,5 @@
 {
   "rules": {
-    ".read": true,
-    ".write": "auth != null",
-
     "game-state": {
       ".read": true,
       ".write": "auth != null"
