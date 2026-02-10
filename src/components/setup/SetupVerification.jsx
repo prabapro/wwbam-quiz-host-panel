@@ -53,25 +53,127 @@ const getStatusBadgeVariant = (status) => {
   }
 };
 
+/**
+ * Check Item Component
+ */
+const CheckItem = ({ check }) => (
+  <div
+    className={`
+      flex items-center justify-between p-3 rounded-lg border
+      ${
+        check.status === 'pass'
+          ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+          : check.status === 'fail'
+            ? 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+            : check.status === 'warning'
+              ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800'
+              : 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
+      }
+    `}>
+    <div className="flex items-center gap-3 flex-1">
+      {getStatusIcon(check.status)}
+      <div>
+        <p className="font-medium text-sm">{check.label}</p>
+        <p className="text-xs text-muted-foreground">{check.message}</p>
+      </div>
+    </div>
+
+    <Badge variant={getStatusBadgeVariant(check.status)} className="capitalize">
+      {check.status}
+    </Badge>
+  </div>
+);
+
+/**
+ * Check Group Component
+ */
+const CheckGroup = ({ title, icon: Icon, checks, onConfigure }) => (
+  <div className="space-y-3">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Icon className="w-5 h-5 text-muted-foreground" />
+        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+          {title}
+        </h3>
+      </div>
+      <Button variant="outline" size="sm" onClick={onConfigure}>
+        Configure
+        <ArrowRight className="w-4 h-4 ml-2" />
+      </Button>
+    </div>
+    <div className="space-y-2">
+      {checks.map((check) => (
+        <CheckItem key={check.id} check={check} />
+      ))}
+    </div>
+  </div>
+);
+
 export default function SetupVerification() {
   const navigate = useNavigate();
   const { isReady, hasWarnings, checks, summary } = useSetupVerification();
 
+  // Group checks by category
+  const teamsChecks = checks.filter((c) => c.group === 'teams');
+  const questionsChecks = checks.filter((c) => c.group === 'questions');
+  const prizesChecks = checks.filter((c) => c.group === 'prizes');
+
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-2xl mb-2">Setup Verification</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Complete all checks before initializing the game
-            </p>
-          </div>
+        <CardTitle className="text-2xl mb-2">Setup Verification</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Complete all checks before initializing the game
+        </p>
+      </CardHeader>
 
-          {/* Ready Badge */}
+      <CardContent className="space-y-6">
+        {/* Summary Alert - TOP POSITION */}
+        {!isReady && summary.criticalIssues > 0 && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>Setup Incomplete</AlertTitle>
+            <AlertDescription>
+              Please resolve {summary.criticalIssues} critical issue
+              {summary.criticalIssues > 1 ? 's' : ''} before initializing the
+              game.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!isReady && hasWarnings && summary.criticalIssues === 0 && (
+          <Alert
+            variant="default"
+            className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800">
+            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <AlertTitle className="text-yellow-800 dark:text-yellow-200">
+              Warnings Detected
+            </AlertTitle>
+            <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+              There are {summary.warnings} warning
+              {summary.warnings > 1 ? 's' : ''}. Review them before proceeding.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isReady && (
+          <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <AlertTitle className="text-green-800 dark:text-green-200">
+              All Checks Passed!
+            </AlertTitle>
+            <AlertDescription className="text-green-700 dark:text-green-300">
+              Your setup is complete and ready. You can now proceed to
+              initialize the game.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Status Badge */}
+        <div className="flex justify-center">
           {isReady && (
-            <Badge className="bg-green-600 text-white hover:bg-green-700">
-              <CheckCircle2 className="w-4 h-4 mr-1" />
+            <Badge className="bg-green-600 text-white hover:bg-green-700 text-base py-2 px-4">
+              <CheckCircle2 className="w-5 h-5 mr-2" />
               Ready to Initialize
             </Badge>
           )}
@@ -79,22 +181,20 @@ export default function SetupVerification() {
           {!isReady && hasWarnings && (
             <Badge
               variant="secondary"
-              className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-              <AlertTriangle className="w-4 h-4 mr-1" />
+              className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-base py-2 px-4">
+              <AlertTriangle className="w-5 h-5 mr-2" />
               Warnings
             </Badge>
           )}
 
           {!isReady && !hasWarnings && (
-            <Badge variant="destructive">
-              <XCircle className="w-4 h-4 mr-1" />
+            <Badge variant="destructive" className="text-base py-2 px-4">
+              <XCircle className="w-5 h-5 mr-2" />
               Incomplete Setup
             </Badge>
           )}
         </div>
-      </CardHeader>
 
-      <CardContent className="space-y-6">
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="p-4 bg-muted/30 rounded-lg">
@@ -174,101 +274,31 @@ export default function SetupVerification() {
           </div>
         )}
 
-        {/* Validation Checks */}
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-            Validation Checks
-          </h3>
-          <div className="space-y-2">
-            {checks.map((check) => (
-              <div
-                key={check.id}
-                className={`
-                  flex items-center justify-between p-3 rounded-lg border
-                  ${
-                    check.status === 'pass'
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
-                      : check.status === 'fail'
-                        ? 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                        : check.status === 'warning'
-                          ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800'
-                          : 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
-                  }
-                `}>
-                <div className="flex items-center gap-3 flex-1">
-                  {getStatusIcon(check.status)}
-                  <div>
-                    <p className="font-medium text-sm">{check.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {check.message}
-                    </p>
-                  </div>
-                </div>
+        {/* Grouped Validation Checks */}
+        <div className="space-y-6">
+          {/* Teams Group */}
+          <CheckGroup
+            title="Teams"
+            icon={Users}
+            checks={teamsChecks}
+            onConfigure={() => navigate('/teams')}
+          />
 
-                <Badge
-                  variant={getStatusBadgeVariant(check.status)}
-                  className="capitalize">
-                  {check.status}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </div>
+          {/* Questions Group */}
+          <CheckGroup
+            title="Question Sets"
+            icon={FileJson}
+            checks={questionsChecks}
+            onConfigure={() => navigate('/questions')}
+          />
 
-        {/* Action Alerts */}
-        {!isReady && summary.criticalIssues > 0 && (
-          <Alert variant="destructive">
-            <XCircle className="h-4 w-4" />
-            <AlertTitle>Setup Incomplete</AlertTitle>
-            <AlertDescription>
-              Please resolve {summary.criticalIssues} critical issue
-              {summary.criticalIssues > 1 ? 's' : ''} before initializing the
-              game.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {isReady && (
-          <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <AlertTitle className="text-green-800 dark:text-green-200">
-              All Checks Passed!
-            </AlertTitle>
-            <AlertDescription className="text-green-700 dark:text-green-300">
-              Your setup is complete and ready. You can now proceed to
-              initialize the game.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Quick Navigation Buttons */}
-        <div className="flex gap-3 pt-4 border-t">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => navigate('/teams')}>
-            <Users className="w-4 h-4 mr-2" />
-            Manage Teams
-            <ArrowRight className="w-4 h-4 ml-auto" />
-          </Button>
-
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => navigate('/questions')}>
-            <FileJson className="w-4 h-4 mr-2" />
-            Manage Questions
-            <ArrowRight className="w-4 h-4 ml-auto" />
-          </Button>
-
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => navigate('/prizes')}>
-            <DollarSign className="w-4 h-4 mr-2" />
-            Manage Prizes
-            <ArrowRight className="w-4 h-4 ml-auto" />
-          </Button>
+          {/* Prizes Group */}
+          <CheckGroup
+            title="Prize Structure"
+            icon={DollarSign}
+            checks={prizesChecks}
+            onConfigure={() => navigate('/prizes')}
+          />
         </div>
       </CardContent>
     </Card>

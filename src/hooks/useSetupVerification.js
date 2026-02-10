@@ -9,6 +9,11 @@ import { validateCompleteSetup } from '@utils/setupValidation';
 /**
  * Custom hook for setup verification
  * Monitors teams, question sets, and prize structure stores and provides real-time validation status
+ *
+ * Compatible with updated validation logic that properly handles:
+ * - Empty teams/question sets (no false positives)
+ * - Grouped check structure (teams, questions, prizes)
+ * - Info status for 0/0 sufficient sets check
  */
 export const useSetupVerification = () => {
   // Get teams from store with safe default
