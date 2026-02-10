@@ -127,7 +127,7 @@ export const generatePlayQueue = (teams, questionSets) => {
 
 /**
  * Get play queue preview data for display
- * Combines team data with assigned question set names
+ * Combines team data with assigned question set names and participants
  * @param {Array} playQueue - Array of team IDs in play order
  * @param {Object} questionSetAssignments - { teamId: setId }
  * @param {Object} teamsObject - Teams object { teamId: teamData }
@@ -155,6 +155,7 @@ export const getPlayQueuePreview = (
       position: index + 1, // 1-indexed for display
       teamId,
       teamName: team?.name || 'Unknown Team',
+      teamParticipants: team?.participants || '',
       questionSetId: assignedSetId || null,
       questionSetName: questionSet?.setName || 'Unknown Set',
     };

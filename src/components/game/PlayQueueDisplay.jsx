@@ -52,7 +52,7 @@ export default function PlayQueueDisplay({
                 {/* Position Number */}
                 <div
                   className={`
-                  flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm
+                  flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm flex-shrink-0
                   ${
                     isCurrentTeam
                       ? 'bg-primary text-primary-foreground'
@@ -63,9 +63,16 @@ export default function PlayQueueDisplay({
                 </div>
 
                 {/* Team Info */}
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <Users className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="font-medium truncate">{item.teamName}</span>
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <Users className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{item.teamName}</p>
+                    {item.teamParticipants && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.teamParticipants}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Arrow */}
@@ -81,7 +88,9 @@ export default function PlayQueueDisplay({
 
                 {/* Current Team Badge */}
                 {isCurrentTeam && (
-                  <Badge className="bg-primary hover:bg-primary">Playing</Badge>
+                  <Badge className="bg-primary hover:bg-primary flex-shrink-0">
+                    Playing
+                  </Badge>
                 )}
               </div>
             );
