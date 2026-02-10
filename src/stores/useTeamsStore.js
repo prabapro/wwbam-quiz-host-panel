@@ -217,76 +217,61 @@ export const useTeamsStore = create()(
         },
 
         /**
-         * Set team status
-         */
-        setTeamStatus: (teamId, status) => {
-          return get().updateTeam(teamId, { status });
-        },
-
-        /**
-         * Set team's current prize
-         */
-        setTeamPrize: (teamId, prize) => {
-          return get().updateTeam(teamId, { currentPrize: prize });
-        },
-
-        /**
-         * Increment questions answered
-         */
-        incrementQuestionsAnswered: (teamId) => {
-          const { teams } = get();
-
-          if (!teams[teamId]) {
-            return { success: false, error: 'Team not found' };
-          }
-
-          const questionsAnswered = (teams[teamId].questionsAnswered || 0) + 1;
-          const currentQuestionIndex =
-            (teams[teamId].currentQuestionIndex || 0) + 1;
-
-          return get().updateTeam(teamId, {
-            questionsAnswered,
-            currentQuestionIndex,
-          });
-        },
-
-        /**
-         * Use a lifeline
+         * Use lifeline
          */
         useLifeline: (teamId, lifelineType) => {
           const { teams } = get();
+          const team = teams[teamId];
 
-          if (!teams[teamId]) {
+          if (!team) {
             console.warn(`Team ${teamId} not found`);
             return { success: false, error: 'Team not found' };
           }
 
-          // Check if lifeline is available
-          if (!teams[teamId].lifelines[lifelineType]) {
-            console.warn(`Lifeline ${lifelineType} already used`);
-            return { success: false, error: 'Lifeline already used' };
+          if (!team.lifelines[lifelineType]) {
+            console.warn(
+              `Lifeline ${lifelineType} not available for ${teamId}`,
+            );
+            return {
+              success: false,
+              error: 'Lifeline not available',
+            };
           }
 
-          const updatedLifelines = {
-            ...teams[teamId].lifelines,
-            [lifelineType]: false,
-          };
-
-          const result = get().updateTeam(teamId, {
-            lifelines: updatedLifelines,
+          return get().updateTeam(teamId, {
+            lifelines: {
+              ...team.lifelines,
+              [lifelineType]: false,
+            },
           });
-
-          console.log(`🎯 ${teamId} used lifeline: ${lifelineType}`);
-
-          return result;
         },
 
         /**
-         * Eliminate team
+         * Move to next question
          */
-        eliminateTeam: (teamId) => {
+        moveToNextQuestion: (teamId, prizeWon) => {
+          const { teams } = get();
+          const team = teams[teamId];
+
+          if (!team) {
+            console.warn(`Team ${teamId} not found`);
+            return { success: false, error: 'Team not found' };
+          }
+
+          return get().updateTeam(teamId, {
+            currentQuestionIndex: team.currentQuestionIndex + 1,
+            questionsAnswered: team.questionsAnswered + 1,
+            currentPrize: prizeWon,
+          });
+        },
+
+        /**
+         * Eliminate team (wrong answer or quit)
+         */
+        eliminateTeam: (teamId, finalPrize) => {
           const result = get().updateTeam(teamId, {
             status: TEAM_STATUS.ELIMINATED,
+            currentPrize: finalPrize,
             eliminatedAt: Date.now(),
           });
 
@@ -296,10 +281,11 @@ export const useTeamsStore = create()(
         },
 
         /**
-         * Mark team as completed
+         * Mark team as completed (won maximum prize)
          */
-        completeTeam: (teamId) => {
+        completeTeam: (teamId, finalPrize) => {
           const result = get().updateTeam(teamId, {
+            currentPrize: finalPrize,
             status: TEAM_STATUS.COMPLETED,
             completedAt: Date.now(),
           });
@@ -472,6 +458,28 @@ export const useTeamsStore = create()(
 
           if (state) {
             console.log('👥 Teams: Hydrated from localStorage');
+
+            // AUTO-LOAD: Check if teams are empty (cleared localStorage or first load)
+            const hasTeams = state.teams && Object.keys(state.teams).length > 0;
+
+            if (!hasTeams) {
+              console.log(
+                '👥 Teams: Empty state detected - auto-loading from Firebase...',
+              );
+
+              // Trigger async load - don't await to avoid blocking rehydration
+              state.syncTeamsFromFirebase().then((result) => {
+                if (result.success) {
+                  console.log('👥 Teams: Auto-load complete ✅');
+                } else {
+                  console.warn('👥 Teams: Auto-load failed ⚠️', result.error);
+                }
+              });
+            } else {
+              console.log(
+                `👥 Teams: ${Object.keys(state.teams).length} team(s) loaded from localStorage`,
+              );
+            }
           }
         },
       },
