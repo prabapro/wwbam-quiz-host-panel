@@ -59,7 +59,7 @@ export default function InitializeGameModal({ open, onOpenChange }) {
     setError(null);
 
     try {
-      // Step 1: Generate play queue and assignments
+      // Step 1: Generate play queue and assignments locally
       await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate shuffling
       const result = generatePlayQueue(teams, questionSetsMetadata);
 
@@ -67,9 +67,18 @@ export default function InitializeGameModal({ open, onOpenChange }) {
         throw new Error(result.errors.join(', '));
       }
 
-      // Step 2: Save to store and Firebase
+      // Step 2: Save to store AND Firebase
       await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate saving
-      initializeGame(result.playQueue, result.questionSetAssignments);
+
+      const initResult = await initializeGame(
+        result.playQueue,
+        result.questionSetAssignments,
+      );
+
+      // Check if Firebase sync succeeded
+      if (!initResult.success) {
+        throw new Error(initResult.error || 'Failed to sync with Firebase');
+      }
 
       // Step 3: Generate preview data
       const preview = getPlayQueuePreview(
@@ -137,8 +146,9 @@ export default function InitializeGameModal({ open, onOpenChange }) {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Random Assignment</AlertTitle>
                 <AlertDescription>
-                  Question sets will be randomly assigned to teams. This action
-                  cannot be undone without uninitializing the game.
+                  Question sets will be randomly assigned to teams and saved to
+                  Firebase. This action cannot be undone without uninitializing
+                  the game.
                 </AlertDescription>
               </Alert>
 
@@ -219,7 +229,7 @@ export default function InitializeGameModal({ open, onOpenChange }) {
                     🎯 Assigning question sets...
                   </p>
                   <p className="text-sm text-muted-foreground animate-pulse delay-300">
-                    💾 Saving to Firebase...
+                    💾 Syncing to Firebase...
                   </p>
                 </div>
               </div>
@@ -236,7 +246,7 @@ export default function InitializeGameModal({ open, onOpenChange }) {
                 Game Initialized Successfully!
               </DialogTitle>
               <DialogDescription>
-                The play queue has been generated and saved
+                The play queue has been generated and synced to Firebase
               </DialogDescription>
             </DialogHeader>
 

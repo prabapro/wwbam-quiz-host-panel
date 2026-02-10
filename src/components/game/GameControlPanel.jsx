@@ -21,6 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@components/ui/alert-dialog';
+import { Alert, AlertDescription } from '@components/ui/alert';
+import LoadingSpinner from '@components/common/LoadingSpinner';
 import PlayQueueDisplay from './PlayQueueDisplay';
 import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
@@ -32,6 +34,7 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 
 /**
@@ -48,13 +51,17 @@ export default function GameControlPanel() {
   // Uninitialize confirmation dialog state
   const [showUninitializeDialog, setShowUninitializeDialog] = useState(false);
 
+  // Uninitialize loading state
+  const [isUninitializing, setIsUninitializing] = useState(false);
+  const [uninitError, setUninitError] = useState(null);
+
   // Store state
   const playQueue = useGameStore((state) => state.playQueue);
   const questionSetAssignments = useGameStore(
     (state) => state.questionSetAssignments,
   );
   const currentTeamId = useGameStore((state) => state.currentTeamId);
-  const uninitializeGame = useGameStore((state) => state.resetGame);
+  const uninitializeGame = useGameStore((state) => state.uninitializeGame);
   const teamsObject = useTeamsStore((state) => state.teams);
 
   // Get question sets metadata
@@ -79,10 +86,25 @@ export default function GameControlPanel() {
   /**
    * Handle uninitialize confirmation
    */
-  const handleUninitialize = () => {
-    uninitializeGame();
-    setShowUninitializeDialog(false);
-    console.log('🔄 Game uninitialized');
+  const handleUninitialize = async () => {
+    setIsUninitializing(true);
+    setUninitError(null);
+
+    try {
+      const result = await uninitializeGame();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to uninitialize');
+      }
+
+      console.log('🔄 Game uninitialized and synced to Firebase');
+      setShowUninitializeDialog(false);
+    } catch (error) {
+      console.error('Uninitialize failed:', error);
+      setUninitError(error.message);
+    } finally {
+      setIsUninitializing(false);
+    }
   };
 
   return (
@@ -167,14 +189,35 @@ export default function GameControlPanel() {
             <AlertDialogTitle>Uninitialize Game?</AlertDialogTitle>
             <AlertDialogDescription>
               This will reset the game to pre-initialization state. The play
-              queue and question set assignments will be cleared. Teams and
-              question sets will remain saved.
+              queue and question set assignments will be cleared from both
+              localStorage and Firebase. Teams and question sets will remain
+              saved.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* Error Alert */}
+          {uninitError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{uninitError}</AlertDescription>
+            </Alert>
+          )}
+
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleUninitialize}>
-              Uninitialize
+            <AlertDialogCancel disabled={isUninitializing}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUninitialize}
+              disabled={isUninitializing}>
+              {isUninitializing ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Uninitializing...
+                </>
+              ) : (
+                'Uninitialize'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
