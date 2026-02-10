@@ -7,7 +7,6 @@ import { useGameStore } from '@stores/useGameStore';
 import SetupVerification from '@components/setup/SetupVerification';
 import GameControlPanel from '@components/game/GameControlPanel';
 import InitializeGameModal from '@components/game/InitializeGameModal';
-import FirebaseTest from '@components/test/FirebaseTest';
 import LoadingSpinner from '@components/common/LoadingSpinner';
 import { useSetupVerification } from '@hooks/useSetupVerification';
 import { Button } from '@components/ui/button';
@@ -16,7 +15,6 @@ import { ChevronDown, ChevronUp, Database, Rocket } from 'lucide-react';
 import { GAME_STATUS } from '@constants/gameStates';
 
 export default function Home() {
-  const [showFirebaseDebug, setShowFirebaseDebug] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [showInitializeModal, setShowInitializeModal] = useState(false);
 
@@ -89,44 +87,6 @@ export default function Home() {
             )}
           </>
         )}
-      </div>
-
-      {/* Firebase Integration Debug (Collapsible) */}
-      <div className="max-w-2xl mx-auto">
-        <Card>
-          <CardHeader
-            className="cursor-pointer"
-            onClick={() => setShowFirebaseDebug(!showFirebaseDebug)}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-muted-foreground" />
-                <CardTitle className="text-base">
-                  Firebase Integration Debug
-                </CardTitle>
-              </div>
-              <Button variant="ghost" size="sm">
-                {showFirebaseDebug ? (
-                  <ChevronUp className="w-4 h-4" />
-                ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-
-          {showFirebaseDebug && (
-            <CardContent className="space-y-4">
-              <div className="p-3 bg-muted/30 rounded-lg">
-                <p className="text-xs text-muted-foreground">
-                  Test Firebase read/write operations to verify database
-                  connectivity. Check browser console for detailed logs.
-                </p>
-              </div>
-
-              <FirebaseTest />
-            </CardContent>
-          )}
-        </Card>
       </div>
 
       {/* Initialize Game Modal */}

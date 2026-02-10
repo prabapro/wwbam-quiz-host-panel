@@ -53,9 +53,76 @@ const getStatusBadgeVariant = (status) => {
   }
 };
 
+/**
+ * Check Item Component
+ */
+const CheckItem = ({ check }) => (
+  <div
+    className={`
+      flex items-center justify-between p-3 rounded-lg border
+      ${
+        check.status === 'pass'
+          ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+          : check.status === 'fail'
+            ? 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+            : check.status === 'warning'
+              ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800'
+              : 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
+      }
+    `}>
+    <div className="flex items-center gap-3 flex-1">
+      {getStatusIcon(check.status)}
+      <div>
+        <p className="font-medium text-sm">{check.label}</p>
+        <p className="text-xs text-muted-foreground">{check.message}</p>
+      </div>
+    </div>
+
+    <Badge
+      variant={getStatusBadgeVariant(check.status)}
+      className={`capitalize ${
+        check.status === 'pass'
+          ? 'bg-green-600 text-white hover:bg-green-700'
+          : ''
+      }`}>
+      {check.status}
+    </Badge>
+  </div>
+);
+
+/**
+ * Check Group Component
+ */
+const CheckGroup = ({ title, icon: Icon, checks, onConfigure }) => (
+  <div className="space-y-3">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Icon className="w-5 h-5 text-muted-foreground" />
+        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+          {title}
+        </h3>
+      </div>
+      <Button variant="secondary" size="sm" onClick={onConfigure}>
+        Configure
+        <ArrowRight className="w-4 h-4 ml-2" />
+      </Button>
+    </div>
+    <div className="space-y-2">
+      {checks.map((check) => (
+        <CheckItem key={check.id} check={check} />
+      ))}
+    </div>
+  </div>
+);
+
 export default function SetupVerification() {
   const navigate = useNavigate();
   const { isReady, hasWarnings, checks, summary } = useSetupVerification();
+
+  // Group checks by category
+  const teamsChecks = checks.filter((c) => c.group === 'teams');
+  const questionsChecks = checks.filter((c) => c.group === 'questions');
+  const prizesChecks = checks.filter((c) => c.group === 'prizes');
 
   return (
     <Card>
@@ -68,7 +135,7 @@ export default function SetupVerification() {
             </p>
           </div>
 
-          {/* Ready Badge */}
+          {/* Small Status Badge in Top Right Corner */}
           {isReady && (
             <Badge className="bg-green-600 text-white hover:bg-green-700">
               <CheckCircle2 className="w-4 h-4 mr-1" />
@@ -95,7 +162,7 @@ export default function SetupVerification() {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Summary Stats */}
+        {/* Summary Stats - Right after header */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="p-4 bg-muted/30 rounded-lg">
             <div className="flex items-center gap-3">
@@ -104,9 +171,7 @@ export default function SetupVerification() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{summary.teams}</p>
-                <p className="text-sm text-muted-foreground">
-                  Teams Configured
-                </p>
+                <p className="text-sm text-muted-foreground">Teams</p>
               </div>
             </div>
           </div>
@@ -158,7 +223,7 @@ export default function SetupVerification() {
         </div>
 
         {/* Prize Pool Summary (if configured) */}
-        {summary.totalPrizePool > 0 && (
+        {/* {summary.totalPrizePool > 0 && (
           <div className="p-4 bg-amber-50 dark:bg-amber-950 border-2 border-amber-200 dark:border-amber-800 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -172,50 +237,9 @@ export default function SetupVerification() {
               </span>
             </div>
           </div>
-        )}
+        )} */}
 
-        {/* Validation Checks */}
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-            Validation Checks
-          </h3>
-          <div className="space-y-2">
-            {checks.map((check) => (
-              <div
-                key={check.id}
-                className={`
-                  flex items-center justify-between p-3 rounded-lg border
-                  ${
-                    check.status === 'pass'
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
-                      : check.status === 'fail'
-                        ? 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                        : check.status === 'warning'
-                          ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800'
-                          : 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
-                  }
-                `}>
-                <div className="flex items-center gap-3 flex-1">
-                  {getStatusIcon(check.status)}
-                  <div>
-                    <p className="font-medium text-sm">{check.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {check.message}
-                    </p>
-                  </div>
-                </div>
-
-                <Badge
-                  variant={getStatusBadgeVariant(check.status)}
-                  className="capitalize">
-                  {check.status}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Action Alerts */}
+        {/* Summary Alert - After stats */}
         {!isReady && summary.criticalIssues > 0 && (
           <Alert variant="destructive">
             <XCircle className="h-4 w-4" />
@@ -224,6 +248,21 @@ export default function SetupVerification() {
               Please resolve {summary.criticalIssues} critical issue
               {summary.criticalIssues > 1 ? 's' : ''} before initializing the
               game.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!isReady && hasWarnings && summary.criticalIssues === 0 && (
+          <Alert
+            variant="default"
+            className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800">
+            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <AlertTitle className="text-yellow-800 dark:text-yellow-200">
+              Warnings Detected
+            </AlertTitle>
+            <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+              There are {summary.warnings} warning
+              {summary.warnings > 1 ? 's' : ''}. Review them before proceeding.
             </AlertDescription>
           </Alert>
         )}
@@ -241,34 +280,31 @@ export default function SetupVerification() {
           </Alert>
         )}
 
-        {/* Quick Navigation Buttons */}
-        <div className="flex gap-3 pt-4 border-t">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => navigate('/teams')}>
-            <Users className="w-4 h-4 mr-2" />
-            Manage Teams
-            <ArrowRight className="w-4 h-4 ml-auto" />
-          </Button>
+        {/* Grouped Validation Checks */}
+        <div className="space-y-6">
+          {/* Teams Group */}
+          <CheckGroup
+            title="Teams"
+            icon={Users}
+            checks={teamsChecks}
+            onConfigure={() => navigate('/teams')}
+          />
 
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => navigate('/questions')}>
-            <FileJson className="w-4 h-4 mr-2" />
-            Manage Questions
-            <ArrowRight className="w-4 h-4 ml-auto" />
-          </Button>
+          {/* Questions Group */}
+          <CheckGroup
+            title="Question Sets"
+            icon={FileJson}
+            checks={questionsChecks}
+            onConfigure={() => navigate('/questions')}
+          />
 
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => navigate('/prizes')}>
-            <DollarSign className="w-4 h-4 mr-2" />
-            Manage Prizes
-            <ArrowRight className="w-4 h-4 ml-auto" />
-          </Button>
+          {/* Prizes Group */}
+          <CheckGroup
+            title="Prize Structure"
+            icon={DollarSign}
+            checks={prizesChecks}
+            onConfigure={() => navigate('/prizes')}
+          />
         </div>
       </CardContent>
     </Card>

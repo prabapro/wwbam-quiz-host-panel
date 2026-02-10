@@ -127,7 +127,9 @@ export const validateTeams = (teamsObject) => {
   const hasMinimum = count >= MIN_TEAMS;
   const hasIdeal = count >= IDEAL_MIN_TEAMS;
   const withinLimit = count <= MAX_TEAMS;
-  const allValid = invalidTeams.length === 0;
+
+  // FIX: Only return allValid: true if we have teams AND they're all valid
+  const allValid = count > 0 && invalidTeams.length === 0;
 
   return {
     isValid: hasMinimum && withinLimit && allValid,
@@ -141,7 +143,10 @@ export const validateTeams = (teamsObject) => {
         ? [
             !hasMinimum && `At least ${MIN_TEAMS} team required`,
             !withinLimit && `Maximum ${MAX_TEAMS} teams allowed`,
-            !allValid && `${invalidTeams.length} team(s) have invalid data`,
+            !allValid && count === 0 && 'No teams configured',
+            !allValid &&
+              count > 0 &&
+              `${invalidTeams.length} team(s) have invalid data`,
           ].filter(Boolean)
         : null,
   };
@@ -218,7 +223,9 @@ export const validateQuestionSets = (questionSets) => {
     .filter(Boolean);
 
   const hasMinimum = count >= 1;
-  const allValid = invalidSets.length === 0;
+
+  // FIX: Only return allValid: true if we have sets AND they're all valid
+  const allValid = count > 0 && invalidSets.length === 0;
 
   return {
     isValid: hasMinimum && allValid,
@@ -229,7 +236,9 @@ export const validateQuestionSets = (questionSets) => {
       !hasMinimum || !allValid
         ? [
             !hasMinimum && 'At least 1 question set required',
+            !allValid && count === 0 && 'No question sets uploaded',
             !allValid &&
+              count > 0 &&
               `${invalidSets.length} question set(s) have invalid data`,
           ].filter(Boolean)
         : null,
@@ -330,16 +339,21 @@ export const validatePrizeStructure = (prizeStructure) => {
  * @returns {Object} Sufficiency check result
  */
 export const checkSufficientQuestionSets = (teamCount, questionSetCount) => {
-  const isSufficient = questionSetCount >= teamCount;
+  // FIX: When both are 0, this is not a "pass" - it's an informational state
+  const isSufficient = questionSetCount >= teamCount && teamCount > 0;
+  const bothZero = teamCount === 0 && questionSetCount === 0;
 
   return {
-    isSufficient,
+    isSufficient: bothZero ? false : isSufficient, // Return false for 0/0 case
+    bothZero, // Track this state separately
     teamCount,
     questionSetCount,
-    deficit: isSufficient ? 0 : teamCount - questionSetCount,
-    message: isSufficient
-      ? `${questionSetCount} sets available for ${teamCount} team(s)`
-      : `Need ${teamCount - questionSetCount} more set(s) (${questionSetCount}/${teamCount})`,
+    deficit: isSufficient || bothZero ? 0 : teamCount - questionSetCount,
+    message: bothZero
+      ? 'No teams or question sets configured yet'
+      : isSufficient
+        ? `${questionSetCount} sets available for ${teamCount} team(s)`
+        : `Need ${teamCount - questionSetCount} more set(s) (${questionSetCount}/${teamCount})`,
   };
 };
 
@@ -372,16 +386,25 @@ export const validateCompleteSetup = (
         ? `${teamsValidation.count} team(s) ready`
         : teamsValidation.errors?.[0] || 'No teams configured',
       details: teamsValidation,
+      group: 'teams',
     },
     {
       id: 'teams-valid',
       label: 'Team Data Valid',
-      status: teamsValidation.invalidTeams.length === 0 ? 'pass' : 'warning',
+      status:
+        teamsValidation.count === 0
+          ? 'info'
+          : teamsValidation.invalidTeams.length === 0
+            ? 'pass'
+            : 'warning',
       message:
-        teamsValidation.invalidTeams.length === 0
-          ? 'All teams have valid data'
-          : `${teamsValidation.invalidTeams.length} team(s) have issues`,
+        teamsValidation.count === 0
+          ? 'No teams to validate'
+          : teamsValidation.invalidTeams.length === 0
+            ? 'All teams have valid data'
+            : `${teamsValidation.invalidTeams.length} team(s) have issues`,
       details: teamsValidation.invalidTeams,
+      group: 'teams',
     },
     {
       id: 'teams-ideal',
@@ -391,6 +414,7 @@ export const validateCompleteSetup = (
         ? `${teamsValidation.count} teams (ideal: ${IDEAL_MIN_TEAMS}+)`
         : `${teamsValidation.count} teams (recommended: ${IDEAL_MIN_TEAMS}-${MAX_TEAMS})`,
       details: null,
+      group: 'teams',
     },
     {
       id: 'question-sets-uploaded',
@@ -400,24 +424,37 @@ export const validateCompleteSetup = (
         ? `${questionSetsValidation.count} set(s) uploaded`
         : questionSetsValidation.errors?.[0] || 'No question sets uploaded',
       details: questionSetsValidation,
+      group: 'questions',
     },
     {
       id: 'question-sets-valid',
       label: 'Question Sets Valid',
       status:
-        questionSetsValidation.invalidSets.length === 0 ? 'pass' : 'warning',
+        questionSetsValidation.count === 0
+          ? 'info'
+          : questionSetsValidation.invalidSets.length === 0
+            ? 'pass'
+            : 'warning',
       message:
-        questionSetsValidation.invalidSets.length === 0
-          ? `All sets have ${QUESTIONS_PER_SET} questions`
-          : `${questionSetsValidation.invalidSets.length} set(s) have issues`,
+        questionSetsValidation.count === 0
+          ? 'No question sets to validate'
+          : questionSetsValidation.invalidSets.length === 0
+            ? `All sets have ${QUESTIONS_PER_SET} questions`
+            : `${questionSetsValidation.invalidSets.length} set(s) have issues`,
       details: questionSetsValidation.invalidSets,
+      group: 'questions',
     },
     {
       id: 'sufficient-sets',
       label: 'Sufficient Question Sets',
-      status: sufficiencyCheck.isSufficient ? 'pass' : 'fail',
+      status: sufficiencyCheck.bothZero
+        ? 'info'
+        : sufficiencyCheck.isSufficient
+          ? 'pass'
+          : 'fail',
       message: sufficiencyCheck.message,
       details: sufficiencyCheck,
+      group: 'questions',
     },
     {
       id: 'prize-structure-configured',
@@ -427,6 +464,7 @@ export const validateCompleteSetup = (
         ? `${prizeValidation.count} prize level(s) configured`
         : prizeValidation.errors?.[0] || 'Prize structure not configured',
       details: prizeValidation,
+      group: 'prizes',
     },
     {
       id: 'prize-structure-valid',
@@ -436,6 +474,7 @@ export const validateCompleteSetup = (
         ? `All prizes are valid (Max prize per team: Rs.${prizeValidation.maxPrize.toLocaleString()})`
         : `${prizeValidation.invalidPrizes?.length || 0} invalid prize value(s)`,
       details: prizeValidation.invalidPrizes,
+      group: 'prizes',
     },
   ];
 
