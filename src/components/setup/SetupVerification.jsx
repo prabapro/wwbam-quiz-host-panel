@@ -96,7 +96,7 @@ const CheckGroup = ({ title, icon: Icon, checks, onConfigure }) => (
           {title}
         </h3>
       </div>
-      <Button variant="outline" size="sm" onClick={onConfigure}>
+      <Button size="sm" onClick={onConfigure}>
         Configure
         <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
@@ -121,59 +121,18 @@ export default function SetupVerification() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl mb-2">Setup Verification</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Complete all checks before initializing the game
-        </p>
-      </CardHeader>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-2xl mb-2">Setup Verification</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Complete all checks before initializing the game
+            </p>
+          </div>
 
-      <CardContent className="space-y-6">
-        {/* Summary Alert - TOP POSITION */}
-        {!isReady && summary.criticalIssues > 0 && (
-          <Alert variant="destructive">
-            <XCircle className="h-4 w-4" />
-            <AlertTitle>Setup Incomplete</AlertTitle>
-            <AlertDescription>
-              Please resolve {summary.criticalIssues} critical issue
-              {summary.criticalIssues > 1 ? 's' : ''} before initializing the
-              game.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {!isReady && hasWarnings && summary.criticalIssues === 0 && (
-          <Alert
-            variant="default"
-            className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-            <AlertTitle className="text-yellow-800 dark:text-yellow-200">
-              Warnings Detected
-            </AlertTitle>
-            <AlertDescription className="text-yellow-700 dark:text-yellow-300">
-              There are {summary.warnings} warning
-              {summary.warnings > 1 ? 's' : ''}. Review them before proceeding.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {isReady && (
-          <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <AlertTitle className="text-green-800 dark:text-green-200">
-              All Checks Passed!
-            </AlertTitle>
-            <AlertDescription className="text-green-700 dark:text-green-300">
-              Your setup is complete and ready. You can now proceed to
-              initialize the game.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Status Badge */}
-        <div className="flex justify-center">
+          {/* Small Status Badge in Top Right Corner */}
           {isReady && (
-            <Badge className="bg-green-600 text-white hover:bg-green-700 text-base py-2 px-4">
-              <CheckCircle2 className="w-5 h-5 mr-2" />
+            <Badge className="bg-green-600 text-white hover:bg-green-700">
+              <CheckCircle2 className="w-4 h-4 mr-1" />
               Ready to Initialize
             </Badge>
           )}
@@ -181,21 +140,23 @@ export default function SetupVerification() {
           {!isReady && hasWarnings && (
             <Badge
               variant="secondary"
-              className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-base py-2 px-4">
-              <AlertTriangle className="w-5 h-5 mr-2" />
+              className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+              <AlertTriangle className="w-4 h-4 mr-1" />
               Warnings
             </Badge>
           )}
 
           {!isReady && !hasWarnings && (
-            <Badge variant="destructive" className="text-base py-2 px-4">
-              <XCircle className="w-5 h-5 mr-2" />
+            <Badge variant="destructive">
+              <XCircle className="w-4 h-4 mr-1" />
               Incomplete Setup
             </Badge>
           )}
         </div>
+      </CardHeader>
 
-        {/* Summary Stats */}
+      <CardContent className="space-y-6">
+        {/* Summary Stats - Right after header */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="p-4 bg-muted/30 rounded-lg">
             <div className="flex items-center gap-3">
@@ -258,7 +219,7 @@ export default function SetupVerification() {
         </div>
 
         {/* Prize Pool Summary (if configured) */}
-        {summary.totalPrizePool > 0 && (
+        {/* {summary.totalPrizePool > 0 && (
           <div className="p-4 bg-amber-50 dark:bg-amber-950 border-2 border-amber-200 dark:border-amber-800 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -272,6 +233,47 @@ export default function SetupVerification() {
               </span>
             </div>
           </div>
+        )} */}
+
+        {/* Summary Alert - After stats */}
+        {!isReady && summary.criticalIssues > 0 && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>Setup Incomplete</AlertTitle>
+            <AlertDescription>
+              Please resolve {summary.criticalIssues} critical issue
+              {summary.criticalIssues > 1 ? 's' : ''} before initializing the
+              game.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!isReady && hasWarnings && summary.criticalIssues === 0 && (
+          <Alert
+            variant="default"
+            className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800">
+            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <AlertTitle className="text-yellow-800 dark:text-yellow-200">
+              Warnings Detected
+            </AlertTitle>
+            <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+              There are {summary.warnings} warning
+              {summary.warnings > 1 ? 's' : ''}. Review them before proceeding.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isReady && (
+          <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <AlertTitle className="text-green-800 dark:text-green-200">
+              All Checks Passed!
+            </AlertTitle>
+            <AlertDescription className="text-green-700 dark:text-green-300">
+              Your setup is complete and ready. You can now proceed to
+              initialize the game.
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Grouped Validation Checks */}
