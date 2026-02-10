@@ -30,6 +30,10 @@
 │   │   │   ├── ErrorBoundary.jsx
 │   │   │   ├── LoadingSpinner.jsx
 │   │   │   └── ScrollToTop.jsx
+│   │   ├── game
+│   │   │   ├── GameControlPanel.jsx
+│   │   │   ├── InitializeGameModal.jsx
+│   │   │   └── PlayQueueDisplay.jsx
 │   │   ├── layout
 │   │   │   ├── Footer.jsx
 │   │   │   ├── Header.jsx
@@ -108,6 +112,7 @@
 │   ├── styles
 │   │   └── index.css
 │   ├── utils
+│   │   ├── gameInitialization.js
 │   │   ├── setupValidation.js
 │   │   ├── teamValidation.js
 │   │   ├── theme.js
