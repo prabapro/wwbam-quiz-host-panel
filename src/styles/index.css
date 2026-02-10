@@ -120,4 +120,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  /*
+    * Fixes the issue of buttons losing the pointer cursor in shadcn and tailwind.
+    * See https://dev.to/mmvergara/why-are-buttons-losing-the-pointer-cursor-the-shadcn-and-tailwind-debate-2j93
+  */
+  button:not([disabled]),
+  [role='button']:not([disabled]) {
+    cursor: pointer;
+  }
 }
