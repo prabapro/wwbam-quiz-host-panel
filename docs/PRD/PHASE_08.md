@@ -2,6 +2,7 @@
 
 - **Dependencies:** Phase 7 (Edge cases handled)
 - **Status:** Pending
+- **USER_JOURNEY Reference:** [Journey 6: Post-Game / End of Event](../USER_JOURNEY.md#journey-6-post-game--end-of-event)
 
 | Requirement ID | Description                          | User Story                                                                    | Expected Behavior/Outcome                                                                                                                                                                |
 | -------------- | ------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -2,6 +2,7 @@
 
 - **Dependencies:** Phase 6 (UI polished)
 - **Status:** Pending
+- **USER_JOURNEY Reference:** [Journey 5: Edge Cases & Special Scenarios](../USER_JOURNEY.md#journey-5-edge-cases--special-scenarios)
 
 | Requirement ID | Description                | User Story                                                                            | Expected Behavior/Outcome                                                                                                                                                                                     |
 | -------------- | -------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

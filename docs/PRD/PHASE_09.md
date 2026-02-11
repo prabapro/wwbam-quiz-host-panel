@@ -2,6 +2,7 @@
 
 - **Dependencies:** Phase 8 (All features complete)
 - **Status:** Pending
+- **USER_JOURNEY Reference:** All Journeys (Testing applies to complete system - [Journey 1](../USER_JOURNEY.md#journey-1-pre-event-setup-before-event-day) through [Journey 6](../USER_JOURNEY.md#journey-6-post-game--end-of-event))
 
 | Requirement ID | Description                  | User Story                                                                    | Expected Behavior/Outcome                                                                                                                                                              |
 | -------------- | ---------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
