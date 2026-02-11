@@ -358,6 +358,68 @@ export const checkSufficientQuestionSets = (teamCount, questionSetCount) => {
 };
 
 /**
+ * NEW: Validate that required question sets (from Firebase assignments) are available in localStorage
+ * @param {Object} questionSetAssignments - Question set assignments from Firebase { teamId: setId }
+ * @param {Array} availableQuestionSets - Question sets metadata from localStorage
+ * @returns {Object} Validation result with missing and found sets
+ */
+export const validateRequiredQuestionSets = (
+  questionSetAssignments,
+  availableQuestionSets,
+) => {
+  // If no assignments, nothing to validate
+  if (
+    !questionSetAssignments ||
+    typeof questionSetAssignments !== 'object' ||
+    Object.keys(questionSetAssignments).length === 0
+  ) {
+    return {
+      allFound: true,
+      requiredSetIds: [],
+      missingSetIds: [],
+      foundSetIds: [],
+      missingCount: 0,
+      foundCount: 0,
+    };
+  }
+
+  // Extract unique required set IDs from assignments and sort them
+  const requiredSetIds = [...new Set(Object.values(questionSetAssignments))]
+    .filter(Boolean)
+    .sort((a, b) => {
+      // Natural sort: handles numbers properly (set-2 before set-10)
+      return a.localeCompare(b, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+    });
+
+  // Get available set IDs from localStorage
+  const availableSetIds = Array.isArray(availableQuestionSets)
+    ? availableQuestionSets.map((set) => set.setId)
+    : [];
+
+  // Determine which required sets are missing vs found
+  const missingSetIds = requiredSetIds.filter(
+    (setId) => !availableSetIds.includes(setId),
+  );
+  const foundSetIds = requiredSetIds.filter((setId) =>
+    availableSetIds.includes(setId),
+  );
+
+  const allFound = missingSetIds.length === 0;
+
+  return {
+    allFound,
+    requiredSetIds,
+    missingSetIds,
+    foundSetIds,
+    missingCount: missingSetIds.length,
+    foundCount: foundSetIds.length,
+  };
+};
+
+/**
  * Perform complete setup validation
  * @param {Object} teamsObject - Teams object from store
  * @param {Array} questionSets - Question sets metadata array

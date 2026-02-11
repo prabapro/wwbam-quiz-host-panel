@@ -33,6 +33,7 @@
 │   │   ├── game
 │   │   │   ├── GameControlPanel.jsx
 │   │   │   ├── InitializeGameModal.jsx
+│   │   │   ├── MissingQuestionSetsAlert.jsx
 │   │   │   └── PlayQueueDisplay.jsx
 │   │   ├── layout
 │   │   │   ├── Footer.jsx
@@ -82,7 +83,6 @@
 │   │   ├── storage.js
 │   │   ├── teamStates.js
 │   │   └── validationRules.js
-│   ├── data
 │   ├── hooks
 │   │   ├── useAuth.js
 │   │   ├── useSetupVerification.js
