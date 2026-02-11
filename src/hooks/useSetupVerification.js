@@ -3,8 +3,13 @@
 import { useMemo } from 'react';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
+import { useGameStore } from '@stores/useGameStore';
 import { localStorageService } from '@services/localStorage.service';
-import { validateCompleteSetup } from '@utils/setupValidation';
+import {
+  validateCompleteSetup,
+  validateRequiredQuestionSets,
+} from '@utils/setupValidation';
+import { GAME_STATUS } from '@constants/gameStates';
 
 /**
  * Custom hook for setup verification
@@ -14,6 +19,7 @@ import { validateCompleteSetup } from '@utils/setupValidation';
  * - Empty teams/question sets (no false positives)
  * - Grouped check structure (teams, questions, prizes)
  * - Info status for 0/0 sufficient sets check
+ * - Missing required question sets detection (for multi-browser edge case)
  */
 export const useSetupVerification = () => {
   // Get teams from store with safe default
@@ -21,6 +27,11 @@ export const useSetupVerification = () => {
 
   // Get prize structure from store with safe default
   const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
+
+  // Get game state to check if initialized
+  const gameStatus = useGameStore((state) => state.gameStatus);
+  const questionSetAssignments =
+    useGameStore((state) => state.questionSetAssignments) || {};
 
   // Get question sets metadata from localStorage
   const questionSetsMetadata = useMemo(() => {
@@ -33,7 +44,31 @@ export const useSetupVerification = () => {
     }
   }, []);
 
-  // Perform validation
+  // Check if game is initialized
+  const isGameInitialized = gameStatus !== GAME_STATUS.NOT_STARTED;
+
+  // NEW: Validate required question sets (for initialized games on new browsers)
+  const requiredQuestionSetsValidation = useMemo(() => {
+    // Only run this validation if game is initialized
+    if (!isGameInitialized) {
+      return {
+        allFound: true,
+        requiredSetIds: [],
+        missingSetIds: [],
+        foundSetIds: [],
+        missingCount: 0,
+        foundCount: 0,
+      };
+    }
+
+    // Validate that all required question sets are in localStorage
+    return validateRequiredQuestionSets(
+      questionSetAssignments,
+      questionSetsMetadata,
+    );
+  }, [isGameInitialized, questionSetAssignments, questionSetsMetadata]);
+
+  // Perform standard validation
   const validation = useMemo(() => {
     return validateCompleteSetup(
       teamsObject,
@@ -42,8 +77,12 @@ export const useSetupVerification = () => {
     );
   }, [teamsObject, questionSetsMetadata, prizeStructure]);
 
+  // Determine if we're in the "missing required question sets" scenario
+  const isMissingRequiredQuestionSets =
+    isGameInitialized && !requiredQuestionSetsValidation.allFound;
+
   return {
-    // Validation result
+    // Standard validation result
     ...validation,
 
     // Quick accessors
@@ -51,6 +90,11 @@ export const useSetupVerification = () => {
     hasWarnings: validation.hasWarnings,
     checks: validation.checks,
     summary: validation.summary,
+
+    // NEW: Missing required question sets detection
+    isMissingRequiredQuestionSets,
+    requiredQuestionSetsValidation,
+    isGameInitialized,
 
     // Raw data for additional UI needs
     teams: Object.values(teamsObject || {}),

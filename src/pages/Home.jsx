@@ -7,11 +7,11 @@ import { useGameStore } from '@stores/useGameStore';
 import SetupVerification from '@components/setup/SetupVerification';
 import GameControlPanel from '@components/game/GameControlPanel';
 import InitializeGameModal from '@components/game/InitializeGameModal';
+import MissingQuestionSetsAlert from '@components/game/MissingQuestionSetsAlert';
 import LoadingSpinner from '@components/common/LoadingSpinner';
 import { useSetupVerification } from '@hooks/useSetupVerification';
 import { Button } from '@components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
-import { ChevronDown, ChevronUp, Database, Rocket } from 'lucide-react';
+import { Rocket } from 'lucide-react';
 import { GAME_STATUS } from '@constants/gameStates';
 
 export default function Home() {
@@ -23,8 +23,12 @@ export default function Home() {
   const prizesLoading = usePrizeStore((state) => state.isLoading);
   const gameStatus = useGameStore((state) => state.gameStatus);
 
-  // Get setup verification
-  const { isReady } = useSetupVerification();
+  // Get setup verification (includes missing required question sets detection)
+  const {
+    isReady,
+    isMissingRequiredQuestionSets,
+    requiredQuestionSetsValidation,
+  } = useSetupVerification();
 
   // Track if initial data load is happening
   const isLoadingInitialData = teamsLoading || prizesLoading;
@@ -44,6 +48,17 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
   }, [teamsLoading, prizesLoading, initialLoadComplete]);
+
+  /**
+   * Handle continue from missing question sets alert
+   * This is called when all required question sets are found
+   */
+  const handleContinueFromMissingSets = () => {
+    // Just let the component re-render
+    // The isMissingRequiredQuestionSets flag will be false now
+    // and GameControlPanel will be shown
+    console.log('✅ All required question sets found - continuing to game');
+  };
 
   return (
     <main className="container mx-auto py-8 px-4 max-w-7xl space-y-8 relative">
@@ -65,10 +80,20 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Game Control Panel - Show ONLY when initialized */}
-        {isGameInitialized && <GameControlPanel />}
+        {/* SCENARIO 1: Game initialized but missing required question sets (NEW) */}
+        {isGameInitialized && isMissingRequiredQuestionSets && (
+          <MissingQuestionSetsAlert
+            requiredQuestionSetsValidation={requiredQuestionSetsValidation}
+            onContinue={handleContinueFromMissingSets}
+          />
+        )}
 
-        {/* Setup Verification Dashboard - Show ONLY when NOT initialized */}
+        {/* SCENARIO 2: Game initialized and all sets available - Show Game Control Panel */}
+        {isGameInitialized && !isMissingRequiredQuestionSets && (
+          <GameControlPanel />
+        )}
+
+        {/* SCENARIO 3: Game NOT initialized - Show Setup Verification */}
         {!isGameInitialized && (
           <>
             <SetupVerification />

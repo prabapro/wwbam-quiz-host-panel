@@ -59,9 +59,61 @@ export const useGameStore = create()(
         // Last update timestamp
         lastUpdated: null,
 
+        // Loading state for Firebase operations
+        isLoading: false,
+
+        // Error state
+        error: null,
+
         // ============================================================
         // ACTIONS
         // ============================================================
+
+        /**
+         * NEW: Sync game state FROM Firebase to local store
+         * Similar to how teams and prizes stores work
+         */
+        syncGameStateFromFirebase: async () => {
+          set({ isLoading: true, error: null });
+
+          try {
+            const firebaseGameState = await databaseService.getGameState();
+
+            if (firebaseGameState) {
+              // Update local state with Firebase data
+              set({
+                gameStatus: firebaseGameState.gameStatus || DEFAULT_GAME_STATE,
+                currentTeamId: firebaseGameState.currentTeamId || null,
+                currentQuestionNumber:
+                  firebaseGameState.currentQuestionNumber || 0,
+                currentQuestion: firebaseGameState.currentQuestion || null,
+                questionVisible: firebaseGameState.questionVisible || false,
+                optionsVisible: firebaseGameState.optionsVisible || false,
+                answerRevealed: firebaseGameState.answerRevealed || false,
+                correctOption: firebaseGameState.correctOption || null,
+                playQueue: firebaseGameState.playQueue || [],
+                questionSetAssignments:
+                  firebaseGameState.questionSetAssignments || {},
+                initializedAt: firebaseGameState.initializedAt || null,
+                startedAt: firebaseGameState.startedAt || null,
+                lastUpdated: firebaseGameState.lastUpdated || null,
+                isLoading: false,
+              });
+
+              console.log('✅ Game state synced from Firebase');
+              return { success: true, gameState: firebaseGameState };
+            } else {
+              // No game state in Firebase - use defaults
+              set({ isLoading: false });
+              console.log('📋 No game state in Firebase - using defaults');
+              return { success: true, gameState: null };
+            }
+          } catch (error) {
+            console.error('Failed to sync game state from Firebase:', error);
+            set({ isLoading: false, error: error.message });
+            return { success: false, error: error.message };
+          }
+        },
 
         /**
          * Update game status with validation
@@ -503,16 +555,36 @@ export const useGameStore = create()(
           if (state) {
             console.log('🎮 Game: Hydrated from localStorage');
 
-            // Sync local state to Firebase on page load
-            if (
+            // AUTO-LOAD: Check if game state is empty (fresh browser)
+            const hasGameState =
+              state.gameStatus &&
               state.gameStatus !== DEFAULT_GAME_STATE &&
-              state.questionSetAssignments
-            ) {
+              state.playQueue &&
+              state.playQueue.length > 0;
+
+            if (!hasGameState) {
+              console.log(
+                '🎮 Game: Empty state detected - auto-loading from Firebase...',
+              );
+
+              // Trigger async load from Firebase
+              state.syncGameStateFromFirebase().then((result) => {
+                if (result.success) {
+                  console.log('🎮 Game: Auto-load complete ✅');
+                } else {
+                  console.warn('🎮 Game: Auto-load failed ⚠️', result.error);
+                }
+              });
+            } else {
+              console.log(
+                `🎮 Game: Loaded from localStorage - Status: ${state.gameStatus}`,
+              );
+
+              // Sync local state to Firebase (original behavior for Browser A)
               console.log(
                 '🔄 Syncing hydrated state to Firebase (game-state + teams)...',
               );
 
-              // Build atomic update for rehydration
               const updates = {};
               updates['game-state/game-status'] = state.gameStatus;
               updates['game-state/current-team-id'] = state.currentTeamId;
@@ -523,11 +595,13 @@ export const useGameStore = create()(
                 state.questionSetAssignments;
 
               // Also sync team question-set-id
-              Object.entries(state.questionSetAssignments).forEach(
-                ([teamId, setId]) => {
-                  updates[`teams/${teamId}/question-set-id`] = setId;
-                },
-              );
+              if (state.questionSetAssignments) {
+                Object.entries(state.questionSetAssignments).forEach(
+                  ([teamId, setId]) => {
+                    updates[`teams/${teamId}/question-set-id`] = setId;
+                  },
+                );
+              }
 
               databaseService
                 .atomicUpdate(updates)
