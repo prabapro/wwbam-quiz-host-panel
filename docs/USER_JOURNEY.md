@@ -21,7 +21,7 @@ This document outlines the complete user journey for the quiz competition host p
 - Clicks "Upload Question Set"
 - Selects JSON file from computer (or drags & drops)
 - System validates the JSON structure:
-  - Each set must have exactly 20 questions
+  - Each set must have exact number of questions assigned in `src/constants/config.js` (`QUESTIONS_PER_SET`)
   - Each question must have: text, 4 options (A/B/C/D), correct answer
 - Question set stored in localStorage with unique ID
 - Host sees confirmation: "Question Set 1 uploaded (20 questions)"

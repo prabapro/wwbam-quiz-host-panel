@@ -1,224 +1,202 @@
-# Quiz Competition System
+# Database Architecture Reference
 
-## Development Documentation
-
-### Firebase Realtime Database Architecture
+**WWBAM Quiz Competition System**
+Firebase Realtime Database Schema & Implementation Guide
 
 ---
 
-## 1. Project Overview
+## Overview
 
-A real-time quiz competition system inspired by _Who Wants to Be a Millionaire_, designed for multiple teams to compete against questions rather than each other. The system supports live game management with instant updates displayed to all participants.
+Real-time quiz competition system using Firebase Realtime Database. This document provides the schema reference and critical implementation details needed for gameplay development and public display integration.
 
-### Key Features
+**Key Principles:**
 
-- 7-10 teams competing in knockout format
-- 20 questions per team with progressive prize structure
-- Two lifelines: Phone a Friend and 50/50
 - Real-time synchronization between host panel and public display
-- Unique question sets per team
-- All teams can win maximum prize (non-competitive format)
-
-### Game Flow
-
-1. Team takes hot seat and starts from Question 1
-2. Prize money increases with each correct answer
-3. Team can use lifelines when available
-4. Incorrect answer after using all lifelines = elimination
-5. Eliminated team receives accumulated prize money
-6. Next team begins with fresh question set
+- Questions stored in browser localStorage (not in Firebase)
+- Atomic updates for consistency across nodes
+- kebab-case for all Firebase keys
 
 ---
 
-## 2. Technology Stack
+## Database Schema
 
-| Component          | Technology                 | Purpose                      |
-| ------------------ | -------------------------- | ---------------------------- |
-| Database           | Firebase Realtime Database | Real-time data sync          |
-| Hosting            | Firebase Hosting           | Static site hosting with CDN |
-| Frontend Framework | React 18                   | UI component library         |
-| Build Tool         | Vite                       | Fast development server      |
-| Styling            | Tailwind CSS               | Utility-first CSS framework  |
-| Authentication     | Firebase Auth              | Host panel authentication    |
-| Local Storage      | Browser localStorage       | Question bank storage        |
+### Root Structure
 
-### Why This Stack?
-
-- **Firebase Realtime Database:** WebSocket-based real-time sync with offline support and automatic reconnection
-- **Firebase Hosting:** CDN-backed static hosting with zero configuration SSL
-- **React + Vite:** Fast development with hot module replacement and optimized builds
-- **Tailwind CSS:** Utility-first styling for rapid UI development
-- **localStorage:** Client-side storage for question banks (security measure)
-
----
-
-## 3. Firebase Realtime Database Structure
-
-The database is structured for optimal real-time performance with minimal read/write operations. All paths use kebab-case for consistency.
-
-### 3.1 Root Structure
-
-```json
-{
-  "game-state": {},
-  "teams": {},
-  "prize-structure": [],
-  "config": {}
-}
+```
+/
+├── game-state/          # Current session state
+├── teams/              # Team data and progress
+├── prize-structure/    # Prize values array
+└── config/             # Game configuration
 ```
 
-### 3.2 game-state Node
+---
 
-Contains the current state of the active game session. This is the most frequently updated node.
+## 1. game-state Node
+
+**Purpose:** Manages current game session, play queue, and question display state.
+
+### Schema
+
+| Field                      | Type         | Description                                                                       |
+| -------------------------- | ------------ | --------------------------------------------------------------------------------- |
+| `game-status`              | string       | Game state: `not-started` \| `initialized` \| `active` \| `paused` \| `completed` |
+| `current-team-id`          | string\|null | ID of team currently playing (null when paused/completed)                         |
+| `current-question-number`  | number       | Current question (0-20, 0 = not started)                                          |
+| `current-question`         | object\|null | Question data WITHOUT correct answer (for public display)                         |
+| `question-visible`         | boolean      | Whether question is shown on public display                                       |
+| `options-visible`          | boolean      | Whether answer options are visible (false after 50/50)                            |
+| `answer-revealed`          | boolean      | Whether correct answer is highlighted                                             |
+| `correct-option`           | string\|null | Correct answer letter (A/B/C/D) when revealed                                     |
+| `play-queue`               | array        | Ordered team IDs for gameplay sequence                                            |
+| `question-set-assignments` | object       | Maps team IDs to question set IDs: `{ teamId: setId }`                            |
+| `initialized-at`           | number\|null | Timestamp when game was initialized                                               |
+| `started-at`               | number\|null | Timestamp when first team started playing                                         |
+| `last-updated`             | number       | Server timestamp of last update                                                   |
+
+### Valid Status Transitions
+
+```
+not-started → initialized → active ⇄ paused → completed
+                                   ↓
+                              completed (direct)
+```
+
+### Example
 
 ```json
 {
   "game-state": {
-    "current-team-id": "team-1",
-    "current-question-number": 5,
-    "current-question": {
-      "id": "q5",
-      "text": "What is the capital of France?",
-      "options": ["A: London", "B: Paris", "C: Berlin", "D: Rome"]
-    },
-    "question-visible": true,
-    "options-visible": true,
+    "game-status": "initialized",
+    "current-team-id": null,
+    "current-question-number": 0,
+    "current-question": null,
+    "question-visible": false,
+    "options-visible": false,
     "answer-revealed": false,
     "correct-option": null,
-    "game-status": "active",
-    "last-updated": 1706745600000
+    "play-queue": ["team-1", "team-2", "team-3"],
+    "question-set-assignments": {
+      "team-1": "set-alpha",
+      "team-2": "set-beta",
+      "team-3": "set-gamma"
+    },
+    "initialized-at": 1770789376649,
+    "started-at": null,
+    "last-updated": 1770789376649
   }
 }
 ```
 
-#### Field Descriptions
+---
 
-| Field                   | Type         | Description                                    |
-| ----------------------- | ------------ | ---------------------------------------------- |
-| current-team-id         | string       | Team ID currently on hot seat (e.g., 'team-1') |
-| current-question-number | number       | Question number (1-20)                         |
-| current-question        | object       | Current question data (without correct answer) |
-| question-visible        | boolean      | Whether to show question on display            |
-| options-visible         | boolean      | Whether to show answer options (for 50/50)     |
-| answer-revealed         | boolean      | Whether to highlight correct answer            |
-| correct-option          | string\|null | Correct option letter (A/B/C/D) when revealed  |
-| game-status             | string       | 'active' \| 'paused' \| 'ended'                |
-| last-updated            | number       | Unix timestamp of last update                  |
+## 2. teams Node
 
-### 3.3 teams Node
+**Purpose:** Stores team data, progress, and status for all participating teams.
 
-Stores all team data including their progress, lifelines, and status.
+### Schema
+
+| Field                    | Type         | Description                                                            |
+| ------------------------ | ------------ | ---------------------------------------------------------------------- |
+| `name`                   | string       | Team display name                                                      |
+| `participants`           | string       | Comma-separated participant names                                      |
+| `contact`                | string       | Contact phone number                                                   |
+| `status`                 | string       | Team state: `waiting` \| `active` \| `eliminated` \| `completed`       |
+| `current-prize`          | number       | Accumulated prize money (Rs.)                                          |
+| `question-set-id`        | string\|null | Assigned question set ID (from localStorage)                           |
+| `current-question-index` | number       | 0-based index of current question (0-19)                               |
+| `questions-answered`     | number       | Count of successfully answered questions                               |
+| `lifelines`              | object       | Available lifelines: `{ "phone-a-friend": bool, "fifty-fifty": bool }` |
+| `created-at`             | number       | Timestamp when team was created                                        |
+| `eliminated-at`          | number\|null | Timestamp when eliminated (if applicable)                              |
+| `completed-at`           | number\|null | Timestamp when completed all questions                                 |
+| `last-updated`           | number       | Server timestamp of last update                                        |
+
+### Valid Status Transitions
+
+```
+waiting → active → eliminated (terminal)
+               ↓
+            completed (terminal)
+```
+
+### Example
 
 ```json
 {
   "teams": {
-    "team-1": {
+    "-OlAAtYx9CkcNaNitELz": {
       "name": "Team Alpha",
-      "status": "active",
-      "current-prize": 5000,
-      "question-set-id": "set-1",
-      "current-question-index": 4,
-      "lifelines": {
-        "phone-a-friend": true,
-        "fifty-fifty": true
-      },
-      "questions-answered": 4,
-      "created-at": 1706745000000
-    },
-    "team-2": {
-      "name": "Team Beta",
+      "participants": "John Doe, Sarah Smith",
+      "contact": "+94 77 123 4567",
       "status": "waiting",
       "current-prize": 0,
-      "question-set-id": "set-2",
+      "question-set-id": "sample-set-1",
       "current-question-index": 0,
+      "questions-answered": 0,
       "lifelines": {
         "phone-a-friend": true,
         "fifty-fifty": true
       },
-      "questions-answered": 0,
-      "created-at": 1706745100000
-    },
-    "team-3": {
-      "name": "Team Gamma",
-      "status": "eliminated",
-      "current-prize": 2000,
-      "question-set-id": "set-3",
-      "current-question-index": 3,
-      "lifelines": {
-        "phone-a-friend": false,
-        "fifty-fifty": false
-      },
-      "questions-answered": 3,
-      "eliminated-at": 1706746000000,
-      "created-at": 1706745200000
+      "created-at": 1770787936559,
+      "eliminated-at": null,
+      "completed-at": null,
+      "last-updated": 1770787936559
     }
   }
 }
 ```
 
-#### Team Field Descriptions
+---
 
-| Field                  | Type   | Description                                          |
-| ---------------------- | ------ | ---------------------------------------------------- |
-| name                   | string | Display name of the team                             |
-| status                 | string | 'waiting' \| 'active' \| 'eliminated' \| 'completed' |
-| current-prize          | number | Accumulated prize money                              |
-| question-set-id        | string | Reference to question set (stored locally)           |
-| current-question-index | number | 0-based index of current question (0-19)             |
-| lifelines              | object | Available lifelines (true = available)               |
-| questions-answered     | number | Number of questions successfully answered            |
-| eliminated-at          | number | Timestamp when eliminated (if applicable)            |
-| created-at             | number | Timestamp when team was created                      |
+## 3. prize-structure Node
 
-#### Team Status Values
+**Purpose:** Defines prize values for each question level.
 
-- **waiting:** Team has not yet taken hot seat
-- **active:** Team currently on hot seat
-- **eliminated:** Team answered incorrectly and is out
-- **completed:** Team successfully answered all 20 questions
+### Schema
 
-### 3.4 prize-structure Node
+Simple array of numbers (prize values in Rs.). Index 0 = Question 1, Index 19 = Question 20.
 
-Array defining prize values for each question level. Index 0 = Question 1.
+### Example
 
 ```json
 {
   "prize-structure": [
-    500, // Question 1
-    1000, // Question 2
-    1500, // Question 3
-    2000, // Question 4
-    2500, // Question 5 - First Milestone
-    3000, // Question 6
-    3500, // Question 7
-    4000, // Question 8
-    4500, // Question 9
-    5000, // Question 10 - Second Milestone
-    5500, // Question 11
-    6000, // Question 12
-    6500, // Question 13
-    7000, // Question 14
-    7500, // Question 15 - Third Milestone
-    8000, // Question 16
-    8500, // Question 17
-    9000, // Question 18
-    9500, // Question 19
-    10000 // Question 20 - Maximum Prize
+    500,    // Question 1
+    1000,   // Question 2
+    1500,   // Question 3
+    ...
+    10000   // Question 20
   ]
 }
 ```
 
-**Note:** Customize these values to match your prize structure. The array can be any length.
+---
 
-### 3.5 config Node
+## 4. config Node
 
-Global configuration settings for the game.
+**Purpose:** Global game configuration settings.
+
+### Schema
+
+| Field                | Type    | Description                       |
+| -------------------- | ------- | --------------------------------- |
+| `max-teams`          | number  | Maximum teams allowed             |
+| `questions-per-team` | number  | Questions per team (typically 20) |
+| `timer-enabled`      | boolean | Whether question timer is active  |
+| `timer-duration`     | number  | Seconds per question              |
+| `lifelines-enabled`  | object  | Which lifelines are available     |
+| `display-settings`   | object  | UI preferences for public display |
+
+### Example
 
 ```json
 {
   "config": {
     "max-teams": 10,
     "questions-per-team": 20,
+    "timer-enabled": false,
+    "timer-duration": 60,
     "lifelines-enabled": {
       "phone-a-friend": true,
       "fifty-fifty": true,
@@ -228,38 +206,166 @@ Global configuration settings for the game.
       "show-prize-ladder": true,
       "show-team-list": true,
       "animation-duration": 500
-    },
-    "timer-enabled": false,
-    "timer-duration": 60
+    }
   }
 }
 ```
 
-#### Config Field Descriptions
+---
 
-| Field              | Type    | Description                             |
-| ------------------ | ------- | --------------------------------------- |
-| max-teams          | number  | Maximum number of teams allowed         |
-| questions-per-team | number  | Number of questions each team answers   |
-| lifelines-enabled  | object  | Which lifelines are available           |
-| display-settings   | object  | UI display preferences                  |
-| timer-enabled      | boolean | Whether to use question timer           |
-| timer-duration     | number  | Seconds per question (if timer enabled) |
+## Critical Implementation Details
+
+### Key Naming Convention
+
+- **Firebase (Database):** kebab-case
+- **JavaScript (App):** camelCase
+
+```javascript
+// Database service handles conversion automatically
+await databaseService.updateTeam(teamId, {
+  currentPrize: 5000,           // ← camelCase in JS
+  currentQuestionIndex: 4,
+});
+
+// Stored in Firebase as:
+{
+  "current-prize": 5000,         // ← kebab-case in DB
+  "current-question-index": 4
+}
+```
+
+### Atomic Multi-Path Updates
+
+Use atomic updates when modifying multiple nodes simultaneously to ensure consistency.
+
+```javascript
+// CORRECT: Atomic update across game-state and teams
+const updates = {};
+updates['game-state/current-team-id'] = 'team-1';
+updates['game-state/game-status'] = 'active';
+updates['teams/team-1/status'] = 'active';
+updates['teams/team-1/last-updated'] = serverTimestamp();
+
+await databaseService.atomicUpdate(updates);
+
+// WRONG: Separate updates (not atomic)
+await databaseService.updateGameState({ currentTeamId: 'team-1' });
+await databaseService.updateTeam('team-1', { status: 'active' });
+```
+
+### Server Timestamps
+
+Always use `serverTimestamp()` for consistency across clients.
+
+```javascript
+import { serverTimestamp } from 'firebase/database';
+
+await update(ref(database), {
+  'game-state/last-updated': serverTimestamp(),
+  'teams/team-1/last-updated': serverTimestamp(),
+});
+```
+
+### Question Security
+
+**Questions are NEVER stored in Firebase.** They remain in browser localStorage on the host panel. Only question text and options (without correct answer) are pushed to Firebase for public display.
+
+```javascript
+// Host panel localStorage
+const question = {
+  id: 'q5',
+  text: 'What is the capital of France?',
+  options: { A: 'London', B: 'Paris', C: 'Berlin', D: 'Rome' },
+  correctAnswer: 'B', // ← NEVER sent to Firebase
+};
+
+// Sent to Firebase (public display)
+await databaseService.setCurrentQuestion(
+  {
+    id: 'q5',
+    text: 'What is the capital of France?',
+    options: { A: 'London', B: 'Paris', C: 'Berlin', D: 'Rome' },
+    // correctAnswer omitted
+  },
+  5,
+);
+```
 
 ---
 
-## 4. Firebase Security Rules
+## Game Flow & State Transitions
 
-Security rules control read/write access to the database. These rules ensure questions remain secure while allowing real-time updates to flow to the public display.
+### Initialization Flow
 
-### 4.1 Recommended Rules Configuration
+```
+1. Host uploads question sets → localStorage (Route: /questions)
+2. Host creates teams → Firebase (Route: /teams)
+3. Host initializes game → Generates play queue & assignments (Route: /)
+4. Atomic update:
+   - /game-state/game-status = "initialized"
+   - /game-state/play-queue = [shuffled team IDs]
+   - /game-state/question-set-assignments = { teamId: setId }
+   - /teams/{teamId}/question-set-id = setId (for each team)
+```
+
+### Starting Event Flow
+
+```
+1. Host clicks "Start Event"
+2. Atomic update:
+   - /game-state/game-status = "active"
+   - /game-state/current-team-id = first team from play-queue
+   - /teams/{firstTeamId}/status = "active"
+3. Host loads first question from localStorage
+4. Host shows question → push to /game-state/current-question
+5. Public display renders question in real-time
+```
+
+### Question Lifecycle
+
+```
+1. Load Question (Host Only)
+   - Fetch from localStorage with correct answer
+   - Display to host with all options + correct answer
+
+2. Show Question (Public Display)
+   - Push question WITHOUT correct answer to Firebase
+   - Set question-visible = true
+   - Public display renders question
+
+3. Team Answers
+   - Host validates answer locally (against localStorage)
+   - Update team progress in Firebase
+
+4. Reveal Answer
+   - Set answer-revealed = true
+   - Set correct-option = "A"/"B"/"C"/"D"
+   - Public display highlights correct answer
+```
+
+### Team Transition Flow
+
+```
+1. Current team finishes (eliminated or completed)
+2. Update current team status in /teams
+3. Get next team from play-queue
+4. Atomic update:
+   - /game-state/current-team-id = next team ID
+   - /game-state/current-question-number = 0
+   - /teams/{nextTeamId}/status = "active"
+   - Clear current question state
+```
+
+---
+
+## Security Rules
 
 ```json
 {
   "rules": {
     "game-state": {
-      ".read": true,
-      ".write": "auth != null"
+      ".read": true, // Public read for display screen
+      ".write": "auth != null" // Only authenticated host can write
     },
     "teams": {
       ".read": true,
@@ -277,213 +383,100 @@ Security rules control read/write access to the database. These rules ensure que
 }
 ```
 
-### 4.2 Security Rule Explanation
+**Rationale:**
 
-- **Public Read Access:** All nodes have '.read': true so the public display can show live updates
-- **Authenticated Write:** Only authenticated users (host panel) can write data
-- **Question Security:** Question banks stored in localStorage, never in Firebase
-
-### 4.3 Authentication Setup
-
-For the host panel to write data, implement Firebase Authentication:
-
-1. Enable Email/Password authentication in Firebase Console
-2. Create a host user account
-3. Host panel logs in before making any writes
-
-**Alternative:** For a simpler setup during testing, you can temporarily use '.write': true, but **NEVER deploy to production with open write access**.
+- Public read access enables real-time public display updates
+- Write access restricted to authenticated host panel
+- Questions never in Firebase = no exposure risk
 
 ---
 
-## 5. Data Flow Architecture
+## Quick Reference
 
-### 5.1 Question Data Flow
-
-Questions follow a secure flow that prevents exposure of correct answers:
-
-1. **Preparation:** Host uploads question JSON files to browser localStorage
-2. **Team Selection:** Host selects team, loads their question set from localStorage
-3. **Question Display:** Host clicks 'Show Question', system pushes question to Firebase WITHOUT correct answer
-4. **Public Display:** Display screen listens to Firebase, shows question instantly
-5. **Answer Validation:** Host checks answer against localStorage data, updates team status
-6. **Answer Reveal:** If revealing answer, host pushes correct option to Firebase
-
-### 5.2 Host Panel Actions â†’ Firebase Updates
-
-| Host Action         | Firebase Updates                                                                |
-| ------------------- | ------------------------------------------------------------------------------- |
-| Start New Team      | Set current-team-id, reset question number to 1, update team status to 'active' |
-| Show Question       | Update current-question object, set question-visible to true                    |
-| Use Phone a Friend  | Update team's phone-a-friend to false                                           |
-| Use 50/50           | Update team's fifty-fifty to false, filter options in current-question          |
-| Mark Correct Answer | Increment current-question-number, update team's current-prize                  |
-| Mark Wrong Answer   | Set team status to 'eliminated', save final prize amount                        |
-| Reveal Answer       | Set answer-revealed to true, update correct-option field                        |
-| End Team Turn       | Set current-team-id to null, game-status to 'paused'                            |
-
-### 5.3 Firebase â†’ Display Screen Updates
-
-The display screen uses Firebase listeners to react to changes:
+### Common Update Patterns
 
 ```javascript
-// Display Screen - React to Firebase changes
-database.ref('game-state').on('value', (snapshot) => {
-  const gameState = snapshot.val();
-  // Update UI with new question, options, etc.
-});
+// Update single field
+await databaseService.updateGameState({ gameStatus: 'active' });
 
-database.ref('teams').on('value', (snapshot) => {
-  const teams = snapshot.val();
-  // Update team status, prize money, lifelines
-});
-```
+// Update team
+await databaseService.updateTeam('team-1', { currentPrize: 5000 });
 
----
-
-## 6. Implementation Best Practices
-
-### 6.1 Database Operation Guidelines
-
-- **Use .update() instead of .set():** Only update changed fields to minimize data transfer
-- **Atomic Updates:** Use multi-path updates to update multiple nodes simultaneously
-- **Timestamp Consistency:** Always use firebase.database.ServerValue.TIMESTAMP for server-side timestamps
-- **Connection State:** Monitor .info/connected to handle offline scenarios
-
-```javascript
-// Good: Atomic multi-path update
+// Atomic multi-path update
 const updates = {};
-updates['game-state/current-question-number'] = 6;
-updates['game-state/question-visible'] = true;
-updates['teams/team-1/current-question-index'] = 5;
-database.ref().update(updates);
+updates['game-state/game-status'] = 'active';
+updates['teams/team-1/status'] = 'active';
+await databaseService.atomicUpdate(updates);
 
-// Good: Server timestamp
-updates['game-state/last-updated'] = firebase.database.ServerValue.TIMESTAMP;
+// Set current question (no correct answer)
+await databaseService.setCurrentQuestion(questionData, questionNumber);
+
+// Reveal answer
+await databaseService.revealAnswer('B');
+
+// Use lifeline
+await databaseService.useLifeline('team-1', 'fifty-fifty');
+
+// Eliminate team
+await databaseService.eliminateTeam('team-1');
 ```
 
-### 6.2 Error Handling
+### Database Paths
 
-- **Network Failures:** Implement retry logic with exponential backoff
-- **Data Validation:** Validate data before writing to Firebase
-- **Offline Mode:** Enable Firebase offline persistence for smoother experience
+| Path                                   | Purpose                     |
+| -------------------------------------- | --------------------------- |
+| `/game-state`                          | Current session state       |
+| `/game-state/play-queue`               | Team play order             |
+| `/game-state/question-set-assignments` | Team → question set mapping |
+| `/teams/{teamId}`                      | Individual team data        |
+| `/teams/{teamId}/lifelines`            | Team lifeline status        |
+| `/prize-structure`                     | Prize values array          |
+| `/config`                              | Global settings             |
 
-### 6.3 Performance Optimization
-
-- **Minimize Listener Scope:** Listen to specific paths instead of root
-- **Detach Unused Listeners:** Use .off() to remove listeners when components unmount
-- **Index Data Appropriately:** Add .indexOn rules for frequently queried fields
-
----
-
-## 7. Sample Data & Initialization
-
-### 7.1 Initial Database Setup
-
-Go to Realtime Database in Firebase Console and import the initial structure from [here](/public/sample-data/initial-db-structure.json)
-
-### 7.2 Question JSON Format (localStorage)
-
-Store questions in this format in the host panel's localStorage:
-
-```json
-{
-  "teamId": "team-1",
-  "teamName": "Team Alpha",
-  "questions": [
-    {
-      "id": "q1",
-      "number": 1,
-      "text": "What is the largest planet in our solar system?",
-      "options": ["A: Earth", "B: Mars", "C: Jupiter", "D: Saturn"],
-      "correctAnswer": "C",
-      "difficulty": "easy",
-      "category": "Science"
-    },
-    {
-      "id": "q2",
-      "number": 2,
-      "text": "Who wrote 'Romeo and Juliet'?",
-      "options": [
-        "A: Charles Dickens",
-        "B: William Shakespeare",
-        "C: Mark Twain",
-        "D: Jane Austen"
-      ],
-      "correctAnswer": "B",
-      "difficulty": "easy",
-      "category": "Literature"
-    }
-    // ... 18 more questions
-  ]
-}
-```
-
-### 7.3 Team Creation Flow
-
-When creating a new team through the host panel:
+### Real-time Listeners
 
 ```javascript
-// Create new team in Firebase
-const newTeamRef = database.ref('teams').push();
-newTeamRef.set({
-  name: 'Team Alpha',
-  status: 'waiting',
-  currentPrize: 0,
-  questionSetId: 'set-1',
-  currentQuestionIndex: 0,
-  lifelines: {
-    phoneAFriend: true,
-    fiftyFifty: true,
-  },
-  questionsAnswered: 0,
-  createdAt: firebase.database.ServerValue.TIMESTAMP,
+// Listen to game state changes (public display)
+const unsubscribe = databaseService.onGameStateChange((gameState) => {
+  // Update display with new game state
 });
+
+// Listen to teams changes (team list updates)
+const unsubscribe = databaseService.onTeamsChange((teams) => {
+  // Update team list display
+});
+
+// Clean up listeners
+unsubscribe();
 ```
 
 ---
 
-## 8. Appendix
+## Future Development Notes
 
-### 8.1 Firebase Realtime Database Limits
+### For Gameplay Features:
 
-- **Free Tier:** 1 GB storage, 10 GB/month downloads, 100 simultaneous connections
-- **Max Data Size:** 32 MB per write operation
-- **Max Depth:** 32 levels of nested data
+- Implement timer logic using `game-state/timer-started-at` and `config/timer-duration`
+- Add audience poll lifeline support in `teams/{teamId}/lifelines`
+- Consider adding `game-state/paused-at` for pause/resume tracking
 
-### 8.2 Useful Firebase Console Paths
+### For Public Display App:
 
-- **Database:** https://console.firebase.google.com/project/YOUR_PROJECT/database
-- **Rules:** https://console.firebase.google.com/project/YOUR_PROJECT/database/rules
-- **Usage:** https://console.firebase.google.com/project/YOUR_PROJECT/usage
+- Subscribe to `game-state` for question updates
+- Subscribe to `teams` for team status/prize updates
+- Subscribe to `prize-structure` for ladder display
+- Implement UI animations based on `config/display-settings/animation-duration`
+- Handle network disconnections gracefully (Firebase offline persistence)
 
-### 8.3 Development Checklist
+### Performance Considerations:
 
-- [ ] Create Firebase project
-- [ ] Enable Realtime Database
-- [ ] Set up security rules
-- [ ] Enable Firebase Authentication
-- [ ] Initialize database with sample structure
-- [ ] Prepare question JSON files
-- [ ] Build host panel with localStorage upload
-- [ ] Build public display with Firebase listeners
-- [ ] Test real-time sync between panels
-- [ ] Deploy to Firebase Hosting
-
-### 8.4 Document Version
-
-- **Version:** 1.0.0
-- **Last Updated:** February 2026
-- **Status:** Database Structure Specification
+- Use `.indexOn` rules for frequently queried fields
+- Limit listener scope to specific paths (avoid listening to root)
+- Implement connection state monitoring for offline handling
+- Consider pagination for team lists if exceeding 20 teams
 
 ---
 
-## Next Steps
-
-With this database structure in place, you can now proceed to:
-
-1. Set up your Firebase project
-2. Initialize the database with the sample structure
-3. Configure security rules
-4. Begin development on the host panel and public display applications
-
-This document serves as the single source of truth for the database architecture throughout the development process.
+**Document Version:** 2.0.0
+**Last Updated:** February 2026
+**Status:** Production Reference
