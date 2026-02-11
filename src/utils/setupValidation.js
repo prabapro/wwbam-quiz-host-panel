@@ -383,10 +383,16 @@ export const validateRequiredQuestionSets = (
     };
   }
 
-  // Extract unique required set IDs from assignments
-  const requiredSetIds = [
-    ...new Set(Object.values(questionSetAssignments)),
-  ].filter(Boolean);
+  // Extract unique required set IDs from assignments and sort them
+  const requiredSetIds = [...new Set(Object.values(questionSetAssignments))]
+    .filter(Boolean)
+    .sort((a, b) => {
+      // Natural sort: handles numbers properly (set-2 before set-10)
+      return a.localeCompare(b, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+    });
 
   // Get available set IDs from localStorage
   const availableSetIds = Array.isArray(availableQuestionSets)
