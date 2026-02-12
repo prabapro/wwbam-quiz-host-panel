@@ -18,6 +18,7 @@ const NotFound = lazy(() => import('@pages/NotFound'));
 const PrizeManagement = lazy(() => import('@pages/PrizeManagement'));
 const QuestionManagement = lazy(() => import('@pages/QuestionManagement'));
 const TeamManagement = lazy(() => import('@pages/TeamManagement'));
+const Play = lazy(() => import('@pages/Play'));
 
 /**
  * Complete route configuration
@@ -73,6 +74,19 @@ export const ROUTE_CONFIG = {
     category: 'main',
     requiresAuth: true,
     sitemap_priority: 0.8,
+    sitemap_changefreq: 'weekly',
+  },
+
+  // Game Play
+  PLAY: {
+    path: '/play',
+    component: Play,
+    title: 'Play',
+    description: 'Game play interface',
+    showInNav: false, // Not in navigation - accessed via Game Control Panel
+    category: 'main',
+    requiresAuth: true, // Protected route
+    sitemap_priority: 0.7,
     sitemap_changefreq: 'weekly',
   },
 
