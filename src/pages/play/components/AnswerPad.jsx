@@ -1,4 +1,4 @@
-// src/pages/Play/components/AnswerPad.jsx
+// src/pages/play/components/AnswerPad.jsx
 
 /**
  * Answer Pad Component

@@ -30,7 +30,7 @@
 The Play page is organized into a modular structure to keep components small, focused, and maintainable:
 
 ```
-src/pages/Play/
+src/pages/play/
 ├── index.jsx                      # Main orchestrator (pulls from stores)
 ├── components/                    # UI components
 │   ├── GameStatusBar.jsx         # P4-REQ-013: Question Progress Indicator

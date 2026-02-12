@@ -1,4 +1,4 @@
-// src/pages/Play/index.jsx
+// src/pages/play/index.jsx
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';

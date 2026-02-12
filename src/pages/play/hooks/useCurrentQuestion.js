@@ -1,4 +1,4 @@
-// src/pages/Play/hooks/useCurrentQuestion.js
+// src/pages/play/hooks/useCurrentQuestion.js
 
 /**
  * useCurrentQuestion Hook

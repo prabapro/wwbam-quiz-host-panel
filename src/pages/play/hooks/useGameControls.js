@@ -1,4 +1,4 @@
-// src/pages/Play/hooks/useGameControls.js
+// src/pages/play/hooks/useGameControls.js
 
 /**
  * useGameControls Hook

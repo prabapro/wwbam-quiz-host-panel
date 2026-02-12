@@ -1,4 +1,4 @@
-// src/pages/Play/components/LifelinePanel.jsx
+// src/pages/play/components/LifelinePanel.jsx
 
 /**
  * Lifeline Panel Component
