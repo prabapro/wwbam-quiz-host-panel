@@ -7,7 +7,7 @@
     "options-visible": false,
     "answer-revealed": false,
     "correct-option": null,
-    "game-status": "paused",
+    "game-status": "not-started",
     "last-updated": 0
   },
   "teams": {},
