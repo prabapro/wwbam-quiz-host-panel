@@ -1,4 +1,4 @@
-// src/pages/play/components/GameStatusBar.jsx
+// src/pages/Play/components/GameStatusBar.jsx
 
 /**
  * Game Status Bar Component

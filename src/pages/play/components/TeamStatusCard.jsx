@@ -1,4 +1,4 @@
-// src/pages/play/components/TeamStatusCard.jsx
+// src/pages/Play/components/TeamStatusCard.jsx
 
 /**
  * Team Status Card Component

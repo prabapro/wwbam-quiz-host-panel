@@ -93,7 +93,7 @@
 │   ├── lib
 │   │   └── utils.js
 │   ├── pages
-│   │   ├── play
+│   │   ├── Play
 │   │   │   ├── components
 │   │   │   │   ├── AnswerPad.jsx
 │   │   │   │   ├── GameControls.jsx
@@ -109,7 +109,6 @@
 │   │   ├── Home.jsx
 │   │   ├── Login.jsx
 │   │   ├── NotFound.jsx
-│   │   ├── Play.jsx
 │   │   ├── PrizeManagement.jsx
 │   │   ├── QuestionManagement.jsx
 │   │   └── TeamManagement.jsx

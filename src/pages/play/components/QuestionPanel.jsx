@@ -1,4 +1,4 @@
-// src/pages/play/components/QuestionPanel.jsx
+// src/pages/Play/components/QuestionPanel.jsx
 
 /**
  * Question Panel Component

@@ -1,4 +1,4 @@
-// src/pages/play/components/GameControls.jsx
+// src/pages/Play/components/GameControls.jsx
 
 /**
  * Game Controls Component

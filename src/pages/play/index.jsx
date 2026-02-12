@@ -1,4 +1,4 @@
-// src/pages/play/index.jsx
+// src/pages/Play/index.jsx
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -53,7 +53,7 @@ export default function Play() {
   const loadedSets = useQuestionsStore((state) => state.loadedSets);
 
   // Prize Store State
-  const prizeStructure = usePrizeStore((state) => state.structure);
+  const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
 
   // Redirect if game is not active
   useEffect(() => {
