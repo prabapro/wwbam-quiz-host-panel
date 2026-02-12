@@ -527,6 +527,432 @@ export const useGameStore = create()(
             isCompleted: state.gameStatus === GAME_STATUS.COMPLETED,
           };
         },
+
+        // ============================================================
+        // QUESTION FLOW ACTIONS (Phase 04)
+        // ============================================================
+
+        /**
+         * Load next question for current team (host view with correct answer)
+         * Integrates with useQuestionsStore
+         */
+        loadNextQuestion: async (questionsStore) => {
+          const {
+            currentTeamId,
+            currentQuestionNumber,
+            questionSetAssignments,
+          } = get();
+
+          if (!currentTeamId) {
+            return { success: false, error: 'No current team' };
+          }
+
+          try {
+            // Get assigned question set ID for current team
+            const assignedSetId = questionSetAssignments[currentTeamId];
+
+            if (!assignedSetId) {
+              return {
+                success: false,
+                error: 'No question set assigned to team',
+              };
+            }
+
+            // Calculate next question index (0-19)
+            const nextQuestionIndex = currentQuestionNumber; // 0-indexed for localStorage
+
+            // Load question from questions store (with correct answer)
+            const result = questionsStore.loadHostQuestion(
+              assignedSetId,
+              nextQuestionIndex,
+            );
+
+            if (!result.success) {
+              return {
+                success: false,
+                error: result.error || 'Failed to load question',
+              };
+            }
+
+            // Update local game state
+            set({
+              currentQuestion: result.question,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
+              lastUpdated: Date.now(),
+            });
+
+            console.log(
+              `📝 Question loaded: ${assignedSetId} Q${nextQuestionIndex + 1}`,
+            );
+
+            return { success: true, question: result.question };
+          } catch (error) {
+            console.error('Failed to load question:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Show question to public (push to Firebase WITHOUT correct answer)
+         */
+        showQuestionToPublic: async () => {
+          const { currentQuestion, currentQuestionNumber } = get();
+
+          if (!currentQuestion) {
+            return { success: false, error: 'No question loaded' };
+          }
+
+          try {
+            // Remove correct answer before pushing to Firebase
+            const { correctAnswer, ...publicQuestion } = currentQuestion;
+
+            // Push to Firebase
+            await databaseService.setCurrentQuestion(
+              publicQuestion,
+              currentQuestionNumber + 1, // 1-indexed for display
+            );
+
+            // Update local state
+            set({
+              questionVisible: true,
+              optionsVisible: true,
+              lastUpdated: Date.now(),
+            });
+
+            console.log('👁️ Question shown to public (no correct answer)');
+
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to show question:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Validate answer and trigger appropriate flow
+         * Integrates with useQuestionsStore and useTeamsStore
+         */
+        validateAnswer: async (questionsStore, teamsStore) => {
+          const { currentTeamId, currentQuestionNumber } = get();
+
+          if (!currentTeamId) {
+            return { success: false, error: 'No current team' };
+          }
+
+          try {
+            // Validate answer using questions store
+            const validationResult = questionsStore.validateSelectedAnswer();
+
+            if (!validationResult.success) {
+              return { success: false, error: validationResult.error };
+            }
+
+            const { result } = validationResult;
+            const { isCorrect } = result;
+
+            // Get current team data
+            const currentTeam = teamsStore.teams[currentTeamId];
+
+            if (!currentTeam) {
+              return { success: false, error: 'Team not found' };
+            }
+
+            // Push correct answer to Firebase (reveal to public)
+            const correctOption = result.correctAnswer;
+            await databaseService.revealAnswer(correctOption);
+
+            // Update local state
+            set({
+              answerRevealed: true,
+              correctOption,
+              lastUpdated: Date.now(),
+            });
+
+            console.log(
+              `${isCorrect ? '✅' : '❌'} Answer validated: ${isCorrect ? 'CORRECT' : 'INCORRECT'}`,
+            );
+
+            return {
+              success: true,
+              isCorrect,
+              correctAnswer: correctOption,
+              hasLifelines: Object.values(currentTeam.lifelines || {}).some(
+                (v) => v === true,
+              ),
+              teamLifelines: currentTeam.lifelines,
+            };
+          } catch (error) {
+            console.error('Failed to validate answer:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Handle correct answer flow
+         * Updates prize, increments question number, syncs to Firebase
+         */
+        handleCorrectAnswer: async (teamsStore, prizeStructure) => {
+          const { currentTeamId, currentQuestionNumber } = get();
+
+          if (!currentTeamId) {
+            return { success: false, error: 'No current team' };
+          }
+
+          try {
+            // Calculate new prize (question number is 0-indexed, but prize array is also 0-indexed)
+            const newPrizeIndex = currentQuestionNumber; // This is the question just answered
+            const newPrize = prizeStructure[newPrizeIndex] || 0;
+
+            // Increment question number
+            const nextQuestionNumber = currentQuestionNumber + 1;
+
+            // Update team in Firebase
+            await teamsStore.updateTeam(currentTeamId, {
+              currentPrize: newPrize,
+              currentQuestionIndex: nextQuestionNumber,
+              questionsAnswered: nextQuestionNumber,
+            });
+
+            // Update local state
+            set({
+              currentQuestionNumber: nextQuestionNumber,
+              lastUpdated: Date.now(),
+            });
+
+            console.log(
+              `💰 Prize updated: Rs.${newPrize} (Q${nextQuestionNumber} complete)`,
+            );
+
+            return {
+              success: true,
+              newPrize,
+              nextQuestionNumber,
+            };
+          } catch (error) {
+            console.error('Failed to handle correct answer:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Handle incorrect answer - check lifelines and determine action
+         */
+        handleIncorrectAnswer: async (teamsStore) => {
+          const { currentTeamId } = get();
+
+          if (!currentTeamId) {
+            return { success: false, error: 'No current team' };
+          }
+
+          try {
+            // Get current team
+            const currentTeam = teamsStore.teams[currentTeamId];
+
+            if (!currentTeam) {
+              return { success: false, error: 'Team not found' };
+            }
+
+            // Check for available lifelines
+            const lifelines = currentTeam.lifelines || {};
+            const hasLifelines = Object.values(lifelines).some(
+              (v) => v === true,
+            );
+            const availableLifelines = Object.keys(lifelines).filter(
+              (k) => lifelines[k] === true,
+            );
+
+            console.log(
+              `❌ Incorrect answer - Lifelines available: ${hasLifelines}`,
+            );
+
+            return {
+              success: true,
+              hasLifelines,
+              availableLifelines,
+              currentPrize: currentTeam.currentPrize || 0,
+            };
+          } catch (error) {
+            console.error('Failed to handle incorrect answer:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Eliminate team (lock prize, set status to eliminated)
+         */
+        eliminateTeam: async (teamsStore) => {
+          const { currentTeamId } = get();
+
+          if (!currentTeamId) {
+            return { success: false, error: 'No current team' };
+          }
+
+          try {
+            // Get current team
+            const currentTeam = teamsStore.teams[currentTeamId];
+
+            if (!currentTeam) {
+              return { success: false, error: 'Team not found' };
+            }
+
+            // Eliminate team in Firebase (locks prize)
+            await databaseService.eliminateTeam(currentTeamId);
+
+            console.log(
+              `🚫 Team eliminated: ${currentTeam.name} (Prize: Rs.${currentTeam.currentPrize})`,
+            );
+
+            return {
+              success: true,
+              teamName: currentTeam.name,
+              finalPrize: currentTeam.currentPrize || 0,
+            };
+          } catch (error) {
+            console.error('Failed to eliminate team:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Complete current team (all 20 questions answered)
+         */
+        completeTeam: async (teamsStore) => {
+          const { currentTeamId } = get();
+
+          if (!currentTeamId) {
+            return { success: false, error: 'No current team' };
+          }
+
+          try {
+            // Get current team
+            const currentTeam = teamsStore.teams[currentTeamId];
+
+            if (!currentTeam) {
+              return { success: false, error: 'Team not found' };
+            }
+
+            // Update team status to completed
+            await teamsStore.updateTeam(currentTeamId, {
+              status: 'completed',
+              completedAt: Date.now(),
+            });
+
+            console.log(
+              `🏆 Team completed: ${currentTeam.name} (Final Prize: Rs.${currentTeam.currentPrize})`,
+            );
+
+            return {
+              success: true,
+              teamName: currentTeam.name,
+              finalPrize: currentTeam.currentPrize || 0,
+            };
+          } catch (error) {
+            console.error('Failed to complete team:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Move to next team in queue
+         */
+        moveToNextTeam: async (teamsStore, questionsStore) => {
+          const { currentTeamId, playQueue } = get();
+
+          const currentIndex = playQueue.indexOf(currentTeamId);
+
+          if (currentIndex === -1) {
+            return { success: false, error: 'Current team not in queue' };
+          }
+
+          // Check if there's a next team
+          if (currentIndex >= playQueue.length - 1) {
+            // No more teams - complete game
+            set({
+              gameStatus: GAME_STATUS.COMPLETED,
+              currentTeamId: null,
+              currentQuestionNumber: 0,
+              lastUpdated: Date.now(),
+            });
+
+            await databaseService.updateGameState({
+              gameStatus: 'completed',
+              currentTeamId: null,
+              currentQuestionNumber: 0,
+            });
+
+            console.log('🏁 All teams complete - game ended');
+
+            return { success: true, gameComplete: true };
+          }
+
+          // Move to next team
+          const nextTeamId = playQueue[currentIndex + 1];
+
+          try {
+            // Update next team status to active
+            await teamsStore.updateTeam(nextTeamId, {
+              status: 'active',
+            });
+
+            // Clear question state
+            questionsStore.clearHostQuestion();
+
+            // Update local game state
+            set({
+              currentTeamId: nextTeamId,
+              currentQuestionNumber: 0,
+              currentQuestion: null,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
+              lastUpdated: Date.now(),
+            });
+
+            // Sync to Firebase
+            await databaseService.updateGameState({
+              currentTeamId: nextTeamId,
+              currentQuestionNumber: 0,
+              currentQuestion: null,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
+            });
+
+            console.log(`➡️ Next team: ${nextTeamId}`);
+
+            return { success: true, nextTeamId };
+          } catch (error) {
+            console.error('Failed to move to next team:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Proceed to next question (after correct answer)
+         */
+        proceedToNextQuestion: (questionsStore) => {
+          // Clear question state in questions store
+          questionsStore.clearHostQuestion();
+
+          // Clear local question display state
+          set({
+            currentQuestion: null,
+            questionVisible: false,
+            optionsVisible: false,
+            answerRevealed: false,
+            correctOption: null,
+            lastUpdated: Date.now(),
+          });
+
+          console.log('🔄 Ready for next question');
+
+          return { success: true };
+        },
       }),
       {
         name: `${appName}-game`,
