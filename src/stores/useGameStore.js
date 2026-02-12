@@ -558,6 +558,28 @@ export const useGameStore = create()(
               };
             }
 
+            // Check if question set is loaded in memory
+            const isSetLoaded = questionsStore.isSetLoaded(assignedSetId);
+
+            if (!isSetLoaded) {
+              // Load question set from localStorage into memory
+              console.log(
+                `📚 Loading question set ${assignedSetId} from localStorage...`,
+              );
+              const loadResult = questionsStore.loadQuestionSet(assignedSetId);
+
+              if (!loadResult.success) {
+                return {
+                  success: false,
+                  error: `Failed to load question set: ${loadResult.error || 'Not found in localStorage'}`,
+                };
+              }
+
+              console.log(
+                `✅ Question set ${assignedSetId} loaded into memory`,
+              );
+            }
+
             // Calculate next question index (0-19)
             const nextQuestionIndex = currentQuestionNumber; // 0-indexed for localStorage
 
