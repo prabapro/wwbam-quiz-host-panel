@@ -1,13 +1,20 @@
 // src/config/firebase.js
 
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
 import { getAnalytics } from 'firebase/analytics';
+import {
+  shouldUseEmulator,
+  getEmulatorConfig,
+  getDatabaseURL,
+  logEnvironmentInfo,
+} from '@utils/firebaseEnvironment';
 
 /**
  * Firebase Configuration
  * Loads credentials from environment variables for security
+ * Automatically connects to emulator in development mode
  */
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,7 +24,7 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  databaseURL: getDatabaseURL(), // Uses environment-specific URL
 };
 
 /**
@@ -62,13 +69,40 @@ export const auth = getAuth(app);
 export const database = getDatabase(app);
 
 /**
+ * Connect to Firebase Emulators (Development Only)
+ */
+if (shouldUseEmulator()) {
+  const emulatorConfig = getEmulatorConfig();
+
+  // Connect Auth Emulator
+  connectAuthEmulator(
+    auth,
+    `http://${emulatorConfig.auth.host}:${emulatorConfig.auth.port}`,
+    { disableWarnings: true },
+  );
+
+  // Connect Database Emulator
+  connectDatabaseEmulator(
+    database,
+    emulatorConfig.database.host,
+    emulatorConfig.database.port,
+  );
+
+  console.log('🔧 Connected to Firebase Emulators:', {
+    auth: `${emulatorConfig.auth.host}:${emulatorConfig.auth.port}`,
+    database: `${emulatorConfig.database.host}:${emulatorConfig.database.port}`,
+  });
+}
+
+/**
  * Initialize Analytics (optional, only in production)
  */
 let analytics = null;
 if (
   import.meta.env.PROD &&
   typeof window !== 'undefined' &&
-  firebaseConfig.measurementId
+  firebaseConfig.measurementId &&
+  !shouldUseEmulator() // Don't init analytics in emulator mode
 ) {
   analytics = getAnalytics(app);
 }
@@ -100,13 +134,17 @@ export const firebaseEnv = {
   projectId: firebaseConfig.projectId,
   environment: import.meta.env.VITE_ENVIRONMENT || 'development',
   isProduction: import.meta.env.PROD,
+  useEmulator: shouldUseEmulator(),
+  databaseURL: firebaseConfig.databaseURL,
 };
 
 // Log Firebase initialization status in development
 if (import.meta.env.DEV) {
+  logEnvironmentInfo();
   console.log('🔥 Firebase initialized:', {
     projectId: firebaseEnv.projectId,
     environment: firebaseEnv.environment,
+    useEmulator: firebaseEnv.useEmulator,
     hasAuth: !!auth,
     hasDatabase: !!database,
   });
