@@ -178,6 +178,29 @@ export const useTeamsStore = create()(
         },
 
         /**
+         * Delete all teams from Firebase (for factory reset)
+         */
+        deleteAllTeamsFromFirebase: async () => {
+          set({ isLoading: true, error: null });
+
+          try {
+            // Delete all teams from Firebase
+            await databaseService.deleteAllTeams();
+
+            // Clear local state (triggers localStorage clear via persist)
+            set({ teams: {}, isLoading: false });
+
+            console.log('✅ All teams deleted from Firebase and localStorage');
+
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to delete all teams:', error);
+            set({ isLoading: false, error: error.message });
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
          * Sync teams from Firebase to local state
          */
         syncTeamsFromFirebase: async () => {
