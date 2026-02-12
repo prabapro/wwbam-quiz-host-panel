@@ -18,7 +18,7 @@ const NotFound = lazy(() => import('@pages/NotFound'));
 const PrizeManagement = lazy(() => import('@pages/PrizeManagement'));
 const QuestionManagement = lazy(() => import('@pages/QuestionManagement'));
 const TeamManagement = lazy(() => import('@pages/TeamManagement'));
-const Play = lazy(() => import('@pages/Play'));
+const Play = lazy(() => import('@/pages/play'));
 
 /**
  * Complete route configuration

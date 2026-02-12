@@ -213,12 +213,46 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
   - Game Status: `game-status: "initialized"`
   - Play queue visible
   - Each team card shows assigned question set
-  - **"Start Event"** button appears (replacing "Initialize Game")
+  - **"Start Game"** button appears (replacing "Initialize Game")
 
-### Step 5: Start Event
+### Step 5: Start Game
 
-- Host clicks **"Start Event"** button
-- System performs atomic update:
+- Host clicks **"Start Game"** button on Game Control Panel
+- **Start Game Confirmation Dialog** opens:
+
+**Dialog Content:**
+
+```
+┌─────────────────────────────────────────┐
+│ Start Game?                              │
+│                                          │
+│ The first team will be activated and     │
+│ the game will begin. Make sure you're    │
+│ ready!                                   │
+│                                          │
+│ ┌────────────────────────────────────┐  │
+│ │ 👥 First Team                       │  │
+│ │                                     │  │
+│ │ Team Name: Team Gamma               │  │
+│ │ Participants: Alex, Chris, Jordan   │  │
+│ └────────────────────────────────────┘  │
+│                                          │
+│ ┌────────────────────────────────────┐  │
+│ │ 📝 Question Set                     │  │
+│ │                                     │  │
+│ │ Set Name: Question Set 5            │  │
+│ │ Questions: 20                       │  │
+│ └────────────────────────────────────┘  │
+│                                          │
+│         [Cancel]  [Start Game]           │
+└─────────────────────────────────────────┘
+```
+
+- Host reviews first team and question set details
+- Host clicks **"Start Game"** button to confirm
+- System performs:
+  1. **Load question set** from localStorage (first team's assigned set via `loadQuestionSet()`)
+  2. **Atomic Firebase update**:
 
 ```javascript
 // Firebase updates (kebab-case keys)
@@ -233,9 +267,12 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
 }
 ```
 
+3. **Show success toast**: "Game Started! Team Gamma is now on the hot seat. Good luck!"
+4. **Navigate to /play**: Host panel transitions to gameplay interface
+
 - Public display shows: "Welcome Team Gamma!"
 - Dashboard highlights active team (Team Gamma)
-- Question control panel becomes active
+- Question control panel becomes active on `/play` page
 
 ---
 
@@ -746,7 +783,7 @@ Game Not Started (game-status: "not-started"):
   ❌ All other buttons disabled
 
 Game Initialized (game-status: "initialized"):
-  ✅ Start Event
+  ✅ Start Game (with confirmation dialog)
   ❌ Question controls disabled
 
 Active Game, No Active Team (game-status: "active", current-team-id: null):
@@ -1031,7 +1068,7 @@ Answer Locked & Validated:
 **Manual (Requires host action):**
 
 - Initialize Game
-- Start Event
+- Start Game (with confirmation)
 - Load Question (from localStorage)
 - Show Question (push to Firebase)
 - Register team's answer selection (A/B/C/D)
@@ -1130,7 +1167,7 @@ _Note: Each set must contain exactly `QUESTIONS_PER_SET` questions (defined in `
 [Not Started] (game-status: "not-started")
     ↓ Initialize Game
 [Initialized] (game-status: "initialized")
-    ↓ Start Event
+    ↓ Start Game (with confirmation dialog)
 [Active - No Question] (game-status: "active", question-visible: false)
     ↓ Load Question
 [Question Loaded] (host view only)
@@ -1162,6 +1199,9 @@ This updated journey reflects:
 - ✅ Atomic Firebase updates with multi-path patterns
 - ✅ Correct kebab-case Firebase key references throughout
 - ✅ Clear distinction between initialization and starting the event
+- ✅ **Start Game confirmation dialog with team and question set details**
+- ✅ **Question set loading from localStorage before navigation**
+- ✅ **Success toast notification on game start**
 - ✅ Automatic random team selection and question set assignment (1:1 mapping)
 - ✅ Automatic answer validation with single "Lock Answer" button
 - ✅ Play queue preview showing team order and assignments
@@ -1170,6 +1210,6 @@ This updated journey reflects:
 - ✅ Real-time synchronization patterns between host panel and public display
 - ✅ Edge case handling for accessing initialized games across multiple browsers
 
-- **Document Version:** 2.1.0
+- **Document Version:** 2.2.0
 - **Last Updated:** February 2026
 - **Status:** Production Reference
