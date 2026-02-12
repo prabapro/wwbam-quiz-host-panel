@@ -18,6 +18,46 @@ Real-time quiz competition system using Firebase Realtime Database. This documen
 
 ---
 
+## Database Environments
+
+The app uses three separate database instances:
+
+| Environment    | Database Instance             | Access               |
+| -------------- | ----------------------------- | -------------------- |
+| **Production** | `wwbam-quiz-default-rtdb`     | Live production data |
+| **Staging**    | `wwbam-quiz-staging`          | Testing environment  |
+| **Local Dev**  | Firebase Emulator (port 9000) | Local development    |
+
+**Environment Detection:**
+
+Environment is determined by the `VITE_ENVIRONMENT` variable loaded via Infisical:
+
+```javascript
+// Automatically connects to correct database
+VITE_ENVIRONMENT=development  → Firebase Emulator
+VITE_ENVIRONMENT=staging      → wwbam-quiz-staging
+VITE_ENVIRONMENT=production   → wwbam-quiz-default-rtdb
+```
+
+**Database URL Assignment:**
+
+- Set via `VITE_FIREBASE_DATABASE_URL` in Infisical for each environment
+- Local dev bypasses this and connects to emulator automatically
+- See `src/utils/firebaseEnvironment.js` for implementation
+
+**Rule Deployment:**
+
+```bash
+# Deploy to all databases
+firebase deploy --only database
+
+# Deploy to specific database
+firebase deploy --only database:production
+firebase deploy --only database:staging
+```
+
+---
+
 ## Database Schema
 
 ### Root Structure
@@ -477,6 +517,6 @@ unsubscribe();
 
 ---
 
-**Document Version:** 2.0.0
+**Document Version:** 2.1.0
 **Last Updated:** February 2026
 **Status:** Production Reference

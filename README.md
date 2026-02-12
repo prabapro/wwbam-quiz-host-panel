@@ -32,21 +32,39 @@ pnpm dev
 
 ### Database Rules
 
+The app uses three database instances:
+
+- **Production**: `wwbam-quiz-default-rtdb` (live data)
+- **Staging**: `wwbam-quiz-staging` (testing)
+- **Local Dev**: Firebase Emulator (port 9000)
+
+Deploy rules after changes:
+
 ```bash
 firebase login
+
+# Deploy to all databases (production + staging)
 firebase deploy --only database
+
+# Deploy to specific database
+firebase deploy --only database:production
+firebase deploy --only database:staging
 ```
 
 **Rules:** Public read, authenticated write only.
 
 ### Host Authentication
 
+#### Staging/Production
+
 Create host account in Firebase Console → Authentication:
 
 - Email: `host@example.com`
 - Password: (set securely)
 
----
+#### Local Development
+
+Create host account in Firebase Emulator
 
 ## Configuration
 
