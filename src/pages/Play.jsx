@@ -330,14 +330,25 @@ export default function Play() {
   // RENDER GUARDS
   // ============================================================
 
+  // Game not active - show appropriate message
   if (gameStatus !== GAME_STATUS.ACTIVE) {
+    const message =
+      gameStatus === GAME_STATUS.INITIALIZED
+        ? 'Game is initialized but not started. Click "Play Game" from the homepage to start.'
+        : gameStatus === GAME_STATUS.PAUSED
+          ? 'Game is paused. Resume from controls to continue.'
+          : gameStatus === GAME_STATUS.COMPLETED
+            ? 'Game has been completed. Reset to start a new game.'
+            : 'Game is not active. Please initialize and start the game first.';
+
     return (
       <main className="container mx-auto py-8 px-4 max-w-4xl">
         <Card>
           <CardContent className="py-12">
             <div className="text-center space-y-4">
-              <p className="text-xl text-muted-foreground">
-                Game is not active
+              <p className="text-xl text-muted-foreground">{message}</p>
+              <p className="text-sm text-muted-foreground">
+                Current Status: <Badge variant="outline">{gameStatus}</Badge>
               </p>
               <Button onClick={() => navigate('/')}>
                 <ArrowLeft className="w-4 h-4 mr-2" />

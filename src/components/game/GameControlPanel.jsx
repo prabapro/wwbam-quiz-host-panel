@@ -38,12 +38,13 @@ import { Play, RotateCcw, CheckCircle2, AlertTriangle } from 'lucide-react';
 export default function GameControlPanel() {
   const navigate = useNavigate();
 
-  // Uninitialize confirmation dialog state
+  // Dialog states
+  const [showStartEventDialog, setShowStartEventDialog] = useState(false);
   const [showUninitializeDialog, setShowUninitializeDialog] = useState(false);
 
-  // Uninitialize loading state
-  const [isUninitializing, setIsUninitializing] = useState(false);
-  const [uninitError, setUninitError] = useState(null);
+  // Loading/error states (shared for both actions)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Store state
   const playQueue = useGameStore((state) => state.playQueue);
@@ -51,6 +52,7 @@ export default function GameControlPanel() {
     (state) => state.questionSetAssignments,
   );
   const currentTeamId = useGameStore((state) => state.currentTeamId);
+  const startEvent = useGameStore((state) => state.startEvent);
   const uninitializeGame = useGameStore((state) => state.uninitializeGame);
   const teamsObject = useTeamsStore((state) => state.teams);
 
@@ -66,19 +68,55 @@ export default function GameControlPanel() {
     questionSetsMetadata,
   );
 
+  // Get first team info for confirmation dialog
+  const firstTeamId = playQueue.length > 0 ? playQueue[0] : null;
+  const firstTeam = firstTeamId ? teamsObject[firstTeamId] : null;
+
   /**
-   * Handle play game button click
+   * Handle play game button click - shows confirmation dialog
    */
   const handlePlayGame = () => {
-    navigate('/play');
+    setError(null); // Clear any previous errors
+    setShowStartEventDialog(true);
+  };
+
+  /**
+   * Confirm and start event
+   * Activates first team and navigates to /play
+   */
+  const confirmStartEvent = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Start the event (changes status to 'active', activates first team)
+      const result = await startEvent();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to start event');
+      }
+
+      console.log('🚀 Event started - navigating to /play');
+
+      // Close dialog on success
+      setShowStartEventDialog(false);
+
+      // Navigate to play page
+      navigate('/play');
+    } catch (err) {
+      console.error('Failed to start event:', err);
+      setError(err.message);
+      // Keep dialog open to show error
+      setIsLoading(false);
+    }
   };
 
   /**
    * Handle uninitialize confirmation
    */
   const handleUninitialize = async () => {
-    setIsUninitializing(true);
-    setUninitError(null);
+    setIsLoading(true);
+    setError(null);
 
     try {
       const result = await uninitializeGame();
@@ -89,11 +127,11 @@ export default function GameControlPanel() {
 
       console.log('🔄 Game uninitialized and synced to Firebase');
       setShowUninitializeDialog(false);
-    } catch (error) {
-      console.error('Uninitialize failed:', error);
-      setUninitError(error.message);
+    } catch (err) {
+      console.error('Uninitialize failed:', err);
+      setError(err.message);
     } finally {
-      setIsUninitializing(false);
+      setIsLoading(false);
     }
   };
 
@@ -116,6 +154,14 @@ export default function GameControlPanel() {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Play Queue - Always Visible */}
           <div className="border rounded-lg p-4 bg-muted/20">
             <PlayQueueDisplay
@@ -128,15 +174,29 @@ export default function GameControlPanel() {
 
           {/* Action Buttons */}
           <div className="flex gap-3">
-            <Button className="flex-1" size="lg" onClick={handlePlayGame}>
-              <Play className="w-4 h-4 mr-2" />
-              Play Game
+            <Button
+              className="flex-1"
+              size="lg"
+              onClick={handlePlayGame}
+              disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Starting Event...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Play Game
+                </>
+              )}
             </Button>
 
             <Button
               variant="outline"
               size="lg"
-              onClick={() => setShowUninitializeDialog(true)}>
+              onClick={() => setShowUninitializeDialog(true)}
+              disabled={isLoading}>
               <RotateCcw className="w-4 h-4 mr-2" />
               Uninitialize
             </Button>
@@ -149,6 +209,100 @@ export default function GameControlPanel() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Start Event Confirmation Dialog */}
+      <AlertDialog
+        open={showStartEventDialog}
+        onOpenChange={setShowStartEventDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Play className="w-5 h-5" />
+              Ready to Start Event?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will activate the first team and begin the quiz competition.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4">
+            {/* Error Alert */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* First Team Info */}
+            {firstTeam ? (
+              <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-primary">First to Play</Badge>
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg">{firstTeam.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {firstTeam.participants}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  No teams in play queue. Cannot start event.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Event Summary */}
+            <div className="p-3 bg-muted/30 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Total Teams</p>
+                  <p className="font-bold">{playQueue.length}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Questions per Team</p>
+                  <p className="font-bold">20</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Confirmation Message */}
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertDescription>
+                All teams and questions are ready. The competition will begin
+                when you click "Start Event".
+              </AlertDescription>
+            </Alert>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmStartEvent}
+              disabled={isLoading || !firstTeam}
+              className="bg-primary hover:bg-primary/90">
+              {isLoading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Start Event
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Uninitialize Confirmation Dialog */}
       <AlertDialog
@@ -165,22 +319,20 @@ export default function GameControlPanel() {
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          {/* Error Alert */}
-          {uninitError && (
+          {/* Error Alert in Dialog */}
+          {error && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{uninitError}</AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isUninitializing}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleUninitialize}
-              disabled={isUninitializing}>
-              {isUninitializing ? (
+              disabled={isLoading}>
+              {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
                   Uninitializing...
