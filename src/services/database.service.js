@@ -12,6 +12,11 @@ import {
   push,
 } from 'firebase/database';
 import { database } from '@config/firebase';
+import {
+  DEFAULT_GAME_STATE,
+  DEFAULT_PRIZE_STRUCTURE,
+  DEFAULT_CONFIG,
+} from '@constants/defaultDatabase';
 
 /**
  * Database Service
@@ -362,6 +367,20 @@ export const deleteTeam = async (teamId) => {
 };
 
 /**
+ * Delete all teams (for factory reset)
+ * @returns {Promise<void>}
+ */
+export const deleteAllTeams = async () => {
+  try {
+    await set(ref(database, DB_PATHS.TEAMS), {});
+    console.log('✅ All teams deleted from Firebase');
+  } catch (error) {
+    console.error('Error deleting all teams:', error);
+    throw error;
+  }
+};
+
+/**
  * Use lifeline
  * @param {string} teamId - Team ID
  * @param {string} lifelineType - 'phone-a-friend' or 'fifty-fifty'
@@ -494,6 +513,50 @@ export const updateConfig = async (updates) => {
 };
 
 // ============================================================================
+// FACTORY RESET OPERATIONS
+// ============================================================================
+
+/**
+ * Reset entire database to factory defaults
+ * Performs atomic update to set all nodes to default state
+ * @returns {Promise<void>}
+ */
+export const resetDatabaseToDefaults = async () => {
+  try {
+    console.log('🔄 Starting factory reset of Firebase database...');
+
+    // Build atomic multi-path update object
+    const updates = {};
+
+    // 1. Reset game-state to defaults (convert to kebab-case)
+    const gameStateDefaults = convertKeysToKebab(DEFAULT_GAME_STATE);
+    Object.keys(gameStateDefaults).forEach((key) => {
+      updates[`${DB_PATHS.GAME_STATE}/${key}`] = gameStateDefaults[key];
+    });
+
+    // 2. Clear teams (set to empty object)
+    updates[DB_PATHS.TEAMS] = {};
+
+    // 3. Reset prize structure to defaults
+    updates[DB_PATHS.PRIZE_STRUCTURE] = DEFAULT_PRIZE_STRUCTURE;
+
+    // 4. Reset config to defaults (convert to kebab-case)
+    const configDefaults = convertKeysToKebab(DEFAULT_CONFIG);
+    Object.keys(configDefaults).forEach((key) => {
+      updates[`${DB_PATHS.CONFIG}/${key}`] = configDefaults[key];
+    });
+
+    // Perform atomic update
+    await update(ref(database), updates);
+
+    console.log('✅ Firebase database reset to factory defaults');
+  } catch (error) {
+    console.error('❌ Error resetting database to defaults:', error);
+    throw error;
+  }
+};
+
+// ============================================================================
 // MULTI-PATH ATOMIC UPDATES
 // ============================================================================
 
@@ -532,6 +595,7 @@ export const databaseService = {
   createTeam,
   updateTeam,
   deleteTeam,
+  deleteAllTeams,
   useLifeline,
   eliminateTeam,
   onTeamsChange,
@@ -543,6 +607,9 @@ export const databaseService = {
   // Config
   getConfig,
   updateConfig,
+
+  // Factory Reset
+  resetDatabaseToDefaults,
 
   // Atomic Operations
   atomicUpdate,

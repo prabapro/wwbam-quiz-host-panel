@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { databaseService } from '@services/database.service';
-import { DEFAULT_PRIZE_STRUCTURE } from '@constants/prizeStructure';
+import { DEFAULT_PRIZE_STRUCTURE } from '@constants/defaultDatabase';
 
 const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
 
@@ -158,7 +158,39 @@ export const usePrizeStore = create()(
         },
 
         /**
-         * Reset to default prize structure
+         * Reset to default prize structure (for factory reset)
+         * Immediately syncs to both state and Firebase
+         */
+        resetToDefault: async () => {
+          set({ isSyncing: true, error: null });
+
+          try {
+            // Save default structure to Firebase
+            await databaseService.setPrizeStructure(DEFAULT_PRIZE_STRUCTURE);
+
+            // Update local state
+            set({
+              prizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
+              editedPrizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
+              hasUnsavedChanges: false,
+              isSyncing: false,
+              lastSyncedAt: Date.now(),
+            });
+
+            console.log(
+              '✅ Prize structure reset to defaults and synced to Firebase',
+            );
+
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to reset prize structure:', error);
+            set({ isSyncing: false, error: error.message });
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
+         * Use default structure (local only, needs save)
          */
         useDefaultStructure: () => {
           set({
@@ -166,7 +198,7 @@ export const usePrizeStore = create()(
             hasUnsavedChanges: true,
           });
 
-          console.log('📋 Using default prize structure');
+          console.log('📋 Using default prize structure (not saved)');
         },
 
         /**
