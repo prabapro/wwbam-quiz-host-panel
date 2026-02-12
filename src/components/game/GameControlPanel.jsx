@@ -32,9 +32,11 @@ import LoadingSpinner from '@components/common/LoadingSpinner';
 import PlayQueueDisplay from './PlayQueueDisplay';
 import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
+import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
 import { localStorageService } from '@services/localStorage.service';
 import { getPlayQueuePreview } from '@utils/gameInitialization';
+import { toast } from 'sonner';
 import {
   Play,
   RotateCcw,
@@ -42,6 +44,8 @@ import {
   AlertTriangle,
   MoreVertical,
   Recycle,
+  Users,
+  FileJson,
 } from 'lucide-react';
 
 /**
@@ -52,17 +56,18 @@ import {
 export default function GameControlPanel() {
   const navigate = useNavigate();
 
+  // Start game confirmation dialog state
+  const [showStartGameDialog, setShowStartGameDialog] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState(null);
+
   // Uninitialize confirmation dialog state
   const [showUninitializeDialog, setShowUninitializeDialog] = useState(false);
-
-  // Factory reset confirmation dialog state
-  const [showFactoryResetDialog, setShowFactoryResetDialog] = useState(false);
-
-  // Uninitialize loading state
   const [isUninitializing, setIsUninitializing] = useState(false);
   const [uninitError, setUninitError] = useState(null);
 
-  // Factory reset loading state
+  // Factory reset confirmation dialog state
+  const [showFactoryResetDialog, setShowFactoryResetDialog] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [resetError, setResetError] = useState(null);
 
@@ -72,6 +77,7 @@ export default function GameControlPanel() {
     (state) => state.questionSetAssignments,
   );
   const currentTeamId = useGameStore((state) => state.currentTeamId);
+  const startEvent = useGameStore((state) => state.startEvent);
   const uninitializeGame = useGameStore((state) => state.uninitializeGame);
   const resetAppToFactoryDefaults = useGameStore(
     (state) => state.resetAppToFactoryDefaults,
@@ -81,6 +87,8 @@ export default function GameControlPanel() {
   const deleteAllTeamsFromFirebase = useTeamsStore(
     (state) => state.deleteAllTeamsFromFirebase,
   );
+
+  const loadQuestionSet = useQuestionsStore((state) => state.loadQuestionSet);
 
   const resetToDefault = usePrizeStore((state) => state.resetToDefault);
 
@@ -96,11 +104,67 @@ export default function GameControlPanel() {
     questionSetsMetadata,
   );
 
+  // Get first team info for start dialog
+  const firstTeamId = playQueue[0];
+  const firstTeam = teamsObject[firstTeamId];
+  const firstTeamQuestionSetId = questionSetAssignments[firstTeamId];
+  const firstTeamQuestionSet = questionSetsMetadata.find(
+    (set) => set.setId === firstTeamQuestionSetId,
+  );
+
   /**
-   * Handle play game button click
+   * Handle start game button click - show confirmation
    */
-  const handlePlayGame = () => {
-    navigate('/play');
+  const handlePlayGameClick = () => {
+    setShowStartGameDialog(true);
+    setStartError(null);
+  };
+
+  /**
+   * Handle start game confirmation
+   */
+  const handleStartGame = async () => {
+    setIsStarting(true);
+    setStartError(null);
+
+    try {
+      // 1. Load first team's question set from localStorage into memory
+      const loadResult = loadQuestionSet(firstTeamQuestionSetId);
+
+      if (!loadResult.success) {
+        throw new Error(
+          loadResult.error || 'Failed to load question set from localStorage',
+        );
+      }
+
+      // 2. Start event (updates game state + Firebase)
+      const startResult = await startEvent();
+
+      if (!startResult.success) {
+        throw new Error(startResult.error || 'Failed to start event');
+      }
+
+      // 3. Success! Show toast and navigate
+      toast.success('Game Started!', {
+        description: `${firstTeam.name} is now on the hot seat. Good luck!`,
+      });
+
+      // Close dialog
+      setShowStartGameDialog(false);
+
+      // Small delay for toast visibility, then navigate
+      setTimeout(() => {
+        navigate('/play');
+      }, 500);
+    } catch (error) {
+      console.error('Failed to start game:', error);
+      setStartError(error.message);
+      toast.error('Failed to start game', {
+        description: error.message,
+      });
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   /**
@@ -118,10 +182,16 @@ export default function GameControlPanel() {
       }
 
       console.log('🔄 Game uninitialized and synced to Firebase');
+      toast.success('Game Uninitialized', {
+        description: 'You can now reconfigure teams and reinitialize.',
+      });
       setShowUninitializeDialog(false);
     } catch (error) {
       console.error('Uninitialize failed:', error);
       setUninitError(error.message);
+      toast.error('Failed to uninitialize', {
+        description: error.message,
+      });
     } finally {
       setIsUninitializing(false);
     }
@@ -159,6 +229,10 @@ export default function GameControlPanel() {
 
       console.log('✅ Factory reset completed successfully');
 
+      toast.success('Factory Reset Complete', {
+        description: 'All app data has been cleared. Starting fresh!',
+      });
+
       // Close dialog
       setShowFactoryResetDialog(false);
 
@@ -169,6 +243,9 @@ export default function GameControlPanel() {
     } catch (error) {
       console.error('Factory reset failed:', error);
       setResetError(error.message);
+      toast.error('Factory Reset Failed', {
+        description: error.message,
+      });
     } finally {
       setIsResetting(false);
     }
@@ -205,9 +282,9 @@ export default function GameControlPanel() {
 
           {/* Action Buttons */}
           <div className="flex gap-3">
-            <Button className="flex-1" size="lg" onClick={handlePlayGame}>
+            <Button className="flex-1" size="lg" onClick={handlePlayGameClick}>
               <Play className="w-4 h-4 mr-2" />
-              Play Game
+              Start Game
             </Button>
 
             <Button
@@ -238,11 +315,89 @@ export default function GameControlPanel() {
 
           {/* Info Text */}
           <p className="text-xs text-muted-foreground text-center">
-            Click "Play Game" to start the competition or "Uninitialize" to
+            Click "Start Game" to begin the competition or "Uninitialize" to
             reset and change settings
           </p>
         </CardContent>
       </Card>
+
+      {/* Start Game Confirmation Dialog */}
+      <AlertDialog
+        open={showStartGameDialog}
+        onOpenChange={setShowStartGameDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start Game?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The first team will be activated and the game will begin. Make
+              sure you're ready!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {/* First Team Info */}
+          {firstTeam && (
+            <div className="space-y-3 py-2">
+              {/* Team Info */}
+              <div className="p-3 bg-muted/30 rounded-lg border">
+                <div className="flex items-start gap-2 mb-2">
+                  <Users className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold">{firstTeam.name}</p>
+                    {firstTeam.participants && (
+                      <p className="text-sm text-muted-foreground">
+                        {firstTeam.participants}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Question Set Info */}
+              {firstTeamQuestionSet && (
+                <div className="p-3 bg-muted/30 rounded-lg border">
+                  <div className="flex items-start gap-2">
+                    <FileJson className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">Question Set</p>
+                      <p className="text-sm text-muted-foreground">
+                        {firstTeamQuestionSet.setName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {firstTeamQuestionSet.totalQuestions} questions
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Error Alert */}
+          {startError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{startError}</AlertDescription>
+            </Alert>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isStarting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleStartGame} disabled={isStarting}>
+              {isStarting ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Start Game
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Uninitialize Confirmation Dialog */}
       <AlertDialog

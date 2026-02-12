@@ -93,6 +93,19 @@
 │   ├── lib
 │   │   └── utils.js
 │   ├── pages
+│   │   ├── play
+│   │   │   ├── components
+│   │   │   │   ├── AnswerPad.jsx
+│   │   │   │   ├── GameControls.jsx
+│   │   │   │   ├── GameStatusBar.jsx
+│   │   │   │   ├── LifelinePanel.jsx
+│   │   │   │   ├── QuestionPanel.jsx
+│   │   │   │   └── TeamStatusCard.jsx
+│   │   │   ├── hooks
+│   │   │   │   ├── useAnswerSelection.js
+│   │   │   │   ├── useCurrentQuestion.js
+│   │   │   │   └── useGameControls.js
+│   │   │   └── index.jsx
 │   │   ├── Home.jsx
 │   │   ├── Login.jsx
 │   │   ├── NotFound.jsx
@@ -116,6 +129,10 @@
 │   ├── styles
 │   │   └── index.css
 │   ├── utils
+│   │   ├── gameplay
+│   │   │   ├── answerValidation.js
+│   │   │   ├── lifelineLogic.js
+│   │   │   └── scoreCalculation.js
 │   │   ├── gameInitialization.js
 │   │   ├── setupValidation.js
 │   │   ├── teamValidation.js
