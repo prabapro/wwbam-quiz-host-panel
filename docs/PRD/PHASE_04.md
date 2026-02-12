@@ -1,7 +1,7 @@
 # Phase 4: Core Game Play - Question Flow
 
 - **Dependencies:** Phase 3 (Game initialized and started)
-- **Status:** Pending
+- **Status:** In Progress
 - **USER_JOURNEY Reference:** [Journey 3, Phase B: Question Cycle](../USER_JOURNEY.md#phase-b-question-cycle-repeat-up-to-questions_per_set-times-or-until-elimination)
 
 | Requirement ID | Description                        | User Story                                                                        | Expected Behavior/Outcome                                                                                                                                                                                           |
@@ -21,6 +21,154 @@
 | **P4-REQ-013** | Question Progress Indicator        | As a host, I need to track progress so that I know how far team has advanced      | - "Question X/QUESTIONS_PER_SET" display<br>- Progress bar (optional)<br>- Highlight current prize level<br>- Color code by milestone                                                                               |
 | **P4-REQ-014** | Host Question View                 | As a host, I need to see correct answers so that I can validate responses         | - Question text (large, readable)<br>- All 4 options clearly labeled<br>- Correct answer marked (✓ green indicator)<br>- "Visible to HOST ONLY" badge<br>- Cannot be shared to public display                       |
 
+---
+
+## Phase 4 File Structure
+
+**Modular Organization:**
+
+The Play page is organized into a modular structure to keep components small, focused, and maintainable:
+
+```
+src/pages/Play/
+├── index.jsx                      # Main orchestrator (pulls from stores)
+├── components/                    # UI components
+│   ├── GameStatusBar.jsx         # P4-REQ-013: Question Progress Indicator
+│   ├── QuestionPanel.jsx         # P4-REQ-001, P4-REQ-014: Question display
+│   ├── AnswerPad.jsx             # P4-REQ-004: Answer selection buttons
+│   ├── GameControls.jsx          # P4-REQ-001, P4-REQ-002, P4-REQ-003, P4-REQ-012
+│   ├── LifelinePanel.jsx         # Phase 5 (placed here for UI cohesion)
+│   └── TeamStatusCard.jsx        # Phase 5 (placed here for UI cohesion)
+├── hooks/                         # Business logic hooks
+│   ├── useCurrentQuestion.js     # Question lifecycle management
+│   ├── useAnswerSelection.js     # P4-REQ-005, P4-REQ-006: Answer validation
+│   └── useGameControls.js        # Smart button state management
+└── (utilities at root level)      # Pure functions
+    src/utils/gameplay/
+    ├── answerValidation.js       # P4-REQ-006: Validation logic
+    ├── scoreCalculation.js       # P4-REQ-007: Prize calculations
+    └── lifelineLogic.js          # Phase 5: Lifeline logic
+```
+
+### Component Responsibilities:
+
+**Play/index.jsx** (Main Orchestrator)
+
+- Pulls state from all stores (game, teams, questions, prizes)
+- Renders layout with all child components
+- Handles navigation and redirects
+- Shows debug info (development)
+
+**GameStatusBar.jsx** (P4-REQ-013)
+
+- Displays current game status at a glance
+- Shows: Team name, Question #, Prize, Timer
+- Sticky or prominent positioning
+- Real-time updates from stores
+
+**QuestionPanel.jsx** (P4-REQ-001, P4-REQ-014)
+
+- Displays question text and options
+- HOST VIEW: Shows correct answer indicator (never synced to Firebase)
+- PUBLIC VIEW: Shows question without answer
+- Visual states: loading, visible, revealed
+- Handles 50/50 filtered options display
+
+**AnswerPad.jsx** (P4-REQ-004, P4-REQ-005)
+
+- Four clickable buttons (A, B, C, D)
+- Selection highlighting (yellow)
+- "Lock Answer" button (triggers validation)
+- Disabled states based on game flow
+- Local state only (not synced until locked)
+
+**GameControls.jsx** (P4-REQ-002, P4-REQ-003, P4-REQ-012)
+
+- Load Question button
+- Show Question button
+- Hide Question button
+- Next Question button
+- Next Team button
+- Skip Question button
+- Pause/Resume buttons
+- Smart state management via useGameControls hook
+
+**LifelinePanel.jsx** (Phase 5)
+
+- Phone-a-Friend button
+- 50/50 button
+- Shows available/used status
+- Triggers lifeline logic
+
+**TeamStatusCard.jsx** (Phase 5)
+
+- Current team details
+- Progress visualization
+- Prize display
+- Lifeline status indicators
+
+### Custom Hooks:
+
+**useCurrentQuestion.js**
+
+- Manages current question state
+- Loads question from localStorage (with correct answer)
+- Pushes question to Firebase (without correct answer)
+- Handles visibility flags (questionVisible, optionsVisible)
+- Tracks loading and error states
+
+**useAnswerSelection.js** (P4-REQ-005, P4-REQ-006)
+
+- Tracks selected answer (local state)
+- Validates answer on lock
+- Handles validation result
+- Updates team prize on correct answer
+- Triggers lifeline offer or elimination on incorrect
+
+**useGameControls.js**
+
+- Calculates button enabled/disabled states
+- Enforces game flow rules
+- Provides handlers for all control actions
+- Tracks operation states (loading, error)
+- Smart state management based on game state
+
+### Utility Functions:
+
+**answerValidation.js** (P4-REQ-006)
+
+- `validateAnswer(selected, correct)` - Compare answers
+- `normalizeOption(option)` - Normalize A/B/C/D
+- `isValidAnswerOption(option)` - Validate option format
+- Pure functions, easily testable
+
+**scoreCalculation.js** (P4-REQ-007)
+
+- `getPrizeForQuestion(number, structure)` - Get prize amount
+- `getNextPrizeAmount(current, structure)` - Calculate next prize
+- `getGuaranteedPrize(answered, structure)` - Milestone-based prize
+- `isMilestone(number)` - Check if milestone question
+- `formatPrize(amount)` - Format for display
+
+**lifelineLogic.js** (Phase 5)
+
+- `applyFiftyFifty(options, correct)` - Remove 2 incorrect answers
+- `isLifelineAvailable(team, type)` - Check availability
+- `formatTimerDisplay(seconds)` - Format MM:SS
+- `getAvailableLifelines(team)` - List available lifelines
+
+### Design Rationale:
+
+1. **Modular Components**: Each component has a single, clear responsibility
+2. **Custom Hooks**: Centralize business logic, keep components lean
+3. **Pure Utilities**: Enable easy unit testing without mocking
+4. **Clear Separation**: UI (components) vs Logic (hooks) vs Data (stores)
+5. **Scalability**: Easy to add new features without touching core logic
+6. **Maintainability**: Small files, focused code, easy to debug
+7. **Testability**: Hooks and utilities can be tested in isolation
+
+---
+
 **Phase 4 Acceptance Criteria:**
 
 - ✅ Questions load from localStorage correctly
@@ -29,3 +177,6 @@
 - ✅ Correct flow updates prize and progresses
 - ✅ Incorrect flow checks lifelines appropriately
 - ✅ UI clearly distinguishes host vs public view
+- ✅ Modular structure implemented with proper separation of concerns
+- ✅ Custom hooks centralize business logic
+- ✅ Utility functions are pure and testable
