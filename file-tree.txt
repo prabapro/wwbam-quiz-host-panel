@@ -71,6 +71,7 @@
 │   │       ├── label.jsx
 │   │       ├── progress.jsx
 │   │       ├── scroll-area.jsx
+│   │       ├── sonner.jsx
 │   │       ├── table.jsx
 │   │       ├── theme-toggle.jsx
 │   │       └── tooltip.jsx
