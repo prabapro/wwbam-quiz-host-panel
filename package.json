@@ -7,8 +7,8 @@
     "build:viz": "pnpm dlx vite-bundle-visualizer --report dist/stats.json --output dist/bundle-visualizer.html",
     "build": "vite build",
     "deploy:firebase": "pnpm build && firebase deploy --only hosting",
-    "dev:emulator": "firebase emulators:start --only auth,database --import=./emulator-data --export-on-exit",
-    "dev": "concurrently \"pnpm dev:emulator\" \"infisical run -- vite\"",
+    "dev:emulator": "firebase emulators:start --only auth,database --import=./emulator-data --export-on-exit & pnpm exec wait-on http://127.0.0.1:4000 && open http://127.0.0.1:4000/database/wwbam-quiz/data && wait",
+    "dev": "concurrently -n EMU,VITE -c blue,green \"pnpm dev:emulator\" \"infisical run -- vite\"",
     "emulator:export": "firebase emulators:export ./emulator-data",
     "emulator:import": "firebase emulators:start --only auth,database --import=./emulator-data",
     "emulator:erase": "rm -rf emulator-data",
@@ -56,7 +56,8 @@
     "terser": "^5.39.2",
     "tw-animate-css": "^1.3.0",
     "vite": "^6.3.5",
-    "vite-plugin-minify": "^2.1.0"
+    "vite-plugin-minify": "^2.1.0",
+    "wait-on": "^9.0.3"
   },
   "engines": {
     "node": ">=22.0.0"
