@@ -47,6 +47,8 @@ const DEFAULT_EXCLUDES = [
   '*.code-workspace',
   'pnpm*',
   '.firebase',
+  'emulator-data',
+  'database-debug.log',
 ];
 
 // Configuration

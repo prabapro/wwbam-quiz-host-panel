@@ -132,6 +132,7 @@
 │   │   │   ├── answerValidation.js
 │   │   │   ├── lifelineLogic.js
 │   │   │   └── scoreCalculation.js
+│   │   ├── firebaseEnvironment.js
 │   │   ├── gameInitialization.js
 │   │   ├── setupValidation.js
 │   │   ├── teamValidation.js
