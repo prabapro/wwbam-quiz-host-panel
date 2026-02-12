@@ -79,6 +79,7 @@
 │   │   └── routes.js
 │   ├── constants
 │   │   ├── config.js
+│   │   ├── defaultDatabase.js
 │   │   ├── gameStates.js
 │   │   ├── prizeStructure.js
 │   │   ├── storage.js
