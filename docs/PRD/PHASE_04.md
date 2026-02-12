@@ -1,7 +1,7 @@
 # Phase 4: Core Game Play - Question Flow
 
 - **Dependencies:** Phase 3 (Game initialized and started)
-- **Status:** Pending
+- **Status:** Completed
 - **USER_JOURNEY Reference:** [Journey 3, Phase B: Question Cycle](../USER_JOURNEY.md#phase-b-question-cycle-repeat-up-to-questions_per_set-times-or-until-elimination)
 
 | Requirement ID    | Description                        | User Story                                                                        | Expected Behavior/Outcome                                                                                                                                                                                           |
