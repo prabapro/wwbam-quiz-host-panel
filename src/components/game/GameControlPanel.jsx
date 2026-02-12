@@ -41,7 +41,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   MoreVertical,
-  Factory,
+  Recycle,
 } from 'lucide-react';
 
 /**
@@ -229,7 +229,7 @@ export default function GameControlPanel() {
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onClick={() => setShowFactoryResetDialog(true)}>
-                  <Factory className="w-4 h-4 mr-2" />
+                  <Recycle className="w-4 h-4 mr-2" />
                   Reset App to Factory Defaults
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -294,28 +294,30 @@ export default function GameControlPanel() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Factory className="w-5 h-5" />
+              <Recycle className="w-5 h-5" />
               Reset App to Factory Defaults?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p className="font-semibold text-destructive">
-                ⚠️ This action is IRREVERSIBLE and will permanently delete ALL
-                app data:
-              </p>
-              <ul className="space-y-1 text-sm">
-                <li>• All teams (from both localStorage and Firebase)</li>
-                <li>• All question sets (from localStorage)</li>
-                <li>• Prize structure (reset to defaults in Firebase)</li>
-                <li>• Game state (reset to defaults in Firebase)</li>
-              </ul>
-              <p className="font-semibold">
-                The app will be reset to its initial state as if freshly
-                installed.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                This is typically used before a new event or to completely start
-                over.
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p className="font-semibold text-destructive">
+                  ⚠️ This action is IRREVERSIBLE and will permanently delete ALL
+                  app data:
+                </p>
+                <ul className="space-y-1 text-sm list-none">
+                  <li>• All teams (from both localStorage and Firebase)</li>
+                  <li>• All question sets (from localStorage)</li>
+                  <li>• Prize structure (reset to defaults in Firebase)</li>
+                  <li>• Game state (reset to defaults in Firebase)</li>
+                </ul>
+                <p className="font-semibold">
+                  The app will be reset to its initial state as if freshly
+                  installed.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  This is typically used before a new event or to completely
+                  start over.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -340,7 +342,7 @@ export default function GameControlPanel() {
                 </>
               ) : (
                 <>
-                  <Factory className="w-4 h-4 mr-2" />
+                  <Recycle className="w-4 h-4 mr-2" />
                   Reset to Factory Defaults
                 </>
               )}
