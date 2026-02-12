@@ -11,7 +11,16 @@
         "public-display": [
           "wwbam-quiz-display"
         ]
+      },
+      "database": {
+        "staging": [
+          "wwbam-quiz-staging"
+        ],
+        "production": [
+          "wwbam-quiz-default-rtdb"
+        ]
       }
     }
-  }
+  },
+  "etags": {}
 }
