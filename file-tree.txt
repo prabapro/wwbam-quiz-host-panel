@@ -93,6 +93,7 @@
 │   │   ├── Home.jsx
 │   │   ├── Login.jsx
 │   │   ├── NotFound.jsx
+│   │   ├── Play.jsx
 │   │   ├── PrizeManagement.jsx
 │   │   ├── QuestionManagement.jsx
 │   │   └── TeamManagement.jsx
