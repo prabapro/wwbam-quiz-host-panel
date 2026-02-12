@@ -36,15 +36,23 @@ export const DB_PATHS = {
 
 /**
  * Convert camelCase to kebab-case
+ * Handles consecutive capitals correctly (e.g., phoneAFriend → phone-a-friend)
  * @param {string} str - camelCase string
  * @returns {string} kebab-case string
  */
 const camelToKebab = (str) => {
-  return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+  return (
+    str
+      // Insert hyphen before uppercase letter following lowercase/digit
+      .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+      // Insert hyphen before uppercase letter followed by lowercase (handles consecutive capitals)
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+      .toLowerCase()
+  );
 };
 
 /**
- * Convert kebab-case to camelCase
+ * Convert kebab-case to camelCase (both single and consecutive capitals. e.g., fifty-fifty → fiftyFifty, phone-a-friend → phoneAFriend)
  * @param {string} str - kebab-case string
  * @returns {string} camelCase string
  */
