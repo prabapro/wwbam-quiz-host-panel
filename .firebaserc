@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "wwbam-quiz"
+  },
+  "targets": {
+    "wwbam-quiz": {
+      "hosting": {
+        "host-panel": [
+          "wwbam-quiz"
+        ],
+        "public-display": [
+          "wwbam-quiz-display"
+        ]
+      }
+    }
   }
 }
