@@ -11,17 +11,7 @@ import { useTeamsStore } from '@stores/useTeamsStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
 import { GAME_STATUS } from '@constants/gameStates';
-import { formatPrize } from '@constants/prizeStructure';
-import {
-  ArrowLeft,
-  Users,
-  Trophy,
-  ListOrdered,
-  AlertTriangle,
-  Construction,
-} from 'lucide-react';
-
-// Import placeholder components (to be built later)
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import GameStatusBar from './components/GameStatusBar';
 import QuestionPanel from './components/QuestionPanel';
 import AnswerPad from './components/AnswerPad';
@@ -32,6 +22,12 @@ import GameControls from './components/GameControls';
 /**
  * Play Page - Main Gameplay Interface
  * Orchestrates all gameplay components and pulls state from stores
+ *
+ * Layout:
+ * - Top: Game Status Bar (team, question, prize)
+ * - Left Column (2/3): Question Panel, Answer Pad, Game Controls
+ * - Right Column (1/3): Team Status, Lifelines
+ * - Bottom: Debug Info (development mode)
  */
 export default function Play() {
   const navigate = useNavigate();
@@ -51,6 +47,8 @@ export default function Play() {
   // Questions Store State
   const hostQuestion = useQuestionsStore((state) => state.hostQuestion);
   const loadedSets = useQuestionsStore((state) => state.loadedSets);
+  const selectedAnswer = useQuestionsStore((state) => state.selectedAnswer);
+  const validationResult = useQuestionsStore((state) => state.validationResult);
 
   // Prize Store State
   const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
@@ -86,10 +84,6 @@ export default function Play() {
     );
   }
 
-  // Calculate current prize
-  const currentPrize = currentTeam.currentPrize || 0;
-  const totalQuestions = prizeStructure.length;
-
   return (
     <main className="container mx-auto py-6 px-4 max-w-7xl">
       {/* Page Header */}
@@ -106,85 +100,26 @@ export default function Play() {
         </Button>
       </div>
 
-      {/* Game Status Bar - Will be a component later */}
+      {/* Game Status Bar */}
       <div className="mb-6">
         <GameStatusBar />
       </div>
 
-      {/* Current Game State Display */}
-      <Card className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Current Game State
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Current Team */}
-            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <p className="text-sm font-medium text-muted-foreground">
-                  Current Team
-                </p>
-              </div>
-              <p className="text-2xl font-bold">{currentTeam.name}</p>
-              {currentTeam.participants && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {currentTeam.participants}
-                </p>
-              )}
-              <Badge className="mt-2 bg-blue-600">Active</Badge>
-            </div>
-
-            {/* Question Progress */}
-            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border">
-              <div className="flex items-center gap-2 mb-2">
-                <ListOrdered className="w-4 h-4 text-muted-foreground" />
-                <p className="text-sm font-medium text-muted-foreground">
-                  Question Progress
-                </p>
-              </div>
-              <p className="text-2xl font-bold">
-                {currentQuestionNumber}/{totalQuestions}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {totalQuestions - currentQuestionNumber} questions remaining
-              </p>
-            </div>
-
-            {/* Current Prize */}
-            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border">
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy className="w-4 h-4 text-muted-foreground" />
-                <p className="text-sm font-medium text-muted-foreground">
-                  Current Prize
-                </p>
-              </div>
-              <p className="text-2xl font-bold text-green-600">
-                {formatPrize(currentPrize)}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Prize money accumulated
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Gameplay Layout - Placeholder Structure */}
+      {/* Main Gameplay Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Question & Answer */}
+        {/* Left Column - Question & Controls (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Question Panel */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Question Display</CardTitle>
-              <Badge variant="outline">
-                <Construction className="w-3 h-3 mr-1" />
-                Coming Soon
-              </Badge>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Question Display
+                {hostQuestion && (
+                  <Badge variant="outline" className="ml-auto">
+                    Loaded
+                  </Badge>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <QuestionPanel />
@@ -193,12 +128,24 @@ export default function Play() {
 
           {/* Answer Pad */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Answer Selection</CardTitle>
-              <Badge variant="outline">
-                <Construction className="w-3 h-3 mr-1" />
-                Coming Soon
-              </Badge>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Answer Selection
+                {selectedAnswer && !validationResult && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {selectedAnswer} Selected
+                  </Badge>
+                )}
+                {validationResult && (
+                  <Badge
+                    variant={
+                      validationResult.isCorrect ? 'default' : 'destructive'
+                    }
+                    className="ml-auto">
+                    {validationResult.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                  </Badge>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <AnswerPad />
@@ -207,12 +154,8 @@ export default function Play() {
 
           {/* Game Controls */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Game Controls</CardTitle>
-              <Badge variant="outline">
-                <Construction className="w-3 h-3 mr-1" />
-                Coming Soon
-              </Badge>
             </CardHeader>
             <CardContent>
               <GameControls />
@@ -220,16 +163,12 @@ export default function Play() {
           </Card>
         </div>
 
-        {/* Right Column - Team & Lifelines */}
+        {/* Right Column - Team & Lifelines (1/3 width) */}
         <div className="space-y-6">
           {/* Team Status Card */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Team Status</CardTitle>
-              <Badge variant="outline">
-                <Construction className="w-3 h-3 mr-1" />
-                Coming Soon
-              </Badge>
             </CardHeader>
             <CardContent>
               <TeamStatusCard />
@@ -238,12 +177,8 @@ export default function Play() {
 
           {/* Lifeline Panel */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Lifelines</CardTitle>
-              <Badge variant="outline">
-                <Construction className="w-3 h-3 mr-1" />
-                Coming Soon
-              </Badge>
             </CardHeader>
             <CardContent>
               <LifelinePanel />
@@ -252,30 +187,117 @@ export default function Play() {
         </div>
       </div>
 
-      {/* Debug Info - Store State */}
-      <Card className="mt-6 border-dashed">
-        <CardHeader>
-          <CardTitle className="text-sm">Debug: Store State</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-            <div>
-              <p className="font-semibold mb-1">Game Store:</p>
-              <p>Status: {gameStatus}</p>
-              <p>Current Team ID: {currentTeamId}</p>
-              <p>Question Number: {currentQuestionNumber}</p>
-              <p>Play Queue: {playQueue.length} teams</p>
+      {/* Debug Info - Store State (Development) */}
+      {import.meta.env.DEV && (
+        <Card className="mt-6 border-dashed bg-muted/30">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              🔧 Debug: Store State
+              <Badge variant="outline" className="ml-auto text-xs">
+                Development Only
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+              {/* Game Store */}
+              <div className="space-y-1">
+                <p className="font-semibold text-blue-600 dark:text-blue-400 mb-2">
+                  Game Store:
+                </p>
+                <p className="text-muted-foreground">
+                  Status:{' '}
+                  <span className="text-foreground font-semibold">
+                    {gameStatus}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Team ID:{' '}
+                  <span className="text-foreground font-semibold">
+                    {currentTeamId?.slice(0, 8)}...
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Question:{' '}
+                  <span className="text-foreground font-semibold">
+                    {currentQuestionNumber}/{prizeStructure.length}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Queue:{' '}
+                  <span className="text-foreground font-semibold">
+                    {playQueue.length} teams
+                  </span>
+                </p>
+              </div>
+
+              {/* Questions Store */}
+              <div className="space-y-1">
+                <p className="font-semibold text-purple-600 dark:text-purple-400 mb-2">
+                  Questions Store:
+                </p>
+                <p className="text-muted-foreground">
+                  Loaded Sets:{' '}
+                  <span className="text-foreground font-semibold">
+                    {Object.keys(loadedSets).length}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Host Question:{' '}
+                  <span className="text-foreground font-semibold">
+                    {hostQuestion ? 'Loaded' : 'None'}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Selected:{' '}
+                  <span className="text-foreground font-semibold">
+                    {selectedAnswer || 'None'}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Validated:{' '}
+                  <span className="text-foreground font-semibold">
+                    {validationResult ? 'Yes' : 'No'}
+                  </span>
+                </p>
+              </div>
+
+              {/* Team Store */}
+              <div className="space-y-1">
+                <p className="font-semibold text-green-600 dark:text-green-400 mb-2">
+                  Current Team:
+                </p>
+                <p className="text-muted-foreground">
+                  Name:{' '}
+                  <span className="text-foreground font-semibold">
+                    {currentTeam.name}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Status:{' '}
+                  <span className="text-foreground font-semibold">
+                    {currentTeam.status}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Prize:{' '}
+                  <span className="text-foreground font-semibold">
+                    Rs.{currentTeam.currentPrize || 0}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Lifelines:{' '}
+                  <span className="text-foreground font-semibold">
+                    {Object.values(currentTeam.lifelines || {}).filter(Boolean)
+                      .length || 0}
+                    /2
+                  </span>
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold mb-1">Questions Store:</p>
-              <p>Loaded Sets: {Object.keys(loadedSets).length}</p>
-              <p>Host Question: {hostQuestion ? 'Loaded' : 'None'}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }
-
-// testing deployment
