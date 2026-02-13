@@ -396,15 +396,69 @@ export const useGameStore = create()(
         /**
          * Pause game
          */
-        pauseGame: () => {
-          get().setGameStatus(GAME_STATUS.PAUSED);
+        pauseGame: async () => {
+          const currentStatus = get().gameStatus;
+
+          if (!isValidTransition(currentStatus, GAME_STATUS.PAUSED)) {
+            console.warn('Cannot pause game from current state');
+            return { success: false, error: 'Invalid state transition' };
+          }
+
+          try {
+            // Update local state
+            set({
+              gameStatus: GAME_STATUS.PAUSED,
+              lastUpdated: Date.now(),
+            });
+
+            // ✅ Sync to Firebase
+            await databaseService.updateGameState({
+              gameStatus: 'paused',
+            });
+
+            console.log('⏸️ Game paused and synced to Firebase');
+
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to pause game:', error);
+            // Rollback on error
+            set({ gameStatus: currentStatus });
+            return { success: false, error: error.message };
+          }
         },
 
         /**
          * Resume game
          */
-        resumeGame: () => {
-          get().setGameStatus(GAME_STATUS.ACTIVE);
+        resumeGame: async () => {
+          const currentStatus = get().gameStatus;
+
+          if (!isValidTransition(currentStatus, GAME_STATUS.ACTIVE)) {
+            console.warn('Cannot resume game from current state');
+            return { success: false, error: 'Invalid state transition' };
+          }
+
+          try {
+            // Update local state
+            set({
+              gameStatus: GAME_STATUS.ACTIVE,
+              lastUpdated: Date.now(),
+            });
+
+            // ✅ Sync to Firebase
+            await databaseService.updateGameState({
+              gameStatus: 'active',
+            });
+
+            console.log('▶️ Game resumed and synced to Firebase');
+
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to resume game:', error);
+            // Rollback on error
+            set({ gameStatus: currentStatus });
+            return { success: false, error: error.message };
+          }
         },
 
         /**
