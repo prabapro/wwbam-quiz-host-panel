@@ -88,10 +88,16 @@ export default function Play() {
     };
   }, []);
 
-  // Redirect if game is not active
+  // ✅ FIX: Redirect only if game is not in a playable state
+  // Allow both ACTIVE and PAUSED states to stay on this page
   useEffect(() => {
-    if (gameStatus !== GAME_STATUS.ACTIVE) {
-      console.warn('Game is not active, redirecting to home');
+    const isPlayableState =
+      gameStatus === GAME_STATUS.ACTIVE || gameStatus === GAME_STATUS.PAUSED;
+
+    if (!isPlayableState) {
+      console.warn(
+        `Game is not in playable state (${gameStatus}), redirecting to home`,
+      );
       navigate('/');
     }
   }, [gameStatus, navigate]);
@@ -134,6 +140,15 @@ export default function Play() {
           Back to Dashboard
         </Button>
       </div>
+
+      {/* Paused State Banner */}
+      {gameStatus === GAME_STATUS.PAUSED && (
+        <Alert className="mb-6 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-500">
+          <AlertDescription className="text-center">
+            <strong>⏸️ Game Paused</strong> - Click "Resume" to continue playing
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Game Status Bar */}
       <div className="mb-6">
