@@ -22,21 +22,26 @@
  * // Returns: { isCorrect: false, selectedAnswer: 'A', correctAnswer: 'B' }
  */
 
+const VALID_OPTIONS = ['A', 'B', 'C', 'D'];
+
 /**
  * Normalize answer option to uppercase
  * @param {string} option - Answer option (A/B/C/D)
- * @returns {string} Normalized option (uppercase, trimmed)
+ * @returns {string|null} Normalized option (uppercase, trimmed) or null if invalid
+ *
+ * @example
+ * normalizeOption('b')     // Returns: 'B'
+ * normalizeOption('  A  ') // Returns: 'A'
+ * normalizeOption('X')     // Returns: null
  */
 export function normalizeOption(option) {
-  // TODO: Implement normalization
   if (!option || typeof option !== 'string') {
     return null;
   }
 
   const normalized = option.toString().trim().toUpperCase();
-  const validOptions = ['A', 'B', 'C', 'D'];
 
-  return validOptions.includes(normalized) ? normalized : null;
+  return VALID_OPTIONS.includes(normalized) ? normalized : null;
 }
 
 /**
@@ -48,6 +53,8 @@ export function normalizeOption(option) {
  * @returns {string} returns.selectedAnswer - Normalized selected answer
  * @returns {string} returns.correctAnswer - Normalized correct answer
  *
+ * @throws {Error} If either answer option is invalid
+ *
  * @example
  * validateAnswer('B', 'B')
  * // Returns: { isCorrect: true, selectedAnswer: 'B', correctAnswer: 'B' }
@@ -56,22 +63,29 @@ export function normalizeOption(option) {
  * // Returns: { isCorrect: false, selectedAnswer: 'A', correctAnswer: 'B' }
  */
 export function validateAnswer(selectedAnswer, correctAnswer) {
-  // TODO: Implement validation logic
-  console.log(
-    '🚧 validateAnswer not implemented:',
-    selectedAnswer,
-    correctAnswer,
-  );
-
   const normalizedSelected = normalizeOption(selectedAnswer);
   const normalizedCorrect = normalizeOption(correctAnswer);
 
-  if (!normalizedSelected || !normalizedCorrect) {
-    throw new Error('Invalid answer options');
+  if (!normalizedSelected) {
+    throw new Error(
+      `Invalid selected answer: "${selectedAnswer}". Must be A, B, C, or D.`,
+    );
   }
 
+  if (!normalizedCorrect) {
+    throw new Error(
+      `Invalid correct answer: "${correctAnswer}". Must be A, B, C, or D.`,
+    );
+  }
+
+  const isCorrect = normalizedSelected === normalizedCorrect;
+
+  console.log(
+    `${isCorrect ? '✅' : '❌'} Answer validation: ${normalizedSelected} vs ${normalizedCorrect} (${isCorrect ? 'CORRECT' : 'INCORRECT'})`,
+  );
+
   return {
-    isCorrect: normalizedSelected === normalizedCorrect,
+    isCorrect,
     selectedAnswer: normalizedSelected,
     correctAnswer: normalizedCorrect,
   };
@@ -81,9 +95,21 @@ export function validateAnswer(selectedAnswer, correctAnswer) {
  * Check if answer option is valid
  * @param {string} option - Answer option to check
  * @returns {boolean} True if valid (A/B/C/D)
+ *
+ * @example
+ * isValidAnswerOption('A')   // Returns: true
+ * isValidAnswerOption('b')   // Returns: true (normalized)
+ * isValidAnswerOption('X')   // Returns: false
+ * isValidAnswerOption(null)  // Returns: false
  */
 export function isValidAnswerOption(option) {
-  // TODO: Implement validation
-  const normalized = normalizeOption(option);
-  return normalized !== null;
+  return normalizeOption(option) !== null;
+}
+
+/**
+ * Get list of valid answer options
+ * @returns {string[]} Array of valid options ['A', 'B', 'C', 'D']
+ */
+export function getValidOptions() {
+  return [...VALID_OPTIONS];
 }
