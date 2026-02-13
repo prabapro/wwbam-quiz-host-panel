@@ -10,8 +10,11 @@ import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
+import { databaseService } from '@services/database.service';
 import { GAME_STATUS } from '@constants/gameStates';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
+
+// Import Phase 4 Components
 import GameStatusBar from './components/GameStatusBar';
 import QuestionPanel from './components/QuestionPanel';
 import AnswerPad from './components/AnswerPad';
@@ -39,6 +42,8 @@ export default function Play() {
     (state) => state.currentQuestionNumber,
   );
   const playQueue = useGameStore((state) => state.playQueue);
+  const questionVisible = useGameStore((state) => state.questionVisible);
+  const answerRevealed = useGameStore((state) => state.answerRevealed);
 
   // Teams Store State
   const teams = useTeamsStore((state) => state.teams);
@@ -52,6 +57,36 @@ export default function Play() {
 
   // Prize Store State
   const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
+
+  // ✅ FIX: Listen to Firebase game state changes
+  useEffect(() => {
+    console.log('🔄 Starting Firebase game state listener...');
+
+    const unsubscribe = databaseService.onGameStateChange((gameState) => {
+      if (gameState) {
+        console.log('🔄 Game state updated from Firebase:', {
+          questionVisible: gameState.questionVisible,
+          answerRevealed: gameState.answerRevealed,
+          correctOption: gameState.correctOption,
+          currentQuestionNumber: gameState.currentQuestionNumber,
+        });
+
+        // Update local game store with Firebase data
+        useGameStore.setState({
+          questionVisible: gameState.questionVisible,
+          answerRevealed: gameState.answerRevealed,
+          correctOption: gameState.correctOption,
+          currentQuestionNumber: gameState.currentQuestionNumber,
+        });
+      }
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      console.log('🛑 Stopping Firebase game state listener');
+      unsubscribe();
+    };
+  }, []);
 
   // Redirect if game is not active
   useEffect(() => {
@@ -116,7 +151,7 @@ export default function Play() {
                 Question Display
                 {hostQuestion && (
                   <Badge variant="outline" className="ml-auto">
-                    Loaded
+                    Q{hostQuestion.number} Loaded
                   </Badge>
                 )}
               </CardTitle>
@@ -229,6 +264,18 @@ export default function Play() {
                     {playQueue.length} teams
                   </span>
                 </p>
+                <p className="text-muted-foreground">
+                  Visible:{' '}
+                  <span className="text-foreground font-semibold">
+                    {questionVisible ? 'Yes' : 'No'}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Revealed:{' '}
+                  <span className="text-foreground font-semibold">
+                    {answerRevealed ? 'Yes' : 'No'}
+                  </span>
+                </p>
               </div>
 
               {/* Questions Store */}
@@ -245,7 +292,7 @@ export default function Play() {
                 <p className="text-muted-foreground">
                   Host Question:{' '}
                   <span className="text-foreground font-semibold">
-                    {hostQuestion ? 'Loaded' : 'None'}
+                    {hostQuestion ? `Q${hostQuestion.number}` : 'None'}
                   </span>
                 </p>
                 <p className="text-muted-foreground">

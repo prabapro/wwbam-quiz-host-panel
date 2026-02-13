@@ -59,15 +59,12 @@ export function useCurrentQuestion() {
     (state) => state.questionSetAssignments,
   );
   const questionVisible = useGameStore((state) => state.questionVisible);
-  const currentQuestionNumber = useGameStore(
-    (state) => state.currentQuestionNumber,
-  );
   const setQuestionNumber = useGameStore((state) => state.setQuestionNumber);
 
   /**
    * Load question from localStorage for host view
    * Includes correct answer for host validation
-   * Does NOT sync to Firebase yet
+   * Syncs question number to Firebase
    */
   const loadQuestion = async (questionNumber) => {
     setIsLoading(true);
@@ -97,10 +94,17 @@ export function useCurrentQuestion() {
         throw new Error(result.error || 'Failed to load question');
       }
 
-      // Update current question number in game state
+      // Update current question number in local game state
       setQuestionNumber(questionNumber);
 
-      console.log(`✅ Question ${questionNumber} loaded from localStorage`);
+      // ✅ FIX: Sync question number to Firebase
+      await databaseService.updateGameState({
+        currentQuestionNumber: questionNumber,
+      });
+
+      console.log(
+        `✅ Question ${questionNumber} loaded from localStorage and synced to Firebase`,
+      );
 
       setIsLoading(false);
     } catch (err) {
@@ -131,13 +135,14 @@ export function useCurrentQuestion() {
         throw new Error('Failed to generate public question');
       }
 
-      // Push to Firebase (without correct answer)
-      await databaseService.setCurrentQuestion(
-        publicQuestion,
-        currentQuestionNumber,
-      );
+      // ✅ FIX: Use hostQuestion.number instead of currentQuestionNumber
+      // (currentQuestionNumber might be stale in local state)
+      const questionNumber = hostQuestion.number;
 
-      console.log(`✅ Question ${currentQuestionNumber} shown to public`);
+      // Push to Firebase (without correct answer)
+      await databaseService.setCurrentQuestion(publicQuestion, questionNumber);
+
+      console.log(`✅ Question ${questionNumber} shown to public`);
 
       setIsLoading(false);
     } catch (err) {

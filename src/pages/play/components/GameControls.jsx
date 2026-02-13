@@ -7,7 +7,6 @@ import {
   FileText,
   Eye,
   EyeOff,
-  ArrowRight,
   Users,
   SkipForward,
   Pause,
@@ -22,21 +21,16 @@ import { cn } from '@lib/utils';
  * Purpose: Main control buttons for managing question flow and game progression
  *
  * Control Buttons:
- * 1. "Load Question" - Fetch next question from localStorage (host view only)
+ * 1. "Load Question X" - Fetch next question from localStorage (dynamic label)
  * 2. "Show Question" - Push question to Firebase (visible to public)
  * 3. "Hide Question" - Retract question from public view
- * 4. "Next Question" - Move to next question (after correct answer)
- * 5. "Next Team" - Move to next team in queue (after elimination/completion)
- * 6. "Skip Question" - Skip current question (error handling)
- * 7. "Pause Game" - Pause game state
- * 8. "Resume Game" - Resume from pause
+ * 4. "Next Team" - Move to next team in queue (after elimination/completion)
+ * 5. "Skip Question" - Skip current question (error handling)
+ * 6. "Pause Game" - Pause game state
+ * 7. "Resume Game" - Resume from pause
  *
- * Button States (Smart State Management):
- * - Load Question: Enabled when no question loaded OR after question complete
- * - Show Question: Enabled only when question loaded (host view) but not visible
- * - Lock Answer: Enabled only when team has selected answer
- * - Next Question: Enabled only after correct answer validated
- * - Next Team: Enabled only after team eliminated or completed
+ * Flow:
+ * Load Q1 → Show → Answer & Lock → Load Q2 → Show → Answer & Lock → ...
  */
 export default function GameControls() {
   // Game Controls Hook
@@ -44,17 +38,16 @@ export default function GameControls() {
     canLoadQuestion,
     canShowQuestion,
     canHideQuestion,
-    canNextQuestion,
     canNextTeam,
     canSkipQuestion,
     canPause,
     canResume,
+    nextQuestionNumber,
     isLoading,
     error,
     handleLoadQuestion,
     handleShowQuestion,
     handleHideQuestion,
-    handleNextQuestion,
     handleNextTeam,
     handleSkipQuestion,
     handlePause,
@@ -70,18 +63,18 @@ export default function GameControls() {
         </p>
 
         <div className="grid grid-cols-2 gap-3">
-          {/* Load Question */}
+          {/* Load Question - Dynamic Label */}
           <Button
             onClick={handleLoadQuestion}
             disabled={!canLoadQuestion || isLoading}
-            variant="outline"
+            variant="default"
             size="lg"
             className={cn(
-              'gap-2 transition-all',
-              canLoadQuestion && 'ring-2 ring-blue-500/50',
+              'gap-2 transition-all col-span-2',
+              canLoadQuestion && 'ring-2 ring-blue-500 animate-pulse',
             )}>
             <FileText className="w-4 h-4" />
-            {isLoading ? 'Loading...' : 'Load Question'}
+            {isLoading ? 'Loading...' : `Load Question ${nextQuestionNumber}`}
           </Button>
 
           {/* Show Question */}
@@ -103,10 +96,33 @@ export default function GameControls() {
             onClick={handleHideQuestion}
             disabled={!canHideQuestion || isLoading}
             variant="outline"
-            size="sm"
+            size="lg"
             className="gap-2">
             <EyeOff className="w-4 h-4" />
             Hide Question
+          </Button>
+        </div>
+      </div>
+
+      {/* Navigation Controls */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Team Navigation
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Next Team */}
+          <Button
+            onClick={handleNextTeam}
+            disabled={!canNextTeam || isLoading}
+            variant={canNextTeam ? 'default' : 'outline'}
+            size="lg"
+            className={cn(
+              'gap-2 transition-all col-span-2',
+              canNextTeam && 'animate-pulse ring-2 ring-blue-500',
+            )}>
+            <Users className="w-4 h-4" />
+            Next Team
           </Button>
 
           {/* Skip Question */}
@@ -115,46 +131,9 @@ export default function GameControls() {
             disabled={!canSkipQuestion || isLoading}
             variant="ghost"
             size="sm"
-            className="gap-2 text-muted-foreground">
+            className="gap-2 text-muted-foreground col-span-2">
             <SkipForward className="w-4 h-4" />
             Skip Question
-          </Button>
-        </div>
-      </div>
-
-      {/* Navigation Controls */}
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Navigation
-        </p>
-
-        <div className="grid grid-cols-2 gap-3">
-          {/* Next Question */}
-          <Button
-            onClick={handleNextQuestion}
-            disabled={!canNextQuestion || isLoading}
-            variant={canNextQuestion ? 'default' : 'outline'}
-            size="lg"
-            className={cn(
-              'gap-2 transition-all',
-              canNextQuestion && 'animate-pulse ring-2 ring-green-500',
-            )}>
-            <ArrowRight className="w-4 h-4" />
-            Next Question
-          </Button>
-
-          {/* Next Team */}
-          <Button
-            onClick={handleNextTeam}
-            disabled={!canNextTeam || isLoading}
-            variant={canNextTeam ? 'default' : 'outline'}
-            size="lg"
-            className={cn(
-              'gap-2 transition-all',
-              canNextTeam && 'animate-pulse ring-2 ring-blue-500',
-            )}>
-            <Users className="w-4 h-4" />
-            Next Team
           </Button>
         </div>
       </div>
@@ -174,7 +153,7 @@ export default function GameControls() {
             size="sm"
             className="gap-2">
             <Pause className="w-4 h-4" />
-            Pause Game
+            Pause
           </Button>
 
           {/* Resume */}
@@ -185,7 +164,7 @@ export default function GameControls() {
             size="sm"
             className="gap-2">
             <Play className="w-4 h-4" />
-            Resume Game
+            Resume
           </Button>
         </div>
       </div>
@@ -203,8 +182,8 @@ export default function GameControls() {
         <p className="text-xs text-muted-foreground leading-relaxed">
           <strong>💡 Quick Guide:</strong>
           <br />
-          1. Load Question → 2. Show to Public → 3. Team Answers → 4. Lock
-          Answer → 5. Next Question/Team
+          1. Load Question → 2. Show to Public → 3. Lock Answer → 4. Load Next
+          Question
         </p>
       </div>
     </div>

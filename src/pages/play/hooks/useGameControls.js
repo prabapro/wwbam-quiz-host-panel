@@ -17,13 +17,12 @@ import { useCurrentQuestion } from './useCurrentQuestion';
  * - Calculate enabled/disabled state for each control button
  * - Provide handlers for each control action
  * - Track operation states (loading, error)
- * - Enforce game flow rules (can't show question before loading)
+ * - Enforce game flow rules
  *
  * Button State Rules:
- * - Load Question: Enabled when (no question loaded OR question complete)
+ * - Load Question: Enabled when (no question loaded OR answer validated - ready for next)
  * - Show Question: Enabled when (question loaded AND not visible AND not revealed)
  * - Hide Question: Enabled when (question visible AND not revealed)
- * - Next Question: Enabled when (answer correct AND validated)
  * - Next Team: Enabled when (team eliminated OR completed)
  * - Skip Question: Always enabled (with confirmation)
  * - Pause/Resume: Based on current game status
@@ -69,24 +68,42 @@ export function useGameControls() {
 
   /**
    * Can Load Question?
-   * - No question loaded OR answer has been revealed (ready for next)
-   * - Game is active
-   * - Current question number < 20
+   * Enabled when:
+   * - No question loaded yet (start of game or ready for first question)
+   * - OR answer has been validated (ready for next question)
+   * - AND current question number < 20 (not at max)
+   * - AND game is active
    */
   const canLoadQuestion = useMemo(() => {
     if (gameStatus !== GAME_STATUS.ACTIVE) return false;
     if (!currentTeam) return false;
     if (currentQuestionNumber >= 20) return false; // Already at max questions
 
-    // Can load if no question OR answer was revealed (ready for next)
-    return !hostQuestion || answerRevealed;
+    // Can load if:
+    // 1. No question loaded yet (start of game)
+    // 2. OR answer has been validated (ready for next)
+    return !hostQuestion || !!validationResult;
   }, [
     gameStatus,
     currentTeam,
     currentQuestionNumber,
     hostQuestion,
-    answerRevealed,
+    validationResult,
   ]);
+
+  /**
+   * Get next question number to load
+   * If no question loaded yet, start at 1
+   * Otherwise, current + 1
+   */
+  const nextQuestionNumber = useMemo(() => {
+    if (!hostQuestion) {
+      // No question loaded yet, start at question 1
+      return currentQuestionNumber + 1 || 1;
+    }
+    // Question loaded, next is current + 1
+    return currentQuestionNumber + 1;
+  }, [hostQuestion, currentQuestionNumber]);
 
   /**
    * Can Show Question?
@@ -106,20 +123,6 @@ export function useGameControls() {
   const canHideQuestion = useMemo(() => {
     return questionVisible && !answerRevealed;
   }, [questionVisible, answerRevealed]);
-
-  /**
-   * Can Next Question?
-   * - Answer has been validated
-   * - Answer was correct
-   * - Current question < 20
-   */
-  const canNextQuestion = useMemo(() => {
-    if (!validationResult) return false;
-    if (!validationResult.isCorrect) return false;
-    if (currentQuestionNumber >= 20) return false;
-
-    return true;
-  }, [validationResult, currentQuestionNumber]);
 
   /**
    * Can Next Team?
@@ -145,8 +148,8 @@ export function useGameControls() {
    * - Always enabled (emergency action)
    */
   const canSkipQuestion = useMemo(() => {
-    return gameStatus === GAME_STATUS.ACTIVE;
-  }, [gameStatus]);
+    return gameStatus === GAME_STATUS.ACTIVE && !!hostQuestion;
+  }, [gameStatus, hostQuestion]);
 
   /**
    * Can Pause?
@@ -170,12 +173,16 @@ export function useGameControls() {
 
   /**
    * Load next question from localStorage
+   * Clears previous question state first
    */
   const handleLoadQuestion = async () => {
     try {
-      // Load question number = currentQuestionNumber + 1
-      const questionNumber = currentQuestionNumber + 1;
-      await loadQuestion(questionNumber);
+      // Clear previous question state
+      clearQuestion();
+      clearHostQuestion();
+
+      // Load next question
+      await loadQuestion(nextQuestionNumber);
     } catch (err) {
       console.error('Failed to load question:', err);
       throw err;
@@ -204,16 +211,6 @@ export function useGameControls() {
       console.error('Failed to hide question:', err);
       throw err;
     }
-  };
-
-  /**
-   * Move to next question (after correct answer)
-   * Clears current question and resets state
-   */
-  const handleNextQuestion = () => {
-    clearQuestion();
-    clearHostQuestion();
-    console.log('✅ Ready for next question');
   };
 
   /**
@@ -263,11 +260,13 @@ export function useGameControls() {
     canLoadQuestion,
     canShowQuestion,
     canHideQuestion,
-    canNextQuestion,
     canNextTeam,
     canSkipQuestion,
     canPause,
     canResume,
+
+    // Question Number
+    nextQuestionNumber, // For dynamic button label
 
     // Loading States
     isLoading: questionLoading,
@@ -277,7 +276,6 @@ export function useGameControls() {
     handleLoadQuestion,
     handleShowQuestion,
     handleHideQuestion,
-    handleNextQuestion,
     handleNextTeam,
     handleSkipQuestion,
     handlePause,
