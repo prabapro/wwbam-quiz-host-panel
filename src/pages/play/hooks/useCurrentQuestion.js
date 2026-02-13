@@ -64,7 +64,7 @@ export function useCurrentQuestion() {
   /**
    * Load question from localStorage for host view
    * Includes correct answer for host validation
-   * Syncs question number to Firebase
+   * Clears previous question state and syncs question number to Firebase
    */
   const loadQuestion = async (questionNumber) => {
     setIsLoading(true);
@@ -97,13 +97,18 @@ export function useCurrentQuestion() {
       // Update current question number in local game state
       setQuestionNumber(questionNumber);
 
-      // ✅ FIX: Sync question number to Firebase
+      // ✅ FIX: Clear previous question state and sync new question number to Firebase
       await databaseService.updateGameState({
         currentQuestionNumber: questionNumber,
+        currentQuestion: null, // Clear previous question
+        questionVisible: false, // Reset visibility
+        optionsVisible: false, // Reset options visibility
+        answerRevealed: false, // Reset answer reveal
+        correctOption: null, // Clear previous correct answer
       });
 
       console.log(
-        `✅ Question ${questionNumber} loaded from localStorage and synced to Firebase`,
+        `✅ Question ${questionNumber} loaded from localStorage and synced to Firebase (previous state cleared)`,
       );
 
       setIsLoading(false);
@@ -135,8 +140,7 @@ export function useCurrentQuestion() {
         throw new Error('Failed to generate public question');
       }
 
-      // ✅ FIX: Use hostQuestion.number instead of currentQuestionNumber
-      // (currentQuestionNumber might be stale in local state)
+      // ✅ Use hostQuestion.number instead of currentQuestionNumber
       const questionNumber = hostQuestion.number;
 
       // Push to Firebase (without correct answer)
