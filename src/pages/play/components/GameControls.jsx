@@ -1,5 +1,21 @@
 // src/pages/play/components/GameControls.jsx
 
+import { useGameControls } from '../hooks/useGameControls';
+import { Button } from '@components/ui/button';
+import { Alert, AlertDescription } from '@components/ui/alert';
+import {
+  FileText,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Users,
+  SkipForward,
+  Pause,
+  Play,
+  AlertTriangle,
+} from 'lucide-react';
+import { cn } from '@lib/utils';
+
 /**
  * Game Controls Component
  *
@@ -21,74 +37,176 @@
  * - Lock Answer: Enabled only when team has selected answer
  * - Next Question: Enabled only after correct answer validated
  * - Next Team: Enabled only after team eliminated or completed
- *
- * Data Source:
- * - useGameStore (game status, question visibility flags)
- * - useQuestionsStore (load, show, clear question actions)
- * - Custom hook useGameControls for button state logic
- *
- * TODO: Implement full game control panel
- * - Create all control buttons with proper icons
- * - Implement smart button state management
- * - Connect to store actions (loadQuestion, showQuestion, etc.)
- * - Add confirmation dialogs for destructive actions (skip, next team)
- * - Show loading states during async operations
- * - Add keyboard shortcuts for common actions
- * - Display control hints/tooltips
  */
 export default function GameControls() {
+  // Game Controls Hook
+  const {
+    canLoadQuestion,
+    canShowQuestion,
+    canHideQuestion,
+    canNextQuestion,
+    canNextTeam,
+    canSkipQuestion,
+    canPause,
+    canResume,
+    isLoading,
+    error,
+    handleLoadQuestion,
+    handleShowQuestion,
+    handleHideQuestion,
+    handleNextQuestion,
+    handleNextTeam,
+    handleSkipQuestion,
+    handlePause,
+    handleResume,
+  } = useGameControls();
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground text-center">
-        Game control buttons
-      </p>
-
       {/* Primary Controls */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          disabled
-          className="p-3 rounded-lg border-2 border-dashed bg-muted/20 text-muted-foreground cursor-not-allowed">
-          📥 Load Question
-        </button>
-        <button
-          disabled
-          className="p-3 rounded-lg border-2 border-dashed bg-muted/20 text-muted-foreground cursor-not-allowed">
-          👁️ Show Question
-        </button>
-        <button
-          disabled
-          className="p-3 rounded-lg border-2 border-dashed bg-muted/20 text-muted-foreground cursor-not-allowed">
-          ➡️ Next Question
-        </button>
-        <button
-          disabled
-          className="p-3 rounded-lg border-2 border-dashed bg-muted-foreground/20 text-muted-foreground cursor-not-allowed">
-          👥 Next Team
-        </button>
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Question Controls
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Load Question */}
+          <Button
+            onClick={handleLoadQuestion}
+            disabled={!canLoadQuestion || isLoading}
+            variant="outline"
+            size="lg"
+            className={cn(
+              'gap-2 transition-all',
+              canLoadQuestion && 'ring-2 ring-blue-500/50',
+            )}>
+            <FileText className="w-4 h-4" />
+            {isLoading ? 'Loading...' : 'Load Question'}
+          </Button>
+
+          {/* Show Question */}
+          <Button
+            onClick={handleShowQuestion}
+            disabled={!canShowQuestion || isLoading}
+            variant="outline"
+            size="lg"
+            className={cn(
+              'gap-2 transition-all',
+              canShowQuestion && 'ring-2 ring-green-500/50',
+            )}>
+            <Eye className="w-4 h-4" />
+            {isLoading ? 'Showing...' : 'Show Question'}
+          </Button>
+
+          {/* Hide Question */}
+          <Button
+            onClick={handleHideQuestion}
+            disabled={!canHideQuestion || isLoading}
+            variant="outline"
+            size="sm"
+            className="gap-2">
+            <EyeOff className="w-4 h-4" />
+            Hide Question
+          </Button>
+
+          {/* Skip Question */}
+          <Button
+            onClick={handleSkipQuestion}
+            disabled={!canSkipQuestion || isLoading}
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-muted-foreground">
+            <SkipForward className="w-4 h-4" />
+            Skip Question
+          </Button>
+        </div>
       </div>
 
-      {/* Secondary Controls */}
-      <div className="grid grid-cols-3 gap-2">
-        <button
-          disabled
-          className="p-2 rounded-lg border border-dashed bg-muted/20 text-xs text-muted-foreground cursor-not-allowed">
-          🙈 Hide
-        </button>
-        <button
-          disabled
-          className="p-2 rounded-lg border border-dashed bg-muted/20 text-xs text-muted-foreground cursor-not-allowed">
-          ⏭️ Skip
-        </button>
-        <button
-          disabled
-          className="p-2 rounded-lg border border-dashed bg-muted/20 text-xs text-muted-foreground cursor-not-allowed">
-          ⏸️ Pause
-        </button>
+      {/* Navigation Controls */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Navigation
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Next Question */}
+          <Button
+            onClick={handleNextQuestion}
+            disabled={!canNextQuestion || isLoading}
+            variant={canNextQuestion ? 'default' : 'outline'}
+            size="lg"
+            className={cn(
+              'gap-2 transition-all',
+              canNextQuestion && 'animate-pulse ring-2 ring-green-500',
+            )}>
+            <ArrowRight className="w-4 h-4" />
+            Next Question
+          </Button>
+
+          {/* Next Team */}
+          <Button
+            onClick={handleNextTeam}
+            disabled={!canNextTeam || isLoading}
+            variant={canNextTeam ? 'default' : 'outline'}
+            size="lg"
+            className={cn(
+              'gap-2 transition-all',
+              canNextTeam && 'animate-pulse ring-2 ring-blue-500',
+            )}>
+            <Users className="w-4 h-4" />
+            Next Team
+          </Button>
+        </div>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
-        Will implement: Smart state management + async actions
-      </p>
+      {/* Game State Controls */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Game State
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Pause */}
+          <Button
+            onClick={handlePause}
+            disabled={!canPause || isLoading}
+            variant="outline"
+            size="sm"
+            className="gap-2">
+            <Pause className="w-4 h-4" />
+            Pause Game
+          </Button>
+
+          {/* Resume */}
+          <Button
+            onClick={handleResume}
+            disabled={!canResume || isLoading}
+            variant="outline"
+            size="sm"
+            className="gap-2">
+            <Play className="w-4 h-4" />
+            Resume Game
+          </Button>
+        </div>
+      </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Helpful Hints */}
+      <div className="p-3 bg-muted/50 rounded-lg border border-dashed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          <strong>💡 Quick Guide:</strong>
+          <br />
+          1. Load Question → 2. Show to Public → 3. Team Answers → 4. Lock
+          Answer → 5. Next Question/Team
+        </p>
+      </div>
     </div>
   );
 }
