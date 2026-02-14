@@ -1,6 +1,7 @@
 // src/pages/Home.jsx
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
 import { useGameStore } from '@stores/useGameStore';
@@ -12,9 +13,10 @@ import LoadingSpinner from '@components/common/LoadingSpinner';
 import { useSetupVerification } from '@hooks/useSetupVerification';
 import { Button } from '@components/ui/button';
 import { Rocket } from 'lucide-react';
-import { GAME_STATUS } from '@constants/gameStates';
+import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
 
 export default function Home() {
+  const navigate = useNavigate();
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [showInitializeModal, setShowInitializeModal] = useState(false);
 
@@ -34,7 +36,20 @@ export default function Home() {
   const isLoadingInitialData = teamsLoading || prizesLoading;
 
   // Check if game is initialized
-  const isGameInitialized = gameStatus !== GAME_STATUS.NOT_STARTED;
+  const isGameInitialized = gameStatus !== DEFAULT_GAME_STATE;
+
+  // ✅ FIX: Auto-redirect to /play if game is active or paused
+  useEffect(() => {
+    const isGameInProgress =
+      gameStatus === GAME_STATUS.ACTIVE || gameStatus === GAME_STATUS.PAUSED;
+
+    if (isGameInProgress) {
+      console.log(
+        `🎮 Game is in progress (${gameStatus}), redirecting to /play...`,
+      );
+      navigate('/play');
+    }
+  }, [gameStatus, navigate]);
 
   // Effect to track when initial loading is complete
   useEffect(() => {
