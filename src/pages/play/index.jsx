@@ -28,8 +28,9 @@ import GameControls from './components/GameControls';
  *
  * Layout:
  * - Top: Game Status Bar (full width)
- * - Left Column (1/2): Game Controls, Answer Pad
- * - Right Column (1/2): Question Display
+ * - Left Column (1/4): Game Controls (stacked buttons)
+ * - Middle Column (2/4): Question Display
+ * - Right Column (1/4): Answer Pad (2x2 grid)
  * - Bottom Row: Team Status (1/2), Lifelines (1/2)
  * - Debug Info (development mode)
  */
@@ -156,50 +157,22 @@ export default function Play() {
         <GameStatusBar />
       </div>
 
-      {/* Main Gameplay Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Controls & Answer Pad (1/2 width) */}
-        <div className="space-y-6">
-          {/* Game Controls */}
+      {/* Main Gameplay Layout - 4 Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Left Column - Game Controls (1/4 width) */}
+        <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Game Controls</CardTitle>
+              <CardTitle className="text-base">Game Controls</CardTitle>
             </CardHeader>
             <CardContent>
               <GameControls />
             </CardContent>
           </Card>
-
-          {/* Answer Pad */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                Answer Selection
-                {selectedAnswer && !validationResult && (
-                  <Badge variant="secondary" className="ml-auto">
-                    {selectedAnswer} Selected
-                  </Badge>
-                )}
-                {validationResult && (
-                  <Badge
-                    variant={
-                      validationResult.isCorrect ? 'default' : 'destructive'
-                    }
-                    className="ml-auto">
-                    {validationResult.isCorrect ? '✓ Correct' : '✗ Incorrect'}
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AnswerPad />
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Right Column - Question Display (1/2 width) */}
-        <div className="space-y-6">
-          {/* Question Panel */}
+        {/* Middle Column - Question Display (2/4 = 1/2 width) */}
+        <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -213,6 +186,34 @@ export default function Play() {
             </CardHeader>
             <CardContent>
               <QuestionPanel />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Answer Pad (1/4 width) */}
+        <div className="lg:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                Answer Pad
+                {selectedAnswer && !validationResult && (
+                  <Badge variant="secondary" className="ml-auto text-xs">
+                    {selectedAnswer}
+                  </Badge>
+                )}
+                {validationResult && (
+                  <Badge
+                    variant={
+                      validationResult.isCorrect ? 'default' : 'destructive'
+                    }
+                    className="ml-auto text-xs">
+                    {validationResult.isCorrect ? '✓' : '✗'}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AnswerPad />
             </CardContent>
           </Card>
         </div>
