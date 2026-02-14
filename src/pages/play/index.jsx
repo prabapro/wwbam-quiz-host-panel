@@ -27,10 +27,11 @@ import GameControls from './components/GameControls';
  * Orchestrates all gameplay components and pulls state from stores
  *
  * Layout:
- * - Top: Game Status Bar (team, question, prize)
- * - Left Column (2/3): Question Panel, Answer Pad, Game Controls
- * - Right Column (1/3): Team Status, Lifelines
- * - Bottom: Debug Info (development mode)
+ * - Top: Game Status Bar (full width)
+ * - Left Column (1/2): Game Controls, Answer Pad
+ * - Right Column (1/2): Question Display
+ * - Bottom Row: Team Status (1/2), Lifelines (1/2)
+ * - Debug Info (development mode)
  */
 export default function Play() {
   const navigate = useNavigate();
@@ -156,23 +157,16 @@ export default function Play() {
       </div>
 
       {/* Main Gameplay Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Question & Controls (2/3 width) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Question Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Controls & Answer Pad (1/2 width) */}
+        <div className="space-y-6">
+          {/* Game Controls */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                Question Display
-                {hostQuestion && (
-                  <Badge variant="outline" className="ml-auto">
-                    Q{hostQuestion.number} Loaded
-                  </Badge>
-                )}
-              </CardTitle>
+              <CardTitle>Game Controls</CardTitle>
             </CardHeader>
             <CardContent>
-              <QuestionPanel />
+              <GameControls />
             </CardContent>
           </Card>
 
@@ -201,40 +195,50 @@ export default function Play() {
               <AnswerPad />
             </CardContent>
           </Card>
-
-          {/* Game Controls */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Game Controls</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <GameControls />
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Right Column - Team & Lifelines (1/3 width) */}
+        {/* Right Column - Question Display (1/2 width) */}
         <div className="space-y-6">
-          {/* Team Status Card */}
+          {/* Question Panel */}
           <Card>
             <CardHeader>
-              <CardTitle>Team Status</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Question Display
+                {hostQuestion && (
+                  <Badge variant="outline" className="ml-auto">
+                    Q{hostQuestion.number} Loaded
+                  </Badge>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <TeamStatusCard />
-            </CardContent>
-          </Card>
-
-          {/* Lifeline Panel */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Lifelines</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <LifelinePanel />
+              <QuestionPanel />
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Bottom Row - Team Status & Lifelines */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        {/* Team Status Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Team Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TeamStatusCard />
+          </CardContent>
+        </Card>
+
+        {/* Lifeline Panel */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Lifelines</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LifelinePanel />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Debug Info - Store State (Development) */}
