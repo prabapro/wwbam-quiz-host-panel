@@ -76,16 +76,13 @@ export default function GameControls() {
           {isLoading ? 'Loading...' : `Load Question ${nextQuestionNumber}`}
         </Button>
 
-        {/* Show Question - Full Width */}
+        {/* Show Question - Custom Blue Primary Button - Full Width */}
         <Button
           onClick={handleShowQuestion}
           disabled={!canShowQuestion || isLoading}
-          variant="outline"
+          variant="default"
           size="lg"
-          className={cn(
-            'w-full gap-2 transition-all',
-            canShowQuestion && 'ring-2 ring-green-500/50',
-          )}>
+          className="w-full gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white">
           <Eye className="w-4 h-4" />
           {isLoading ? 'Showing...' : 'Show Question'}
         </Button>
