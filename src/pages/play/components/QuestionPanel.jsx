@@ -4,7 +4,7 @@ import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { useGameStore } from '@stores/useGameStore';
 import { Badge } from '@components/ui/badge';
 import { Alert, AlertDescription } from '@components/ui/alert';
-import { Eye, EyeOff, CheckCircle2, XCircle } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle2, Info } from 'lucide-react';
 import { cn } from '@lib/utils';
 
 /**
@@ -15,7 +15,7 @@ import { cn } from '@lib/utils';
  * Displays:
  * - Question number
  * - Question text
- * - Four answer options (A, B, C, D)
+ * - Four answer options (A, B, C, D) - DISPLAY ONLY, non-interactive
  * - Correct answer indicator (HOST VIEW ONLY - never synced to Firebase)
  * - Visual states: loading, visible, revealed
  *
@@ -24,6 +24,9 @@ import { cn } from '@lib/utils';
  * 2. Question loaded (host view): Show question + correct answer indicator
  * 3. Question visible to public: Show question (synced to Firebase, no answer)
  * 4. Answer revealed: Show question + highlight correct answer
+ *
+ * Note: Options are styled as non-interactive (grayed out, cursor-not-allowed)
+ * to prevent accidental clicks. Use Answer Pad for actual answer selection.
  */
 export default function QuestionPanel() {
   // Questions Store
@@ -98,8 +101,16 @@ export default function QuestionPanel() {
         </p>
       </div>
 
-      {/* Answer Options */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Display Only Notice */}
+      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Info className="w-3.5 h-3.5" />
+        <span className="font-medium">
+          Display Only - Use Answer Pad below to select answers
+        </span>
+      </div>
+
+      {/* Answer Options - Non-Interactive Display */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-75">
         {Object.entries(hostQuestion.options).map(([option, text]) => {
           const isCorrect = option === displayCorrectAnswer;
           const showCorrectIndicator = !questionVisible || answerRevealed;
@@ -108,15 +119,17 @@ export default function QuestionPanel() {
             <div
               key={option}
               className={cn(
-                'p-4 rounded-lg border-2 transition-all duration-300',
+                'p-4 rounded-lg border-2 border-dashed transition-all duration-300',
+                // Non-interactive styling - grayed out
+                'cursor-not-allowed select-none',
                 // Correct answer styling (host view or revealed)
                 isCorrect && showCorrectIndicator
-                  ? 'bg-green-50 dark:bg-green-950/20 border-green-500 dark:border-green-700'
-                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700',
+                  ? 'bg-green-50/50 dark:bg-green-950/10 border-green-400/50 dark:border-green-700/50'
+                  : 'bg-gray-50/50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700',
                 // Revealed answer gets extra emphasis
                 isCorrect &&
                   answerRevealed &&
-                  'ring-2 ring-green-500 shadow-lg',
+                  'ring-2 ring-green-500/30 shadow-md',
               )}>
               <div className="flex items-start gap-3">
                 {/* Option Letter */}
@@ -124,8 +137,8 @@ export default function QuestionPanel() {
                   className={cn(
                     'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm',
                     isCorrect && showCorrectIndicator
-                      ? 'bg-green-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
+                      ? 'bg-green-500/70 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
                   )}>
                   {option}
                 </div>
@@ -136,8 +149,8 @@ export default function QuestionPanel() {
                     className={cn(
                       'text-sm leading-relaxed',
                       isCorrect && showCorrectIndicator
-                        ? 'font-semibold text-green-900 dark:text-green-100'
-                        : 'text-gray-700 dark:text-gray-300',
+                        ? 'font-semibold text-green-800 dark:text-green-200'
+                        : 'text-gray-600 dark:text-gray-400',
                     )}>
                     {text}
                   </p>
@@ -147,11 +160,11 @@ export default function QuestionPanel() {
                 {isCorrect && showCorrectIndicator && (
                   <div className="flex-shrink-0">
                     {answerRevealed ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      <CheckCircle2 className="w-5 h-5 text-green-600/80 dark:text-green-400/80" />
                     ) : (
                       <Badge
                         variant="outline"
-                        className="bg-green-100 dark:bg-green-900/30 border-green-500 text-green-700 dark:text-green-300 text-xs">
+                        className="bg-green-100/70 dark:bg-green-900/20 border-green-500/50 text-green-700 dark:text-green-300 text-xs">
                         ✓ Correct
                       </Badge>
                     )}
