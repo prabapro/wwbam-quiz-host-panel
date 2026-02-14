@@ -7,6 +7,7 @@ import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
 import { localStorageService } from '@services/localStorage.service';
 import { QUESTIONS_PER_SET } from '@constants/config';
 import { useQuestionsStore } from './useQuestionsStore';
+import { useTeamsStore } from '@stores/useTeamsStore';
 
 const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
 
@@ -176,7 +177,7 @@ export const useGameStore = create()(
 
         /**
          * Start event (first team begins)
-         * SYNCS TO FIREBASE AUTOMATICALLY
+         * SYNCS TO FIREBASE AND LOCAL ZUSTAND STATE
          */
         startEvent: async () => {
           try {
@@ -188,7 +189,7 @@ export const useGameStore = create()(
 
             const firstTeamId = playQueue[0];
 
-            // Update local state
+            // Update local game state
             set({
               gameStatus: GAME_STATUS.ACTIVE,
               currentTeamId: firstTeamId,
@@ -197,16 +198,40 @@ export const useGameStore = create()(
               lastUpdated: Date.now(),
             });
 
-            // Sync to Firebase
-            await databaseService.updateGameState({
-              gameStatus: 'active',
-              currentTeamId: firstTeamId,
-              currentQuestionNumber: 0,
-              startedAt: Date.now(),
-              lastUpdated: Date.now(),
-            });
+            // Use atomic update to set both game state AND team status in Firebase
+            const updates = {};
+            updates['game-state/game-status'] = 'active';
+            updates['game-state/current-team-id'] = firstTeamId;
+            updates['game-state/current-question-number'] = 0;
+            updates['game-state/started-at'] = Date.now();
+            updates['game-state/last-updated'] = Date.now();
 
-            console.log(`🎮 Event started - First team: ${firstTeamId}`);
+            // Set first team to active status
+            updates[`teams/${firstTeamId}/status`] = 'active';
+            updates[`teams/${firstTeamId}/last-updated`] = Date.now();
+
+            // Atomic update to Firebase
+            await databaseService.atomicUpdate(updates);
+
+            // ✅ FIX: Update local Zustand team state to match Firebase
+            const { teams } = useTeamsStore.getState();
+            const updatedTeam = {
+              ...teams[firstTeamId],
+              status: 'active',
+              lastUpdated: Date.now(),
+            };
+
+            useTeamsStore.setState((state) => ({
+              teams: {
+                ...state.teams,
+                [firstTeamId]: updatedTeam,
+              },
+            }));
+
+            console.log(
+              `🎮 Event started - First team: ${firstTeamId} (status: active)`,
+            );
+            console.log(`✅ Local state synced: Team ${firstTeamId} -> active`);
 
             return { success: true, currentTeamId: firstTeamId };
           } catch (error) {
@@ -217,7 +242,7 @@ export const useGameStore = create()(
 
         /**
          * Move to next team in queue
-         * SYNCS TO FIREBASE AUTOMATICALLY
+         * SYNCS TO FIREBASE AND LOCAL ZUSTAND STATE
          */
         nextTeam: async () => {
           try {
@@ -235,21 +260,43 @@ export const useGameStore = create()(
 
             const nextTeamId = playQueue[currentIndex + 1];
 
-            // Update local state
+            // Update local game state
             set({
               currentTeamId: nextTeamId,
               currentQuestionNumber: 0,
               lastUpdated: Date.now(),
             });
 
-            // Sync to Firebase
-            await databaseService.updateGameState({
-              currentTeamId: nextTeamId,
-              currentQuestionNumber: 0,
-              lastUpdated: Date.now(),
-            });
+            // Use atomic update to set both game state AND team status in Firebase
+            const updates = {};
+            updates['game-state/current-team-id'] = nextTeamId;
+            updates['game-state/current-question-number'] = 0;
+            updates['game-state/last-updated'] = Date.now();
 
-            console.log(`➡️ Next team: ${nextTeamId}`);
+            // Set next team to active status
+            updates[`teams/${nextTeamId}/status`] = 'active';
+            updates[`teams/${nextTeamId}/last-updated`] = Date.now();
+
+            // Atomic update to Firebase
+            await databaseService.atomicUpdate(updates);
+
+            // ✅ FIX: Update local Zustand team state to match Firebase
+            const { teams } = useTeamsStore.getState();
+            const updatedTeam = {
+              ...teams[nextTeamId],
+              status: 'active',
+              lastUpdated: Date.now(),
+            };
+
+            useTeamsStore.setState((state) => ({
+              teams: {
+                ...state.teams,
+                [nextTeamId]: updatedTeam,
+              },
+            }));
+
+            console.log(`➡️ Next team: ${nextTeamId} (status: active)`);
+            console.log(`✅ Local state synced: Team ${nextTeamId} -> active`);
 
             return { success: true, nextTeamId };
           } catch (error) {
