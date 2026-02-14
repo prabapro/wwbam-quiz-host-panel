@@ -204,7 +204,7 @@ export default function Play() {
               isWaitingForVisibility && 'opacity-40',
               // Full opacity with ring animation when visible
               isAnswerPadActive &&
-                'opacity-100 ring-4 ring-blue-500 dark:ring-blue-400 shadow-lg shadow-blue-500/50 animate-pulse',
+                'opacity-100 ring-1 ring-blue-500 dark:ring-blue-400 shadow-lg shadow-blue-500/50 animate-pulse',
               // Normal state after answer revealed
               answerRevealed && 'opacity-100',
             )}>
