@@ -29,6 +29,8 @@ import {
 // ============================================================================
 
 export const DB_PATHS = {
+  ALLOWED_HOSTS: 'allowed-hosts',
+  QUESTION_SETS: 'question-sets',
   GAME_STATE: 'game-state',
   TEAMS: 'teams',
   PRIZE_STRUCTURE: 'prize-structure',
@@ -57,64 +59,256 @@ const camelToKebab = (str) => {
 };
 
 /**
- * Convert kebab-case to camelCase (both single and consecutive capitals. e.g., fifty-fifty → fiftyFifty, phone-a-friend → phoneAFriend)
+ * Convert kebab-case to camelCase
  * @param {string} str - kebab-case string
  * @returns {string} camelCase string
  */
 const kebabToCamel = (str) => {
-  return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 };
 
 /**
- * Convert object keys from camelCase to kebab-case
- * @param {Object} obj - Object with camelCase keys
- * @returns {Object} Object with kebab-case keys
+ * Recursively convert object keys from camelCase to kebab-case
+ * @param {Object|Array|*} obj - Object to convert
+ * @returns {Object|Array|*} Object with kebab-case keys
  */
 const convertKeysToKebab = (obj) => {
-  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
-    return obj;
-  }
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(convertKeysToKebab);
 
-  const result = {};
+  const converted = {};
   Object.keys(obj).forEach((key) => {
     const kebabKey = camelToKebab(key);
-    const value = obj[key];
-
-    // Recursively convert nested objects
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      result[kebabKey] = convertKeysToKebab(value);
-    } else {
-      result[kebabKey] = value;
-    }
+    converted[kebabKey] = convertKeysToKebab(obj[key]);
   });
-
-  return result;
+  return converted;
 };
 
 /**
- * Convert object keys from kebab-case to camelCase
- * @param {Object} obj - Object with kebab-case keys
- * @returns {Object} Object with camelCase keys
+ * Recursively convert object keys from kebab-case to camelCase
+ * @param {Object|Array|*} obj - Object to convert
+ * @returns {Object|Array|*} Object with camelCase keys
  */
 const convertKeysToCamel = (obj) => {
-  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
-    return obj;
-  }
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(convertKeysToCamel);
 
-  const result = {};
+  const converted = {};
   Object.keys(obj).forEach((key) => {
     const camelKey = kebabToCamel(key);
-    const value = obj[key];
+    converted[camelKey] = convertKeysToCamel(obj[key]);
+  });
+  return converted;
+};
 
-    // Recursively convert nested objects
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      result[camelKey] = convertKeysToCamel(value);
-    } else {
-      result[camelKey] = value;
+// ============================================================================
+// QUESTION SETS OPERATIONS
+// ============================================================================
+
+/**
+ * Get all question sets
+ * @returns {Promise<Object|null>} Question sets object or null
+ */
+export const getAllQuestionSets = async () => {
+  try {
+    const snapshot = await get(ref(database, DB_PATHS.QUESTION_SETS));
+    if (!snapshot.exists()) return null;
+
+    const questionSets = snapshot.val();
+    const convertedSets = {};
+
+    // Convert each set's keys from kebab-case to camelCase
+    Object.keys(questionSets).forEach((setId) => {
+      convertedSets[setId] = convertKeysToCamel(questionSets[setId]);
+    });
+
+    return convertedSets;
+  } catch (error) {
+    console.error('Error fetching question sets:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get single question set by ID
+ * @param {string} setId - Question set ID
+ * @returns {Promise<Object|null>} Question set object or null
+ */
+export const getQuestionSet = async (setId) => {
+  try {
+    const snapshot = await get(
+      ref(database, `${DB_PATHS.QUESTION_SETS}/${setId}`),
+    );
+    return snapshot.exists() ? convertKeysToCamel(snapshot.val()) : null;
+  } catch (error) {
+    console.error('Error fetching question set:', error);
+    throw error;
+  }
+};
+
+/**
+ * Save question set to Firebase
+ * @param {Object} questionSet - Question set data
+ * @returns {Promise<{ success: boolean, setId?: string, error?: string }>}
+ */
+export const saveQuestionSet = async (questionSet) => {
+  try {
+    const { setId } = questionSet;
+
+    if (!setId) {
+      return { success: false, error: 'Question set ID is required' };
     }
+
+    // Convert camelCase to kebab-case for Firebase
+    const kebabQuestionSet = convertKeysToKebab({
+      ...questionSet,
+      uploadedAt: serverTimestamp(),
+      lastModified: serverTimestamp(),
+    });
+
+    await set(
+      ref(database, `${DB_PATHS.QUESTION_SETS}/${setId}`),
+      kebabQuestionSet,
+    );
+
+    console.log(`✅ Question set saved to Firebase: ${setId}`);
+    return { success: true, setId };
+  } catch (error) {
+    console.error('Error saving question set:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Update question set
+ * @param {string} setId - Question set ID
+ * @param {Object} updates - Fields to update (camelCase)
+ * @returns {Promise<{ success: boolean, error?: string }>}
+ */
+export const updateQuestionSet = async (setId, updates) => {
+  try {
+    // Convert camelCase updates to kebab-case
+    const kebabUpdates = convertKeysToKebab({
+      ...updates,
+      lastModified: serverTimestamp(),
+    });
+
+    const updatePath = {};
+    Object.keys(kebabUpdates).forEach((key) => {
+      updatePath[`${DB_PATHS.QUESTION_SETS}/${setId}/${key}`] =
+        kebabUpdates[key];
+    });
+
+    await update(ref(database), updatePath);
+    console.log('✅ Question set updated:', setId);
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating question set:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Delete question set
+ * @param {string} setId - Question set ID
+ * @returns {Promise<{ success: boolean, error?: string }>}
+ */
+export const deleteQuestionSet = async (setId) => {
+  try {
+    await remove(ref(database, `${DB_PATHS.QUESTION_SETS}/${setId}`));
+    console.log('✅ Question set deleted:', setId);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting question set:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Check if question set exists
+ * @param {string} setId - Question set ID
+ * @returns {Promise<boolean>}
+ */
+export const questionSetExists = async (setId) => {
+  try {
+    const snapshot = await get(
+      ref(database, `${DB_PATHS.QUESTION_SETS}/${setId}`),
+    );
+    return snapshot.exists();
+  } catch (error) {
+    console.error('Error checking question set existence:', error);
+    return false;
+  }
+};
+
+/**
+ * Get question sets metadata (without full question data)
+ * @returns {Promise<Object>}
+ */
+export const getQuestionSetsMetadata = async () => {
+  try {
+    const allSets = await getAllQuestionSets();
+
+    if (!allSets) {
+      return {
+        totalSets: 0,
+        setIds: [],
+        sets: [],
+      };
+    }
+
+    const setIds = Object.keys(allSets);
+
+    return {
+      totalSets: setIds.length,
+      setIds,
+      sets: setIds.map((id) => ({
+        setId: id,
+        setName: allSets[id].setName,
+        totalQuestions: Array.isArray(allSets[id].questions)
+          ? allSets[id].questions.length
+          : 0,
+        uploadedAt: allSets[id].uploadedAt,
+        lastModified: allSets[id].lastModified,
+      })),
+    };
+  } catch (error) {
+    console.error('Failed to get question sets metadata:', error);
+    return {
+      totalSets: 0,
+      setIds: [],
+      sets: [],
+    };
+  }
+};
+
+/**
+ * Listen to question sets changes
+ * @param {Function} callback - Callback function receiving question sets data
+ * @returns {Function} Unsubscribe function
+ */
+export const onQuestionSetsChange = (callback) => {
+  const questionSetsRef = ref(database, DB_PATHS.QUESTION_SETS);
+  onValue(questionSetsRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback(null);
+      return;
+    }
+
+    const questionSets = snapshot.val();
+    const convertedSets = {};
+
+    // Convert each set's keys from kebab-case to camelCase
+    Object.keys(questionSets).forEach((setId) => {
+      convertedSets[setId] = convertKeysToCamel(questionSets[setId]);
+    });
+
+    callback(convertedSets);
   });
 
-  return result;
+  return () => off(questionSetsRef);
 };
 
 // ============================================================================
@@ -122,8 +316,8 @@ const convertKeysToCamel = (obj) => {
 // ============================================================================
 
 /**
- * Get current game state
- * @returns {Promise<Object|null>} Game state object or null
+ * Get game state
+ * @returns {Promise<Object|null>} Game state or null
  */
 export const getGameState = async () => {
   try {
@@ -136,15 +330,16 @@ export const getGameState = async () => {
 };
 
 /**
- * Update game state (atomic updates)
- * @param {Object} updates - Object with fields to update
+ * Update game state
+ * @param {Object} updates - Fields to update (camelCase)
  * @returns {Promise<void>}
  */
 export const updateGameState = async (updates) => {
   try {
+    // Convert camelCase updates to kebab-case
     const kebabUpdates = convertKeysToKebab(updates);
-    const updatePath = {};
 
+    const updatePath = {};
     Object.keys(kebabUpdates).forEach((key) => {
       updatePath[`${DB_PATHS.GAME_STATE}/${key}`] = kebabUpdates[key];
     });
@@ -153,29 +348,35 @@ export const updateGameState = async (updates) => {
     updatePath[`${DB_PATHS.GAME_STATE}/last-updated`] = serverTimestamp();
 
     await update(ref(database), updatePath);
-    console.log('✅ Game state updated:', updates);
+    console.log('✅ Game state updated');
   } catch (error) {
-    console.error('❌ Error updating game state:', error);
+    console.error('Error updating game state:', error);
     throw error;
   }
 };
 
 /**
- * Set current question
- * @param {Object} questionData - Question object (without correct answer)
+ * Set current question (without correct answer for public display)
+ * @param {Object} question - Question data
  * @param {number} questionNumber - Question number (1-20)
  * @returns {Promise<void>}
  */
-export const setCurrentQuestion = async (questionData, questionNumber) => {
+export const setCurrentQuestion = async (question, questionNumber) => {
   try {
+    // Remove correct answer before saving to Firebase
+    // eslint-disable-next-line no-unused-vars
+    const { correctAnswer, ...publicQuestion } = question;
+
     await updateGameState({
-      currentQuestion: questionData,
+      currentQuestion: publicQuestion,
       currentQuestionNumber: questionNumber,
       questionVisible: true,
       optionsVisible: true,
       answerRevealed: false,
       correctOption: null,
     });
+
+    console.log(`✅ Question ${questionNumber} pushed to display (no answer)`);
   } catch (error) {
     console.error('Error setting current question:', error);
     throw error;
@@ -183,16 +384,18 @@ export const setCurrentQuestion = async (questionData, questionNumber) => {
 };
 
 /**
- * Reveal answer
- * @param {string} correctOption - Correct option letter (A/B/C/D)
+ * Reveal correct answer
+ * @param {string} correctOption - Correct answer (A/B/C/D)
  * @returns {Promise<void>}
  */
 export const revealAnswer = async (correctOption) => {
   try {
     await updateGameState({
       answerRevealed: true,
-      correctOption: correctOption,
+      correctOption,
     });
+
+    console.log(`✅ Answer revealed: ${correctOption}`);
   } catch (error) {
     console.error('Error revealing answer:', error);
     throw error;
@@ -200,25 +403,14 @@ export const revealAnswer = async (correctOption) => {
 };
 
 /**
- * Reset game state (for new game)
+ * Reset game state to defaults
  * @returns {Promise<void>}
  */
 export const resetGameState = async () => {
   try {
-    const resetData = convertKeysToKebab({
-      currentTeamId: null,
-      currentQuestionNumber: 0,
-      currentQuestion: null,
-      questionVisible: false,
-      optionsVisible: false,
-      answerRevealed: false,
-      correctOption: null,
-      gameStatus: 'paused',
-      lastUpdated: serverTimestamp(),
-    });
-
-    await set(ref(database, DB_PATHS.GAME_STATE), resetData);
-    console.log('✅ Game state reset');
+    const kebabDefaults = convertKeysToKebab(DEFAULT_GAME_STATE);
+    await set(ref(database, DB_PATHS.GAME_STATE), kebabDefaults);
+    console.log('✅ Game state reset to defaults');
   } catch (error) {
     console.error('Error resetting game state:', error);
     throw error;
@@ -498,13 +690,19 @@ export const getConfig = async () => {
 
 /**
  * Update configuration
- * @param {Object} updates - Config fields to update
+ * @param {Object} updates - Config updates (camelCase)
  * @returns {Promise<void>}
  */
 export const updateConfig = async (updates) => {
   try {
     const kebabUpdates = convertKeysToKebab(updates);
-    await update(ref(database, DB_PATHS.CONFIG), kebabUpdates);
+
+    const updatePath = {};
+    Object.keys(kebabUpdates).forEach((key) => {
+      updatePath[`${DB_PATHS.CONFIG}/${key}`] = kebabUpdates[key];
+    });
+
+    await update(ref(database), updatePath);
     console.log('✅ Config updated');
   } catch (error) {
     console.error('Error updating config:', error);
@@ -513,19 +711,15 @@ export const updateConfig = async (updates) => {
 };
 
 // ============================================================================
-// FACTORY RESET OPERATIONS
+// FACTORY RESET
 // ============================================================================
 
 /**
- * Reset entire database to factory defaults
- * Performs atomic update to set all nodes to default state
+ * Reset entire database to defaults (use with caution!)
  * @returns {Promise<void>}
  */
 export const resetDatabaseToDefaults = async () => {
   try {
-    console.log('🔄 Starting factory reset of Firebase database...');
-
-    // Build atomic multi-path update object
     const updates = {};
 
     // 1. Reset game-state to defaults (convert to kebab-case)
@@ -545,6 +739,9 @@ export const resetDatabaseToDefaults = async () => {
     Object.keys(configDefaults).forEach((key) => {
       updates[`${DB_PATHS.CONFIG}/${key}`] = configDefaults[key];
     });
+
+    // NOTE: We do NOT clear question-sets or allowed-hosts during factory reset
+    // These should be preserved across resets
 
     // Perform atomic update
     await update(ref(database), updates);
@@ -581,6 +778,16 @@ export const atomicUpdate = async (updates) => {
 // ============================================================================
 
 export const databaseService = {
+  // Question Sets
+  getAllQuestionSets,
+  getQuestionSet,
+  saveQuestionSet,
+  updateQuestionSet,
+  deleteQuestionSet,
+  questionSetExists,
+  getQuestionSetsMetadata,
+  onQuestionSetsChange,
+
   // Game State
   getGameState,
   updateGameState,

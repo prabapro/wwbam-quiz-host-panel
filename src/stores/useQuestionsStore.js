@@ -2,13 +2,13 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { localStorageService } from '@services/localStorage.service';
+import { databaseService } from '@services/database.service';
 import { validateAnswer, normalizeOption } from '@utils/validation';
 
 /**
  * Questions Store
  * Manages loaded question sets and current question data
- * Note: Question sets are stored in localStorage, this store manages
+ * Note: Question sets are now stored in Firebase, this store manages
  * the currently loaded sets in memory for active gameplay
  */
 export const useQuestionsStore = create()(
@@ -30,33 +30,50 @@ export const useQuestionsStore = create()(
       // Answer validation result
       validationResult: null,
 
+      // Loading state
+      isLoading: false,
+
+      // Error state
+      error: null,
+
       // ============================================================
       // ACTIONS
       // ============================================================
 
       /**
-       * Load a question set from localStorage into memory
+       * Load a question set from Firebase into memory
        */
-      loadQuestionSet: (setId) => {
-        const questionSet = localStorageService.getQuestionSet(setId);
+      loadQuestionSet: async (setId) => {
+        set({ isLoading: true, error: null });
 
-        if (!questionSet) {
-          console.warn(`Question set ${setId} not found in localStorage`);
-          return { success: false, error: 'Question set not found' };
+        try {
+          const questionSet = await databaseService.getQuestionSet(setId);
+
+          if (!questionSet) {
+            console.warn(`Question set ${setId} not found in Firebase`);
+            set({ isLoading: false, error: 'Question set not found' });
+            return { success: false, error: 'Question set not found' };
+          }
+
+          const { loadedSets } = get();
+
+          set({
+            loadedSets: {
+              ...loadedSets,
+              [setId]: questionSet,
+            },
+            isLoading: false,
+            error: null,
+          });
+
+          console.log(`📚 Question set loaded from Firebase: ${setId}`);
+
+          return { success: true, questionSet };
+        } catch (error) {
+          console.error('Error loading question set:', error);
+          set({ isLoading: false, error: error.message });
+          return { success: false, error: error.message };
         }
-
-        const { loadedSets } = get();
-
-        set({
-          loadedSets: {
-            ...loadedSets,
-            [setId]: questionSet,
-          },
-        });
-
-        console.log(`📚 Question set loaded: ${setId}`);
-
-        return { success: true, questionSet };
       },
 
       /**
@@ -64,6 +81,7 @@ export const useQuestionsStore = create()(
        */
       unloadQuestionSet: (setId) => {
         const { loadedSets } = get();
+        // eslint-disable-next-line no-unused-vars
         const { [setId]: removed, ...remainingSets } = loadedSets;
 
         set({ loadedSets: remainingSets });
@@ -118,7 +136,7 @@ export const useQuestionsStore = create()(
       },
 
       /**
-       * Get question for public display (WITHOUT correct answer)
+       * Get question for public display (without correct answer)
        */
       getPublicQuestion: () => {
         const { hostQuestion } = get();
@@ -127,106 +145,11 @@ export const useQuestionsStore = create()(
           return null;
         }
 
-        // Return question without correct answer
+        // Remove correct answer for public display
+        // eslint-disable-next-line no-unused-vars
         const { correctAnswer, ...publicQuestion } = hostQuestion;
 
         return publicQuestion;
-      },
-
-      /**
-       * Select an answer (team's choice)
-       */
-      selectAnswer: (option) => {
-        const normalized = normalizeOption(option);
-
-        if (!normalized) {
-          console.warn(`Invalid answer option: ${option}`);
-          return { success: false, error: 'Invalid option' };
-        }
-
-        set({
-          selectedAnswer: normalized,
-          validationResult: null, // Clear previous validation
-        });
-
-        console.log(`✏️ Answer selected: ${normalized}`);
-
-        return { success: true, selectedAnswer: normalized };
-      },
-
-      /**
-       * Clear selected answer
-       */
-      clearSelectedAnswer: () => {
-        set({
-          selectedAnswer: null,
-          validationResult: null,
-        });
-      },
-
-      /**
-       * Validate selected answer (lock answer)
-       */
-      validateSelectedAnswer: () => {
-        const { hostQuestion, selectedAnswer } = get();
-
-        if (!hostQuestion) {
-          return { success: false, error: 'No question loaded' };
-        }
-
-        if (!selectedAnswer) {
-          return { success: false, error: 'No answer selected' };
-        }
-
-        const correctAnswer = hostQuestion.correctAnswer;
-        const result = validateAnswer(selectedAnswer, correctAnswer);
-
-        set({ validationResult: result });
-
-        console.log(
-          `${result.isCorrect ? '✅' : '❌'} Answer validation: ${selectedAnswer} (Correct: ${correctAnswer})`,
-        );
-
-        return { success: true, result };
-      },
-
-      /**
-       * Apply 50/50 lifeline - filter options
-       */
-      applyFiftyFifty: () => {
-        const { hostQuestion } = get();
-
-        if (!hostQuestion) {
-          return { success: false, error: 'No question loaded' };
-        }
-
-        const correctAnswer = hostQuestion.correctAnswer;
-        const allOptions = ['A', 'B', 'C', 'D'];
-
-        // Get incorrect options
-        const incorrectOptions = allOptions.filter(
-          (opt) => opt !== correctAnswer,
-        );
-
-        // Randomly select 2 incorrect options to remove
-        const toRemove = incorrectOptions
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 2);
-
-        // Keep correct answer and one random incorrect
-        const remainingOptions = allOptions.filter(
-          (opt) => !toRemove.includes(opt),
-        );
-
-        console.log(
-          `✂️ 50/50 applied: Removed ${toRemove.join(', ')}, Remaining ${remainingOptions.join(', ')}`,
-        );
-
-        return {
-          success: true,
-          removedOptions: toRemove,
-          remainingOptions,
-        };
       },
 
       /**
@@ -239,69 +162,74 @@ export const useQuestionsStore = create()(
           validationResult: null,
         });
 
-        console.log('🧹 Host question cleared');
+        console.log('📝 Host question cleared');
       },
 
       /**
-       * Get question set metadata for a loaded set
+       * Select an answer option (A/B/C/D)
        */
-      getQuestionSetMetadata: (setId) => {
-        const { loadedSets } = get();
-        const questionSet = loadedSets[setId];
+      selectAnswer: (option) => {
+        const normalizedOption = normalizeOption(option);
 
-        if (!questionSet) {
-          return null;
+        if (!normalizedOption) {
+          return {
+            success: false,
+            error: 'Invalid option. Must be A, B, C, or D',
+          };
         }
 
-        return {
-          setId: questionSet.setId,
-          setName: questionSet.setName,
-          totalQuestions:
-            questionSet.totalQuestions || questionSet.questions.length,
-          uploadedAt: questionSet.uploadedAt,
-          lastModified: questionSet.lastModified,
-        };
-      },
-
-      /**
-       * Get all loaded question sets metadata
-       */
-      getLoadedSetsMetadata: () => {
-        const { loadedSets } = get();
-        const setIds = Object.keys(loadedSets);
-
-        return setIds.map((setId) => get().getQuestionSetMetadata(setId));
-      },
-
-      /**
-       * Check if question set is loaded
-       */
-      isSetLoaded: (setId) => {
-        const { loadedSets } = get();
-        return setId in loadedSets;
-      },
-
-      /**
-       * Preload multiple question sets
-       */
-      preloadQuestionSets: (setIds) => {
-        const results = setIds.map((setId) => {
-          const result = get().loadQuestionSet(setId);
-          return { setId, ...result };
+        set({
+          selectedAnswer: normalizedOption,
+          validationResult: null,
         });
 
-        const successful = results.filter((r) => r.success).length;
-        const failed = results.filter((r) => !r.success).length;
+        console.log(`✅ Answer selected: ${normalizedOption}`);
 
-        console.log(
-          `📚 Preloaded ${successful} question sets (${failed} failed)`,
-        );
-
-        return { success: failed === 0, results };
+        return { success: true, selectedAnswer: normalizedOption };
       },
 
       /**
-       * Clear all loaded sets
+       * Clear selected answer
+       */
+      clearSelectedAnswer: () => {
+        set({
+          selectedAnswer: null,
+          validationResult: null,
+        });
+
+        console.log('🔄 Selected answer cleared');
+      },
+
+      /**
+       * Validate selected answer against correct answer
+       */
+      validateSelectedAnswer: () => {
+        const { hostQuestion, selectedAnswer } = get();
+
+        if (!hostQuestion) {
+          return { success: false, error: 'No question loaded' };
+        }
+
+        if (!selectedAnswer) {
+          return { success: false, error: 'No answer selected' };
+        }
+
+        const validationResult = validateAnswer(
+          selectedAnswer,
+          hostQuestion.correctAnswer,
+        );
+
+        set({ validationResult });
+
+        console.log(
+          `🔍 Answer validation: ${validationResult.isCorrect ? '✅ Correct' : '❌ Incorrect'}`,
+        );
+
+        return { success: true, result: validationResult };
+      },
+
+      /**
+       * Clear all loaded sets from memory
        */
       clearAllLoadedSets: () => {
         set({
@@ -311,45 +239,7 @@ export const useQuestionsStore = create()(
           validationResult: null,
         });
 
-        console.log('🧹 All loaded question sets cleared');
-      },
-
-      /**
-       * Get question progress for a set
-       */
-      getQuestionProgress: (setId, currentIndex) => {
-        const { loadedSets } = get();
-        const questionSet = loadedSets[setId];
-
-        if (!questionSet) {
-          return null;
-        }
-
-        const total = questionSet.questions.length;
-
-        return {
-          current: currentIndex + 1, // 1-indexed for display
-          total,
-          percentage: ((currentIndex + 1) / total) * 100,
-          remaining: total - (currentIndex + 1),
-        };
-      },
-
-      /**
-       * Get store summary
-       */
-      getStoreSummary: () => {
-        const { loadedSets, hostQuestion, selectedAnswer, validationResult } =
-          get();
-
-        return {
-          loadedSetsCount: Object.keys(loadedSets).length,
-          loadedSetIds: Object.keys(loadedSets),
-          hasHostQuestion: !!hostQuestion,
-          hasSelectedAnswer: !!selectedAnswer,
-          isValidated: !!validationResult,
-          validationIsCorrect: validationResult?.isCorrect || false,
-        };
+        console.log('🔄 All loaded question sets cleared from memory');
       },
     }),
     {
@@ -357,5 +247,3 @@ export const useQuestionsStore = create()(
     },
   ),
 );
-
-export default useQuestionsStore;

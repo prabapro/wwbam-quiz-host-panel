@@ -1,8 +1,8 @@
 // src/components/questions/QuestionUploader.jsx
 
 import { useState, useRef } from 'react';
-import { localStorageService } from '@services/localStorage.service';
-import { getValidationSummary } from '@utils/validation';
+import { databaseService } from '@services/database.service';
+import { validateQuestionSet, getValidationSummary } from '@utils/validation';
 import { QUESTIONS_PER_SET } from '@constants/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { Button } from '@components/ui/button';
@@ -70,17 +70,55 @@ export default function QuestionUploader({ onUploadSuccess }) {
         // Simulate progress
         setUploadProgress(((i + 0.5) / files.length) * 100);
 
-        // Save to localStorage (includes validation)
-        const result = localStorageService.saveQuestionSet(questionSet);
+        // Trim questions array to QUESTIONS_PER_SET
+        const trimmedQuestions = questionSet.questions.slice(
+          0,
+          QUESTIONS_PER_SET,
+        );
+
+        const trimmedQuestionSet = {
+          ...questionSet,
+          questions: trimmedQuestions,
+          totalQuestions: trimmedQuestions.length,
+        };
+
+        // Log if questions were trimmed
+        if (questionSet.questions.length > QUESTIONS_PER_SET) {
+          console.log(
+            `✂️ Trimmed question set from ${questionSet.questions.length} to ${QUESTIONS_PER_SET} questions`,
+          );
+        }
+
+        // Validate question set (includes validation)
+        const validation = validateQuestionSet(trimmedQuestionSet);
+
+        if (!validation.isValid) {
+          // Validation failed
+          const summary = getValidationSummary(validation);
+          setError(`Validation failed for "${file.name}":\n\n${summary}`);
+          setIsUploading(false);
+          return;
+        }
+
+        // Check if question set already exists in Firebase
+        const exists = await databaseService.questionSetExists(
+          trimmedQuestionSet.setId,
+        );
+
+        if (exists) {
+          setError(
+            `Question set '${trimmedQuestionSet.setId}' already exists in database. Please use a different ID or delete the existing set first.`,
+          );
+          setIsUploading(false);
+          return;
+        }
+
+        // Save to Firebase
+        const result =
+          await databaseService.saveQuestionSet(trimmedQuestionSet);
 
         if (!result.success) {
-          // Validation failed
-          if (result.validationErrors) {
-            const summary = getValidationSummary(result.validationErrors);
-            setError(`Validation failed for "${file.name}":\n\n${summary}`);
-          } else {
-            setError(result.error || `Failed to upload "${file.name}"`);
-          }
+          setError(result.error || `Failed to upload "${file.name}"`);
           setIsUploading(false);
           return;
         }
@@ -122,6 +160,16 @@ export default function QuestionUploader({ onUploadSuccess }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Upload Progress */}
+        {isUploading && (
+          <div className="mb-4 space-y-2">
+            <Progress value={uploadProgress} className="w-full" />
+            <p className="text-sm text-muted-foreground text-center">
+              Uploading... {Math.round(uploadProgress)}%
+            </p>
+          </div>
+        )}
+
         {/* Error Alert */}
         {error && (
           <Alert variant="destructive" className="mb-4">
@@ -133,28 +181,13 @@ export default function QuestionUploader({ onUploadSuccess }) {
           </Alert>
         )}
 
-        {/* Upload Progress */}
-        {isUploading && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">
-                Uploading...
-              </span>
-              <span className="text-sm font-medium">
-                {Math.round(uploadProgress)}%
-              </span>
-            </div>
-            <Progress value={uploadProgress} />
-          </div>
-        )}
-
         {/* Drop Zone */}
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={`
-            border-2 border-dashed rounded-lg p-8 text-center transition-colors
+            relative border-2 border-dashed rounded-lg p-8 text-center transition-colors
             ${isDragging ? 'border-primary bg-primary/5' : 'border-border'}
             ${isUploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer hover:border-primary hover:bg-primary/5'}
           `}
@@ -164,7 +197,7 @@ export default function QuestionUploader({ onUploadSuccess }) {
           />
 
           <h3 className="text-lg font-semibold mb-2">
-            {isDragging ? 'Drop files here' : 'Upload Question Set'}
+            {isDragging ? 'Drop files here' : 'Upload Question Sets'}
           </h3>
 
           <p className="text-sm text-muted-foreground mb-4">
@@ -191,20 +224,20 @@ export default function QuestionUploader({ onUploadSuccess }) {
           />
         </div>
 
-        {/* JSON Structure */}
-        <div className="mt-4">
+        {/* Info Boxes */}
+        <div className="mt-4 space-y-3">
+          {/* JSON Structure */}
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>JSON Structure Required</AlertTitle>
             <AlertDescription>
               <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
                 {`{
-  "setId": "sample-set-1",
-  "setName": "Sample Set 1",
+  "setId": "set-a",
+  "setName": "Geography Questions",
   "questions": [
     {
       "id": "q1",
-      "number": 1,
       "text": "What is the capital of France?",
       "options": {
         "A": "London",
@@ -232,7 +265,7 @@ export default function QuestionUploader({ onUploadSuccess }) {
           </h4>
           <ul className="text-sm text-muted-foreground space-y-1">
             <li>• File format: JSON (.json)</li>
-            <li>• Exactly {QUESTIONS_PER_SET} questions per set</li>
+            <li>• At least {QUESTIONS_PER_SET} questions per set required</li>
             <li>
               • Each question must have: text, 4 options (A/B/C/D), correct
               answer
@@ -240,6 +273,8 @@ export default function QuestionUploader({ onUploadSuccess }) {
             <li>
               • Valid <code>setId</code> and <code>setName</code> required
             </li>
+            <li>• Questions are stored securely in Firebase</li>
+            <li>• Only authorized hosts can access question data</li>
           </ul>
         </div>
 

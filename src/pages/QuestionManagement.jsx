@@ -1,7 +1,7 @@
 // src/pages/QuestionManagement.jsx
 
 import { useState, useEffect } from 'react';
-import { localStorageService } from '@services/localStorage.service';
+import { databaseService } from '@services/database.service';
 import QuestionUploader from '@components/questions/QuestionUploader';
 import QuestionSetList from '@components/questions/QuestionSetList';
 import { Alert, AlertDescription, AlertTitle } from '@components/ui/alert';
@@ -12,15 +12,15 @@ export default function QuestionManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadSuccess, setUploadSuccess] = useState(null);
 
-  // Load question sets from localStorage on mount
+  // Load question sets from Firebase on mount
   useEffect(() => {
     loadQuestionSets();
   }, []);
 
-  const loadQuestionSets = () => {
+  const loadQuestionSets = async () => {
     setIsLoading(true);
     try {
-      const metadata = localStorageService.getQuestionSetsMetadata();
+      const metadata = await databaseService.getQuestionSetsMetadata();
       setQuestionSets(metadata.sets || []);
     } catch (error) {
       console.error('Failed to load question sets:', error);
@@ -39,8 +39,8 @@ export default function QuestionManagement() {
     }, 5000);
   };
 
-  const handleDelete = (setId) => {
-    const result = localStorageService.deleteQuestionSet(setId);
+  const handleDelete = async (setId) => {
+    const result = await databaseService.deleteQuestionSet(setId);
 
     if (result.success) {
       loadQuestionSets(); // Refresh list
@@ -68,7 +68,8 @@ export default function QuestionManagement() {
           <AlertCircle className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-600">Upload Successful</AlertTitle>
           <AlertDescription className="text-green-600">
-            Question set "{uploadSuccess}" has been uploaded successfully.
+            Question set "{uploadSuccess}" has been uploaded successfully to
+            Firebase.
           </AlertDescription>
         </Alert>
       )}

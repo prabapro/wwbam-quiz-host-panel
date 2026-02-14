@@ -1,6 +1,6 @@
 // src/components/game/InitializeGameModal.jsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import LoadingSpinner from '@components/common/LoadingSpinner';
 import PlayQueueDisplay from './PlayQueueDisplay';
 import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
-import { localStorageService } from '@services/localStorage.service';
+import { databaseService } from '@services/database.service';
 import {
   generatePlayQueue,
   getPlayQueuePreview,
@@ -42,14 +42,37 @@ export default function InitializeGameModal({ open, onOpenChange }) {
   const [playQueuePreview, setPlayQueuePreview] = useState([]);
   const [error, setError] = useState(null);
 
+  // Question sets metadata state
+  const [questionSetsMetadata, setQuestionSetsMetadata] = useState([]);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(true);
+
   // Store actions
   const initializeGame = useGameStore((state) => state.initializeGame);
   const teamsObject = useTeamsStore((state) => state.teams);
 
-  // Get teams and question sets
+  // Get teams
   const teams = Object.values(teamsObject || {});
-  const questionSetsMetadata =
-    localStorageService.getQuestionSetsMetadata().sets || [];
+
+  // Load question sets metadata from Firebase when modal opens
+  useEffect(() => {
+    if (open) {
+      const loadMetadata = async () => {
+        setIsLoadingMetadata(true);
+        try {
+          const metadata = await databaseService.getQuestionSetsMetadata();
+          setQuestionSetsMetadata(metadata.sets || []);
+        } catch (err) {
+          console.error('Failed to load question sets metadata:', err);
+          setQuestionSetsMetadata([]);
+          setError('Failed to load question sets from Firebase');
+        } finally {
+          setIsLoadingMetadata(false);
+        }
+      };
+
+      loadMetadata();
+    }
+  }, [open]);
 
   /**
    * Handle initialization process
@@ -103,22 +126,23 @@ export default function InitializeGameModal({ open, onOpenChange }) {
   const handleClose = () => {
     // Reset stage on close
     setStage('preview');
-    setPlayQueuePreview([]);
     setError(null);
+    setPlayQueuePreview([]);
     onOpenChange(false);
   };
 
   /**
-   * Handle go to dashboard (close modal)
+   * Handle done (after results shown)
    */
-  const handleGoToDashboard = () => {
+  const handleDone = () => {
     handleClose();
+    // Page will auto-refresh due to game state change
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Stage 1: Preview */}
+      <DialogContent className="max-w-2xl max-h-[90vh]">
+        {/* STAGE 1: PREVIEW */}
         {stage === 'preview' && (
           <>
             <DialogHeader>
@@ -127,83 +151,68 @@ export default function InitializeGameModal({ open, onOpenChange }) {
                 Initialize Game
               </DialogTitle>
               <DialogDescription>
-                Review teams and question sets before initialization
+                Generate random play order and assign question sets to teams
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex-1 overflow-hidden space-y-4">
-              {/* Error Alert */}
-              {error && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Initialization Failed</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
+            {isLoadingMetadata ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <LoadingSpinner text="Loading question sets from Firebase..." />
+              </div>
+            ) : (
+              <>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <Users className="w-4 h-4" />
+                      <span className="text-sm">Teams</span>
+                    </div>
+                    <p className="text-2xl font-bold">{teams.length}</p>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                      <FileJson className="w-4 h-4" />
+                      <span className="text-sm">Question Sets</span>
+                    </div>
+                    <p className="text-2xl font-bold">
+                      {questionSetsMetadata.length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Info Alert */}
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertTitle>Ready to Initialize</AlertTitle>
+                  <AlertDescription>
+                    Teams will be randomly shuffled to create the play order.
+                    Each team will be assigned a unique question set.
+                  </AlertDescription>
                 </Alert>
-              )}
 
-              {/* Warning Alert */}
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Random Assignment</AlertTitle>
-                <AlertDescription>
-                  Question sets will be randomly assigned to teams and saved to
-                  Firebase. This action cannot be undone without uninitializing
-                  the game.
-                </AlertDescription>
-              </Alert>
-
-              {/* Teams List */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <h3 className="font-semibold">Teams ({teams.length})</h3>
-                </div>
-                <ScrollArea className="h-32 border rounded-lg p-3 bg-muted/30">
-                  <div className="space-y-1">
-                    {teams.map((team) => (
-                      <div
-                        key={team.id}
-                        className="flex items-center gap-2 text-sm">
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {team.id}
-                        </Badge>
-                        <span>{team.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-
-              {/* Question Sets List */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <FileJson className="w-4 h-4 text-muted-foreground" />
-                  <h3 className="font-semibold">
-                    Question Sets ({questionSetsMetadata.length})
-                  </h3>
-                </div>
-                <ScrollArea className="h-32 border rounded-lg p-3 bg-muted/30">
-                  <div className="space-y-1">
-                    {questionSetsMetadata.map((set) => (
-                      <div
-                        key={set.setId}
-                        className="flex items-center gap-2 text-sm">
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {set.setId}
-                        </Badge>
-                        <span>{set.setName}</span>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            </div>
+                {/* Error Alert */}
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Initialization Failed</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+              </>
+            )}
 
             <DialogFooter>
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button onClick={handleInitialize}>
+              <Button
+                onClick={handleInitialize}
+                disabled={
+                  teams.length === 0 ||
+                  questionSetsMetadata.length === 0 ||
+                  isLoadingMetadata
+                }>
                 <Shuffle className="w-4 h-4 mr-2" />
                 Initialize Game
               </Button>
@@ -211,33 +220,26 @@ export default function InitializeGameModal({ open, onOpenChange }) {
           </>
         )}
 
-        {/* Stage 2: Processing */}
+        {/* STAGE 2: PROCESSING */}
         {stage === 'processing' && (
           <>
             <DialogHeader>
               <DialogTitle>Initializing Game...</DialogTitle>
+              <DialogDescription>
+                Generating play queue and syncing to Firebase
+              </DialogDescription>
             </DialogHeader>
 
-            <div className="flex-1 flex items-center justify-center py-12">
-              <div className="text-center space-y-6">
-                <LoadingSpinner size="lg" />
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground animate-pulse">
-                    🎲 Shuffling teams...
-                  </p>
-                  <p className="text-sm text-muted-foreground animate-pulse delay-150">
-                    🎯 Assigning question sets...
-                  </p>
-                  <p className="text-sm text-muted-foreground animate-pulse delay-300">
-                    💾 Syncing to Firebase...
-                  </p>
-                </div>
-              </div>
+            <div className="flex flex-col items-center justify-center py-12">
+              <LoadingSpinner size="lg" text="Processing..." />
+              <p className="text-sm text-muted-foreground mt-4">
+                This will only take a moment
+              </p>
             </div>
           </>
         )}
 
-        {/* Stage 3: Results */}
+        {/* STAGE 3: RESULTS */}
         {stage === 'results' && (
           <>
             <DialogHeader>
@@ -246,23 +248,36 @@ export default function InitializeGameModal({ open, onOpenChange }) {
                 Game Initialized Successfully!
               </DialogTitle>
               <DialogDescription>
-                The play queue has been generated and synced to Firebase
+                Play order generated and saved to Firebase
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex-1 overflow-hidden">
-              <PlayQueueDisplay
-                playQueuePreview={playQueuePreview}
-                maxHeight="400px"
-                showHeader={true}
-              />
+            {/* Success Alert */}
+            <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertTitle className="text-green-600">Success!</AlertTitle>
+              <AlertDescription className="text-green-600">
+                {playQueuePreview.length} teams shuffled and ready to compete
+              </AlertDescription>
+            </Alert>
+
+            {/* Play Queue Preview */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">
+                Generated Play Order
+              </h3>
+              <ScrollArea className="h-[300px] pr-4">
+                <PlayQueueDisplay
+                  playQueuePreview={playQueuePreview}
+                  showHeader={false}
+                />
+              </ScrollArea>
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={handleClose}>
-                Close
+              <Button onClick={handleDone} className="w-full">
+                Done
               </Button>
-              <Button onClick={handleGoToDashboard}>Go to Dashboard</Button>
             </DialogFooter>
           </>
         )}

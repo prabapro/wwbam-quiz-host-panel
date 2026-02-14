@@ -64,11 +64,25 @@ export const DEFAULT_CONFIG = {
 };
 
 /**
+ * Default allowed hosts structure
+ * Initially empty - host UIDs must be added manually via Firebase Console
+ */
+export const DEFAULT_ALLOWED_HOSTS = {};
+
+/**
+ * Default question sets structure
+ * Question sets will be stored here after upload
+ */
+export const DEFAULT_QUESTION_SETS = {};
+
+/**
  * Get complete default database structure
  * Returns the full structure matching initial-db-structure.json
  */
 export const getDefaultDatabaseStructure = () => {
   return {
+    allowedHosts: DEFAULT_ALLOWED_HOSTS,
+    questionSets: DEFAULT_QUESTION_SETS,
     gameState: DEFAULT_GAME_STATE,
     teams: {},
     prizeStructure: DEFAULT_PRIZE_STRUCTURE,
