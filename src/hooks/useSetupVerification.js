@@ -11,6 +11,11 @@ import {
 } from '@utils/setupValidation';
 import { GAME_STATUS } from '@constants/gameStates';
 
+// Stable default values (created once, reused)
+const EMPTY_TEAMS = {};
+const EMPTY_PRIZE_STRUCTURE = [];
+const EMPTY_ASSIGNMENTS = {};
+
 /**
  * Custom hook for setup verification
  * Monitors teams, question sets, and prize structure stores and provides real-time validation status
@@ -24,19 +29,25 @@ import { GAME_STATUS } from '@constants/gameStates';
  * @param {number} refreshKey - Optional key to force re-validation (increment to refresh)
  */
 export const useSetupVerification = (refreshKey = 0) => {
-  // Get teams from store with safe default
-  const teamsObject = useTeamsStore((state) => state.teams) || {};
+  // Get teams from store with stable default
+  const teamsObject = useTeamsStore((state) => state.teams ?? EMPTY_TEAMS);
 
-  // Get prize structure from store with safe default
-  const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
+  // Get prize structure from store with stable default
+  const prizeStructure = usePrizeStore(
+    (state) => state.prizeStructure ?? EMPTY_PRIZE_STRUCTURE,
+  );
 
   // Get game state to check if initialized
   const gameStatus = useGameStore((state) => state.gameStatus);
-  const questionSetAssignments =
-    useGameStore((state) => state.questionSetAssignments) || {};
+
+  // Get question set assignments with stable default
+  const questionSetAssignments = useGameStore(
+    (state) => state.questionSetAssignments ?? EMPTY_ASSIGNMENTS,
+  );
 
   // Get question sets metadata from localStorage
-  // Now includes refreshKey as dependency to re-read when it changes
+  // refreshKey dependency is intentional - forces re-read when incremented
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const questionSetsMetadata = useMemo(() => {
     try {
       const metadata = localStorageService.getQuestionSetsMetadata();
@@ -45,7 +56,8 @@ export const useSetupVerification = (refreshKey = 0) => {
       console.error('Failed to get question sets metadata:', error);
       return [];
     }
-  }, [refreshKey]); // ← Now dependent on refreshKey
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]); // ← Intentional: triggers re-read when refreshKey changes
 
   // Check if game is initialized
   const isGameInitialized = gameStatus !== GAME_STATUS.NOT_STARTED;
@@ -100,9 +112,9 @@ export const useSetupVerification = (refreshKey = 0) => {
     isGameInitialized,
 
     // Raw data for additional UI needs
-    teams: Object.values(teamsObject || {}),
+    teams: Object.values(teamsObject),
     questionSets: questionSetsMetadata,
-    prizeStructure: prizeStructure || [],
+    prizeStructure: prizeStructure,
   };
 };
 

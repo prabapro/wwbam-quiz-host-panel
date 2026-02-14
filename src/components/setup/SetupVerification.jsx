@@ -17,7 +17,7 @@ import {
   FileJson,
   DollarSign,
   ArrowRight,
-  Download,
+  Sparkles,
   Loader2,
 } from 'lucide-react';
 
@@ -330,7 +330,7 @@ export default function SetupVerification({ refreshKey = 0, onRefresh }) {
                     size="sm"
                     onClick={handleLoadSampleData}
                     className="bg-background hover:bg-muted">
-                    <Download className="w-4 h-4 mr-2" />
+                    <Sparkles className="w-4 h-4 mr-2" />
                     Test with sample data
                   </Button>
                 )}
