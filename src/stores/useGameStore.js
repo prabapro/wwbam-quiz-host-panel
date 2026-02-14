@@ -1,10 +1,11 @@
 // src/stores/useGameStore.js
 
 import { create } from 'zustand';
+import { databaseService } from '@services/database.service';
 import { devtools, persist } from 'zustand/middleware';
 import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
-import { databaseService } from '@services/database.service';
 import { localStorageService } from '@services/localStorage.service';
+import { QUESTIONS_PER_SET } from '@constants/config';
 import { useQuestionsStore } from './useQuestionsStore';
 
 const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
@@ -265,7 +266,7 @@ export const useGameStore = create()(
           try {
             const { currentQuestionNumber } = get();
 
-            if (currentQuestionNumber >= 20) {
+            if (currentQuestionNumber >= QUESTIONS_PER_SET) {
               throw new Error('Already at last question');
             }
 

@@ -1,27 +1,20 @@
 // src/pages/play/hooks/useAnswerSelection.js
 
 import { useState, useCallback } from 'react';
-import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { useGameStore } from '@stores/useGameStore';
+import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
-import { getPrizeForQuestion } from '@utils/gameplay/scoreCalculation';
 import { databaseService } from '@services/database.service';
+import { getPrizeForQuestion } from '@utils/gameplay/scoreCalculation';
+import { QUESTIONS_PER_SET } from '@constants/config';
 
 /**
  * useAnswerSelection Hook
  *
- * Purpose: Manage answer selection, validation, and result handling
+ * Purpose: Manage the answer selection and locking flow
  *
- * Responsibilities:
- * - Track selected answer (A/B/C/D)
- * - Validate answer against correct answer from localStorage
- * - Handle answer locking (trigger validation)
- * - Manage validation result state
- * - Update team prize on correct answer
- * - Handle incorrect answer flow (lifeline offer or elimination)
- *
- * Answer Flow:
+ * Flow:
  * 1. Team announces answer verbally
  * 2. Host selects option (A/B/C/D) via AnswerPad
  * 3. Selected answer stored in local state (NOT synced to Firebase)
@@ -57,6 +50,7 @@ export function useAnswerSelection() {
   // Teams Store (for updating team progress)
   const currentTeam = useTeamsStore((state) => state.teams[currentTeamId]);
   const moveToNextQuestion = useTeamsStore((state) => state.moveToNextQuestion);
+  const completeTeam = useTeamsStore((state) => state.completeTeam);
 
   // Prize Store (for prize calculation)
   const prizeStructure = usePrizeStore((state) => state.prizeStructure);
@@ -118,14 +112,38 @@ export function useAnswerSelection() {
           prizeStructure,
         );
 
-        // Update team progress (increments question, updates prize)
-        const updateResult = await moveToNextQuestion(currentTeamId, newPrize);
+        // ✅ FIX: Check if team completed all questions
+        const questionsAnsweredAfterThis = currentTeam.questionsAnswered + 1;
+        const isLastQuestion = questionsAnsweredAfterThis >= QUESTIONS_PER_SET;
 
-        if (!updateResult.success) {
-          throw new Error('Failed to update team progress');
+        if (isLastQuestion) {
+          // Team completed all questions - mark as completed
+          console.log(
+            `🏆 Team completed all ${QUESTIONS_PER_SET} questions! Final prize: Rs.${newPrize}`,
+          );
+
+          const completeResult = await completeTeam(currentTeamId, newPrize);
+
+          if (!completeResult.success) {
+            throw new Error('Failed to mark team as completed');
+          }
+
+          console.log(`✅ Team marked as completed with prize Rs.${newPrize}`);
+        } else {
+          // Team progresses to next question
+          const updateResult = await moveToNextQuestion(
+            currentTeamId,
+            newPrize,
+          );
+
+          if (!updateResult.success) {
+            throw new Error('Failed to update team progress');
+          }
+
+          console.log(
+            `🎉 Team advanced to question ${questionsAnsweredAfterThis + 1}! Prize: Rs.${newPrize}`,
+          );
         }
-
-        console.log(`🎉 Team advanced! New prize: Rs.${newPrize}`);
       } else {
         // INCORRECT ANSWER FLOW
         console.log('❌ Incorrect answer! Checking lifelines...');
@@ -160,6 +178,7 @@ export function useAnswerSelection() {
     currentQuestionNumber,
     prizeStructure,
     moveToNextQuestion,
+    completeTeam,
     currentTeam,
   ]);
 
