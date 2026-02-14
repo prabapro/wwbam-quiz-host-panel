@@ -31,8 +31,23 @@ export const MAX_TEAMS = 10;
 
 /**
  * Number of questions required per question set
+ * Can be overridden by VITE_QUESTIONS_PER_SET environment variable
+ * Falls back to 20 if env var is not set or invalid
  */
-export const QUESTIONS_PER_SET = 20;
+export const QUESTIONS_PER_SET = (() => {
+  const envValue = import.meta.env.VITE_QUESTIONS_PER_SET;
+
+  if (envValue !== undefined && envValue !== '') {
+    const parsed = parseInt(envValue, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      console.log(`📋 QUESTIONS_PER_SET set from env: ${parsed}`);
+      return parsed;
+    }
+  }
+
+  console.log(`📋 QUESTIONS_PER_SET using default: 20`);
+  return 20;
+})();
 
 /**
  * Total number of questions in the game

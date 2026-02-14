@@ -81,6 +81,23 @@ LIFELINE_TYPES = { ... }
 
 Edit this file to adjust game parameters before running the app.
 
+### Environment Variable Override
+
+Override `QUESTIONS_PER_SET` at runtime using environment variables:
+
+```bash
+# Use default (20 questions)
+pnpm dev
+
+# Override to 5 questions
+VITE_QUESTIONS_PER_SET=5 pnpm dev
+
+# Override to any number
+VITE_QUESTIONS_PER_SET=10 pnpm dev
+```
+
+**Behavior:** Uploaded question sets with ≥ `QUESTIONS_PER_SET` questions are accepted. Only the first N questions are saved and used in the game.
+
 ---
 
 ## Testing Guide
@@ -146,8 +163,9 @@ pnpm deploy:firebase  # Build + deploy to Firebase
 
 **Question set upload fails**
 
-- Must have exactly `QUESTIONS_PER_SET` questions (default: 20)
+- Must have at least `QUESTIONS_PER_SET` questions (default: 20)
 - Validate JSON structure against sample files
+- Extra questions beyond `QUESTIONS_PER_SET` are automatically trimmed
 
 ---
 

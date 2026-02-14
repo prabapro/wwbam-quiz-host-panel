@@ -202,15 +202,17 @@ export const validateQuestionSet = (questionSet) => {
     };
   }
 
-  // Check questions count
-  if (questionSet.questions.length !== QUESTIONS_PER_SET) {
+  // Check questions count - allow >= QUESTIONS_PER_SET instead of exact match
+  if (questionSet.questions.length < QUESTIONS_PER_SET) {
     errors.push(
-      `Question set must contain exactly ${QUESTIONS_PER_SET} questions, found ${questionSet.questions.length}`,
+      `Question set must contain at least ${QUESTIONS_PER_SET} questions, found ${questionSet.questions.length}`,
     );
   }
 
-  // Validate each question
-  const questionErrors = questionSet.questions.map((question, index) => {
+  // Validate only the first QUESTIONS_PER_SET questions
+  const questionsToValidate = questionSet.questions.slice(0, QUESTIONS_PER_SET);
+
+  const questionErrors = questionsToValidate.map((question, index) => {
     const expectedNumber = index + 1;
     const validation = validateQuestion(question, expectedNumber);
 
@@ -233,6 +235,7 @@ export const validateQuestionSet = (questionSet) => {
     errors: errors.length > 0 ? errors : null,
     questionErrors: invalidQuestions.length > 0 ? invalidQuestions : null,
     totalQuestions: questionSet.questions.length,
+    validatedQuestions: QUESTIONS_PER_SET,
     invalidCount: invalidQuestions.length,
   };
 };
@@ -244,7 +247,11 @@ export const validateQuestionSet = (questionSet) => {
  */
 export const getValidationSummary = (validationResult) => {
   if (validationResult.isValid) {
-    return `✅ Question set is valid (${validationResult.totalQuestions} questions)`;
+    const totalMsg =
+      validationResult.totalQuestions === validationResult.validatedQuestions
+        ? `${validationResult.totalQuestions} questions`
+        : `${validationResult.totalQuestions} questions (first ${validationResult.validatedQuestions} validated)`;
+    return `✅ Question set is valid (${totalMsg})`;
   }
 
   const messages = [];

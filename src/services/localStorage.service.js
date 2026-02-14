@@ -8,6 +8,7 @@
 
 import { validateQuestionSet } from '@utils/validation';
 import { isValidSetId } from '@constants/validationRules';
+import { QUESTIONS_PER_SET } from '@constants/config';
 import {
   QUESTION_SETS_KEY,
   METADATA_KEY,
@@ -81,9 +82,25 @@ export const saveQuestionSet = (questionSet) => {
       };
     }
 
+    // Trim questions array to QUESTIONS_PER_SET
+    const trimmedQuestions = questionSet.questions.slice(0, QUESTIONS_PER_SET);
+
+    const trimmedQuestionSet = {
+      ...questionSet,
+      questions: trimmedQuestions,
+      totalQuestions: trimmedQuestions.length,
+    };
+
+    // Log if questions were trimmed
+    if (questionSet.questions.length > QUESTIONS_PER_SET) {
+      console.log(
+        `✂️ Trimmed question set from ${questionSet.questions.length} to ${QUESTIONS_PER_SET} questions`,
+      );
+    }
+
     // Add timestamps
     const setWithMetadata = {
-      ...questionSet,
+      ...trimmedQuestionSet,
       uploadedAt: Date.now(),
       lastModified: Date.now(),
     };
@@ -108,7 +125,9 @@ export const saveQuestionSet = (questionSet) => {
     // Update metadata
     updateMetadata();
 
-    console.log(`✅ Question set saved: ${setId}`);
+    console.log(
+      `✅ Question set saved: ${setId} (${trimmedQuestions.length} questions)`,
+    );
 
     return {
       success: true,
@@ -163,6 +182,18 @@ export const updateQuestionSet = (setId, updates) => {
       setId, // Preserve original ID
       lastModified: Date.now(),
     };
+
+    // If questions are being updated, trim to QUESTIONS_PER_SET
+    if (updates.questions && Array.isArray(updates.questions)) {
+      updatedSet.questions = updates.questions.slice(0, QUESTIONS_PER_SET);
+      updatedSet.totalQuestions = updatedSet.questions.length;
+
+      if (updates.questions.length > QUESTIONS_PER_SET) {
+        console.log(
+          `✂️ Trimmed updated questions from ${updates.questions.length} to ${QUESTIONS_PER_SET}`,
+        );
+      }
+    }
 
     // Validate updated set
     const validation = validateQuestionSet(updatedSet);
