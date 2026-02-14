@@ -31,10 +31,12 @@
 │   │   │   ├── LoadingSpinner.jsx
 │   │   │   └── ScrollToTop.jsx
 │   │   ├── game
+│   │   │   ├── FactoryResetDialog.jsx
 │   │   │   ├── GameControlPanel.jsx
 │   │   │   ├── InitializeGameModal.jsx
 │   │   │   ├── MissingQuestionSetsAlert.jsx
-│   │   │   └── PlayQueueDisplay.jsx
+│   │   │   ├── PlayQueueDisplay.jsx
+│   │   │   └── UninitializeGameDialog.jsx
 │   │   ├── layout
 │   │   │   ├── Footer.jsx
 │   │   │   ├── Header.jsx
@@ -111,6 +113,7 @@
 │   │   ├── NotFound.jsx
 │   │   ├── PrizeManagement.jsx
 │   │   ├── QuestionManagement.jsx
+│   │   ├── Reset.jsx
 │   │   └── TeamManagement.jsx
 │   ├── routes
 │   │   └── AppRouter.jsx
