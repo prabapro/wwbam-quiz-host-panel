@@ -30,10 +30,11 @@ import {
 import { Alert, AlertDescription } from '@components/ui/alert';
 import LoadingSpinner from '@components/common/LoadingSpinner';
 import PlayQueueDisplay from './PlayQueueDisplay';
+import UninitializeGameDialog from './UninitializeGameDialog';
+import FactoryResetDialog from './FactoryResetDialog';
 import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
-import { usePrizeStore } from '@stores/usePrizeStore';
 import { localStorageService } from '@services/localStorage.service';
 import { getPlayQueuePreview } from '@utils/gameInitialization';
 import { toast } from 'sonner';
@@ -61,15 +62,9 @@ export default function GameControlPanel() {
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState(null);
 
-  // Uninitialize confirmation dialog state
+  // Modular dialog states - simplified (no loading/error states needed)
   const [showUninitializeDialog, setShowUninitializeDialog] = useState(false);
-  const [isUninitializing, setIsUninitializing] = useState(false);
-  const [uninitError, setUninitError] = useState(null);
-
-  // Factory reset confirmation dialog state
   const [showFactoryResetDialog, setShowFactoryResetDialog] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
-  const [resetError, setResetError] = useState(null);
 
   // Store state
   const playQueue = useGameStore((state) => state.playQueue);
@@ -78,19 +73,10 @@ export default function GameControlPanel() {
   );
   const currentTeamId = useGameStore((state) => state.currentTeamId);
   const startEvent = useGameStore((state) => state.startEvent);
-  const uninitializeGame = useGameStore((state) => state.uninitializeGame);
-  const resetAppToFactoryDefaults = useGameStore(
-    (state) => state.resetAppToFactoryDefaults,
-  );
 
   const teamsObject = useTeamsStore((state) => state.teams);
-  const deleteAllTeamsFromFirebase = useTeamsStore(
-    (state) => state.deleteAllTeamsFromFirebase,
-  );
 
   const loadQuestionSet = useQuestionsStore((state) => state.loadQuestionSet);
-
-  const resetToDefault = usePrizeStore((state) => state.resetToDefault);
 
   // Get question sets metadata
   const questionSetsMetadata =
@@ -167,90 +153,6 @@ export default function GameControlPanel() {
     }
   };
 
-  /**
-   * Handle uninitialize confirmation
-   */
-  const handleUninitialize = async () => {
-    setIsUninitializing(true);
-    setUninitError(null);
-
-    try {
-      const result = await uninitializeGame();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to uninitialize');
-      }
-
-      console.log('🔄 Game uninitialized and synced to Firebase');
-      toast.success('Game Uninitialized', {
-        description: 'You can now reconfigure teams and reinitialize.',
-      });
-      setShowUninitializeDialog(false);
-    } catch (error) {
-      console.error('Uninitialize failed:', error);
-      setUninitError(error.message);
-      toast.error('Failed to uninitialize', {
-        description: error.message,
-      });
-    } finally {
-      setIsUninitializing(false);
-    }
-  };
-
-  /**
-   * Handle factory reset confirmation
-   */
-  const handleFactoryReset = async () => {
-    setIsResetting(true);
-    setResetError(null);
-
-    try {
-      console.log('🏭 Starting factory reset process...');
-
-      // 1. Delete all teams from Firebase (also clears local store)
-      const teamsResult = await deleteAllTeamsFromFirebase();
-      if (!teamsResult.success) {
-        throw new Error('Failed to delete teams: ' + teamsResult.error);
-      }
-
-      // 2. Reset prize structure to defaults (also syncs to Firebase)
-      const prizesResult = await resetToDefault();
-      if (!prizesResult.success) {
-        throw new Error(
-          'Failed to reset prize structure: ' + prizesResult.error,
-        );
-      }
-
-      // 3. Complete factory reset (clears question sets + resets Firebase)
-      const resetResult = await resetAppToFactoryDefaults();
-      if (!resetResult.success) {
-        throw new Error('Failed to complete reset: ' + resetResult.error);
-      }
-
-      console.log('✅ Factory reset completed successfully');
-
-      toast.success('Factory Reset Complete', {
-        description: 'All app data has been cleared. Starting fresh!',
-      });
-
-      // Close dialog
-      setShowFactoryResetDialog(false);
-
-      // Small delay for user to see success, then page will auto-update
-      setTimeout(() => {
-        console.log('🔄 App reset to factory defaults - UI will refresh');
-      }, 500);
-    } catch (error) {
-      console.error('Factory reset failed:', error);
-      setResetError(error.message);
-      toast.error('Factory Reset Failed', {
-        description: error.message,
-      });
-    } finally {
-      setIsResetting(false);
-    }
-  };
-
   return (
     <>
       <Card>
@@ -321,7 +223,7 @@ export default function GameControlPanel() {
         </CardContent>
       </Card>
 
-      {/* Start Game Confirmation Dialog */}
+      {/* Start Game Confirmation Dialog - PRESERVED */}
       <AlertDialog
         open={showStartGameDialog}
         onOpenChange={setShowStartGameDialog}>
@@ -399,112 +301,17 @@ export default function GameControlPanel() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Uninitialize Confirmation Dialog */}
-      <AlertDialog
+      {/* Modular Uninitialize Dialog */}
+      <UninitializeGameDialog
         open={showUninitializeDialog}
-        onOpenChange={setShowUninitializeDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Uninitialize Game?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will reset the game to pre-initialization state. The play
-              queue and question set assignments will be cleared from both
-              localStorage and Firebase. Teams and question sets will remain
-              saved.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+        onOpenChange={setShowUninitializeDialog}
+      />
 
-          {/* Error Alert */}
-          {uninitError && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{uninitError}</AlertDescription>
-            </Alert>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isUninitializing}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleUninitialize}
-              disabled={isUninitializing}>
-              {isUninitializing ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Uninitializing...
-                </>
-              ) : (
-                'Uninitialize'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Factory Reset Confirmation Dialog */}
-      <AlertDialog
+      {/* Modular Factory Reset Dialog */}
+      <FactoryResetDialog
         open={showFactoryResetDialog}
-        onOpenChange={setShowFactoryResetDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Recycle className="w-5 h-5" />
-              Reset App to Factory Defaults?
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p className="font-semibold text-destructive">
-                  ⚠️ This action is IRREVERSIBLE and will permanently delete ALL
-                  app data:
-                </p>
-                <ul className="space-y-1 text-sm list-none">
-                  <li>• All teams (from both localStorage and Firebase)</li>
-                  <li>• All question sets (from localStorage)</li>
-                  <li>• Prize structure (reset to defaults in Firebase)</li>
-                  <li>• Game state (reset to defaults in Firebase)</li>
-                </ul>
-                <p className="font-semibold">
-                  The app will be reset to its initial state as if freshly
-                  installed.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  This is typically used before a new event or to completely
-                  start over.
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {/* Error Alert */}
-          {resetError && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{resetError}</AlertDescription>
-            </Alert>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleFactoryReset}
-              disabled={isResetting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {isResetting ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Resetting...
-                </>
-              ) : (
-                <>
-                  <Recycle className="w-4 h-4 mr-2" />
-                  Reset to Factory Defaults
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onOpenChange={setShowFactoryResetDialog}
+      />
     </>
   );
 }
