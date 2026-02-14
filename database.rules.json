@@ -1,28 +1,34 @@
 {
   "rules": {
-    "game-state": {
-      ".read": true,
-      ".write": "auth != null"
+    "allowed-hosts": {
+      ".read": "auth != null",
+      ".write": false
     },
-
-    "teams": {
-      ".read": true,
-      ".write": "auth != null",
-      "$teamId": {
-        ".read": true,
-        ".write": "auth != null"
+    "question-sets": {
+      ".read": "auth != null && root.child('allowed-hosts').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('allowed-hosts').child(auth.uid).exists()",
+      "$setId": {
+        ".validate": "newData.hasChildren(['set-id', 'set-name', 'questions', 'uploaded-at'])"
       }
     },
-
-    "prize-structure": {
-      ".read": true,
-      ".write": "auth != null",
-      ".validate": "newData.isString() || newData.hasChildren()"
+    "game-state": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('allowed-hosts').child(auth.uid).exists()"
     },
-
+    "teams": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('allowed-hosts').child(auth.uid).exists()",
+      "$teamId": {
+        ".validate": "newData.hasChildren(['name', 'participants', 'contact'])"
+      }
+    },
+    "prize-structure": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('allowed-hosts').child(auth.uid).exists()"
+    },
     "config": {
-      ".read": true,
-      ".write": "auth != null"
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('allowed-hosts').child(auth.uid).exists()"
     }
   }
 }
