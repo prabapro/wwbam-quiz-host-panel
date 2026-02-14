@@ -368,7 +368,7 @@ await databaseService.setCurrentQuestion(
    - Fetch from localStorage with correct answer
    - Display to host with all options + correct answer
 
-2. Show Question (Public Display)
+2. Push to Display (Public Display)
    - Push question WITHOUT correct answer to Firebase
    - Set question-visible = true
    - Public display renders question

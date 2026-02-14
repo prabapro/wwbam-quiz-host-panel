@@ -1,6 +1,7 @@
 // src/pages/Home.jsx
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
 import { useGameStore } from '@stores/useGameStore';
@@ -12,29 +13,46 @@ import LoadingSpinner from '@components/common/LoadingSpinner';
 import { useSetupVerification } from '@hooks/useSetupVerification';
 import { Button } from '@components/ui/button';
 import { Rocket } from 'lucide-react';
-import { GAME_STATUS } from '@constants/gameStates';
+import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
 
 export default function Home() {
+  const navigate = useNavigate();
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [showInitializeModal, setShowInitializeModal] = useState(false);
+
+  // Refresh key for setup verification (shared with SetupVerification component)
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Get loading states from stores
   const teamsLoading = useTeamsStore((state) => state.isLoading);
   const prizesLoading = usePrizeStore((state) => state.isLoading);
   const gameStatus = useGameStore((state) => state.gameStatus);
 
-  // Get setup verification (includes missing required question sets detection)
+  // Get setup verification with refreshKey (includes missing required question sets detection)
   const {
     isReady,
     isMissingRequiredQuestionSets,
     requiredQuestionSetsValidation,
-  } = useSetupVerification();
+  } = useSetupVerification(refreshKey);
 
   // Track if initial data load is happening
   const isLoadingInitialData = teamsLoading || prizesLoading;
 
   // Check if game is initialized
-  const isGameInitialized = gameStatus !== GAME_STATUS.NOT_STARTED;
+  const isGameInitialized = gameStatus !== DEFAULT_GAME_STATE;
+
+  // ✅ FIX: Auto-redirect to /play if game is active or paused
+  useEffect(() => {
+    const isGameInProgress =
+      gameStatus === GAME_STATUS.ACTIVE || gameStatus === GAME_STATUS.PAUSED;
+
+    if (isGameInProgress) {
+      console.log(
+        `🎮 Game is in progress (${gameStatus}), redirecting to /play...`,
+      );
+      navigate('/play');
+    }
+  }, [gameStatus, navigate]);
 
   // Effect to track when initial loading is complete
   useEffect(() => {
@@ -58,6 +76,13 @@ export default function Home() {
     // The isMissingRequiredQuestionSets flag will be false now
     // and GameControlPanel will be shown
     console.log('✅ All required question sets found - continuing to game');
+  };
+
+  /**
+   * Callback to increment refresh key (called by SetupVerification after sample data load)
+   */
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1);
   };
 
   return (
@@ -96,7 +121,10 @@ export default function Home() {
         {/* SCENARIO 3: Game NOT initialized - Show Setup Verification */}
         {!isGameInitialized && (
           <>
-            <SetupVerification />
+            <SetupVerification
+              refreshKey={refreshKey}
+              onRefresh={handleRefresh}
+            />
 
             {/* Initialize Game Button - Show when ready and not initialized */}
             {isReady && (

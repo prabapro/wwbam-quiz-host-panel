@@ -19,6 +19,7 @@ const PrizeManagement = lazy(() => import('@pages/PrizeManagement'));
 const QuestionManagement = lazy(() => import('@pages/QuestionManagement'));
 const TeamManagement = lazy(() => import('@pages/TeamManagement'));
 const Play = lazy(() => import('@/pages/play'));
+const Reset = lazy(() => import('@pages/Reset'));
 
 /**
  * Complete route configuration
@@ -88,6 +89,20 @@ export const ROUTE_CONFIG = {
     requiresAuth: true, // Protected route
     sitemap_priority: 0.7,
     sitemap_changefreq: 'weekly',
+  },
+
+  // Emergency Reset
+  RESET: {
+    path: '/reset',
+    component: Reset,
+    title: 'Reset',
+    description: 'Emergency reset operations',
+    showInNav: true, // Show in navigation
+    category: 'main',
+    requiresAuth: true, // Protected route
+    bypassGameStatusCheck: true, // Special flag: accessible in ANY game state
+    sitemap_priority: 0.5,
+    sitemap_changefreq: 'monthly',
   },
 
   // Auth routes
@@ -198,4 +213,13 @@ export const getProtectedRoutes = () => {
 export const requiresAuth = (pathname) => {
   const route = getRouteByPath(pathname);
   return route?.requiresAuth || false;
+};
+
+/**
+ * Check if route should bypass game status checks
+ * Used for emergency routes like /reset that need to be accessible during active games
+ */
+export const bypassesGameStatusCheck = (pathname) => {
+  const route = getRouteByPath(pathname);
+  return route?.bypassGameStatusCheck || false;
 };

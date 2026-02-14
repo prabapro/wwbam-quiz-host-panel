@@ -1,94 +1,181 @@
 // src/pages/play/components/GameControls.jsx
 
+import { useGameControls } from '../hooks/useGameControls';
+import { Button } from '@components/ui/button';
+import { Alert, AlertDescription } from '@components/ui/alert';
+import {
+  FileText,
+  Eye,
+  EyeOff,
+  Users,
+  SkipForward,
+  Pause,
+  Play,
+  AlertTriangle,
+} from 'lucide-react';
+import { cn } from '@lib/utils';
+
 /**
  * Game Controls Component
  *
  * Purpose: Main control buttons for managing question flow and game progression
  *
- * Control Buttons:
- * 1. "Load Question" - Fetch next question from localStorage (host view only)
- * 2. "Show Question" - Push question to Firebase (visible to public)
+ * Control Buttons (Stacked full-width for narrow column):
+ * 1. "Load Question X" - Fetch next question from localStorage (dynamic label)
+ * 2. "Push to Display" - Push question to Firebase (visible to public)
  * 3. "Hide Question" - Retract question from public view
- * 4. "Next Question" - Move to next question (after correct answer)
- * 5. "Next Team" - Move to next team in queue (after elimination/completion)
- * 6. "Skip Question" - Skip current question (error handling)
- * 7. "Pause Game" - Pause game state
- * 8. "Resume Game" - Resume from pause
+ * 4. "Next Team" - Move to next team in queue (after elimination/completion)
+ * 5. "Skip Question" - Skip current question (error handling)
+ * 6. "Pause Game" - Pause game state
+ * 7. "Resume Game" - Resume from pause
  *
- * Button States (Smart State Management):
- * - Load Question: Enabled when no question loaded OR after question complete
- * - Show Question: Enabled only when question loaded (host view) but not visible
- * - Lock Answer: Enabled only when team has selected answer
- * - Next Question: Enabled only after correct answer validated
- * - Next Team: Enabled only after team eliminated or completed
- *
- * Data Source:
- * - useGameStore (game status, question visibility flags)
- * - useQuestionsStore (load, show, clear question actions)
- * - Custom hook useGameControls for button state logic
- *
- * TODO: Implement full game control panel
- * - Create all control buttons with proper icons
- * - Implement smart button state management
- * - Connect to store actions (loadQuestion, showQuestion, etc.)
- * - Add confirmation dialogs for destructive actions (skip, next team)
- * - Show loading states during async operations
- * - Add keyboard shortcuts for common actions
- * - Display control hints/tooltips
+ * Flow:
+ * Load Q1 → Show → Answer & Lock → Load Q2 → Show → Answer & Lock → ...
  */
 export default function GameControls() {
+  // Game Controls Hook
+  const {
+    canLoadQuestion,
+    canShowQuestion,
+    canHideQuestion,
+    canNextTeam,
+    canSkipQuestion,
+    canPause,
+    canResume,
+    nextQuestionNumber,
+    isLoading,
+    error,
+    handleLoadQuestion,
+    handleShowQuestion,
+    handleHideQuestion,
+    handleNextTeam,
+    handleSkipQuestion,
+    handlePause,
+    handleResume,
+  } = useGameControls();
+
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground text-center">
-        Game control buttons
-      </p>
+    <div className="space-y-3">
+      {/* Primary Controls - Stacked Full Width */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+          Question Controls
+        </p>
 
-      {/* Primary Controls */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          disabled
-          className="p-3 rounded-lg border-2 border-dashed bg-muted/20 text-muted-foreground cursor-not-allowed">
-          📥 Load Question
-        </button>
-        <button
-          disabled
-          className="p-3 rounded-lg border-2 border-dashed bg-muted/20 text-muted-foreground cursor-not-allowed">
-          👁️ Show Question
-        </button>
-        <button
-          disabled
-          className="p-3 rounded-lg border-2 border-dashed bg-muted/20 text-muted-foreground cursor-not-allowed">
-          ➡️ Next Question
-        </button>
-        <button
-          disabled
-          className="p-3 rounded-lg border-2 border-dashed bg-muted-foreground/20 text-muted-foreground cursor-not-allowed">
-          👥 Next Team
-        </button>
+        {/* Load Question - Dynamic Label - Full Width */}
+        <Button
+          onClick={handleLoadQuestion}
+          disabled={!canLoadQuestion || isLoading}
+          variant="default"
+          size="lg"
+          className={cn(
+            'w-full gap-2 transition-all',
+            canLoadQuestion && 'ring-2 ring-blue-500 animate-pulse',
+          )}>
+          <FileText className="w-4 h-4" />
+          {isLoading ? 'Loading...' : `Load Question ${nextQuestionNumber}`}
+        </Button>
+
+        {/* Push to Display - Custom Blue Primary Button - Full Width */}
+        <Button
+          onClick={handleShowQuestion}
+          disabled={!canShowQuestion || isLoading}
+          variant="default"
+          size="lg"
+          className="w-full gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white">
+          <Eye className="w-4 h-4" />
+          {isLoading ? 'Showing...' : 'Push to Display'}
+        </Button>
+
+        {/* Hide Question - Full Width */}
+        <Button
+          onClick={handleHideQuestion}
+          disabled={!canHideQuestion || isLoading}
+          variant="outline"
+          size="lg"
+          className="w-full gap-2">
+          <EyeOff className="w-4 h-4" />
+          Hide Question
+        </Button>
       </div>
 
-      {/* Secondary Controls */}
-      <div className="grid grid-cols-3 gap-2">
-        <button
-          disabled
-          className="p-2 rounded-lg border border-dashed bg-muted/20 text-xs text-muted-foreground cursor-not-allowed">
-          🙈 Hide
-        </button>
-        <button
-          disabled
-          className="p-2 rounded-lg border border-dashed bg-muted/20 text-xs text-muted-foreground cursor-not-allowed">
-          ⏭️ Skip
-        </button>
-        <button
-          disabled
-          className="p-2 rounded-lg border border-dashed bg-muted/20 text-xs text-muted-foreground cursor-not-allowed">
-          ⏸️ Pause
-        </button>
+      {/* Navigation Controls - Stacked Full Width */}
+      <div className="space-y-2 pt-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+          Team Navigation
+        </p>
+
+        {/* Next Team - Full Width */}
+        <Button
+          onClick={handleNextTeam}
+          disabled={!canNextTeam || isLoading}
+          variant={canNextTeam ? 'default' : 'outline'}
+          size="lg"
+          className={cn(
+            'w-full gap-2 transition-all',
+            canNextTeam && 'animate-pulse ring-2 ring-blue-500',
+          )}>
+          <Users className="w-4 h-4" />
+          Next Team
+        </Button>
+
+        {/* Skip Question - Full Width */}
+        <Button
+          onClick={handleSkipQuestion}
+          disabled={!canSkipQuestion || isLoading}
+          variant="ghost"
+          size="sm"
+          className="w-full gap-2 text-muted-foreground">
+          <SkipForward className="w-4 h-4" />
+          Skip Question
+        </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
-        Will implement: Smart state management + async actions
-      </p>
+      {/* Game State Controls - Stacked Full Width */}
+      <div className="space-y-2 pt-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+          Game State
+        </p>
+
+        {/* Pause - Full Width */}
+        <Button
+          onClick={handlePause}
+          disabled={!canPause || isLoading}
+          variant="outline"
+          size="sm"
+          className="w-full gap-2">
+          <Pause className="w-4 h-4" />
+          Pause
+        </Button>
+
+        {/* Resume - Full Width */}
+        <Button
+          onClick={handleResume}
+          disabled={!canResume || isLoading}
+          variant="outline"
+          size="sm"
+          className="w-full gap-2">
+          <Play className="w-4 h-4" />
+          Resume
+        </Button>
+      </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive" className="mt-3">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-xs">{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Helpful Hints */}
+      <div className="p-3 bg-muted/50 rounded-lg border border-dashed mt-3">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          <strong>💡 Flow:</strong>
+          <br />
+          Load → Show → Lock Answer → Next
+        </p>
+      </div>
     </div>
   );
 }

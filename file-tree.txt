@@ -20,6 +20,9 @@
 │   └── sample-data
 │       ├── initial-db-structure.json
 │       ├── sample-question-set-01.json
+│       ├── sample-question-set-02.json
+│       ├── sample-question-set-03.json
+│       ├── sample-question-set-04.json
 │       ├── sample-question-sets.zip
 │       └── sample-teams.json
 ├── src
@@ -31,10 +34,12 @@
 │   │   │   ├── LoadingSpinner.jsx
 │   │   │   └── ScrollToTop.jsx
 │   │   ├── game
+│   │   │   ├── FactoryResetDialog.jsx
 │   │   │   ├── GameControlPanel.jsx
 │   │   │   ├── InitializeGameModal.jsx
 │   │   │   ├── MissingQuestionSetsAlert.jsx
-│   │   │   └── PlayQueueDisplay.jsx
+│   │   │   ├── PlayQueueDisplay.jsx
+│   │   │   └── UninitializeGameDialog.jsx
 │   │   ├── layout
 │   │   │   ├── Footer.jsx
 │   │   │   ├── Header.jsx
@@ -111,6 +116,7 @@
 │   │   ├── NotFound.jsx
 │   │   ├── PrizeManagement.jsx
 │   │   ├── QuestionManagement.jsx
+│   │   ├── Reset.jsx
 │   │   └── TeamManagement.jsx
 │   ├── routes
 │   │   └── AppRouter.jsx
@@ -134,6 +140,7 @@
 │   │   │   └── scoreCalculation.js
 │   │   ├── firebaseEnvironment.js
 │   │   ├── gameInitialization.js
+│   │   ├── sampleDataLoader.js
 │   │   ├── setupValidation.js
 │   │   ├── teamValidation.js
 │   │   ├── theme.js

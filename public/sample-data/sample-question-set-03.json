@@ -1,0 +1,228 @@
+{
+  "setId": "sample-set-3",
+  "setName": "Sample Set 3",
+  "questions": [
+    {
+      "id": "q1",
+      "number": 1,
+      "text": "What is the capital of Germany?",
+      "options": {
+        "A": "Berlin",
+        "B": "Munich",
+        "C": "Frankfurt",
+        "D": "Hamburg"
+      },
+      "correctAnswer": "A",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q2",
+      "number": 2,
+      "text": "How many continents are there?",
+      "options": { "A": "5", "B": "6", "C": "7", "D": "8" },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q3",
+      "number": 3,
+      "text": "Which planet is closest to the Sun?",
+      "options": { "A": "Earth", "B": "Venus", "C": "Mercury", "D": "Mars" },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Science"
+    },
+    {
+      "id": "q4",
+      "number": 4,
+      "text": "What is 100 divided by 4?",
+      "options": { "A": "20", "B": "25", "C": "30", "D": "40" },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q5",
+      "number": 5,
+      "text": "Which ocean lies between Africa and Australia?",
+      "options": {
+        "A": "Atlantic",
+        "B": "Indian",
+        "C": "Pacific",
+        "D": "Arctic"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+
+    {
+      "id": "q6",
+      "number": 6,
+      "text": "Who proposed the laws of motion?",
+      "options": { "A": "Einstein", "B": "Newton", "C": "Tesla", "D": "Bohr" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Physics"
+    },
+    {
+      "id": "q7",
+      "number": 7,
+      "text": "Which blood type is known as the universal donor?",
+      "options": {
+        "A": "O negative",
+        "B": "A positive",
+        "C": "B negative",
+        "D": "AB positive"
+      },
+      "correctAnswer": "A",
+      "difficulty": "medium",
+      "category": "Biology"
+    },
+    {
+      "id": "q8",
+      "number": 8,
+      "text": "Which country invented paper?",
+      "options": { "A": "India", "B": "China", "C": "Egypt", "D": "Greece" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "History"
+    },
+    {
+      "id": "q9",
+      "number": 9,
+      "text": "What is the chemical formula for table salt?",
+      "options": { "A": "NaCl", "B": "KCl", "C": "Na2CO3", "D": "HCl" },
+      "correctAnswer": "A",
+      "difficulty": "medium",
+      "category": "Chemistry"
+    },
+    {
+      "id": "q10",
+      "number": 10,
+      "text": "Who painted the Sistine Chapel ceiling?",
+      "options": {
+        "A": "Raphael",
+        "B": "Donatello",
+        "C": "Michelangelo",
+        "D": "Da Vinci"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Art"
+    },
+    {
+      "id": "q11",
+      "number": 11,
+      "text": "What is 7 factorial (7!)?",
+      "options": { "A": "720", "B": "5040", "C": "840", "D": "120" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q12",
+      "number": 12,
+      "text": "Which country uses the peso as currency?",
+      "options": { "A": "Mexico", "B": "Japan", "C": "India", "D": "Canada" },
+      "correctAnswer": "A",
+      "difficulty": "medium",
+      "category": "Geography"
+    },
+    {
+      "id": "q13",
+      "number": 13,
+      "text": "What part of the atom has a positive charge?",
+      "options": {
+        "A": "Electron",
+        "B": "Neutron",
+        "C": "Proton",
+        "D": "Photon"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Science"
+    },
+    {
+      "id": "q14",
+      "number": 14,
+      "text": "In which year did the Titanic sink?",
+      "options": { "A": "1910", "B": "1912", "C": "1914", "D": "1916" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "History"
+    },
+    {
+      "id": "q15",
+      "number": 15,
+      "text": "What is the square root of 169?",
+      "options": { "A": "11", "B": "12", "C": "13", "D": "14" },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Mathematics"
+    },
+
+    {
+      "id": "q16",
+      "number": 16,
+      "text": "What is Planck's constant approximately equal to?",
+      "options": {
+        "A": "6.63×10^-34 Js",
+        "B": "3.00×10^8 m/s",
+        "C": "9.81 m/s^2",
+        "D": "1.60×10^-19 C"
+      },
+      "correctAnswer": "A",
+      "difficulty": "hard",
+      "category": "Physics"
+    },
+    {
+      "id": "q17",
+      "number": 17,
+      "text": "Which empire was ruled by Genghis Khan?",
+      "options": {
+        "A": "Ottoman",
+        "B": "Mongol",
+        "C": "Roman",
+        "D": "Persian"
+      },
+      "correctAnswer": "B",
+      "difficulty": "hard",
+      "category": "History"
+    },
+    {
+      "id": "q18",
+      "number": 18,
+      "text": "What is the determinant of a 2x2 matrix [[a,b],[c,d]]?",
+      "options": { "A": "ad-bc", "B": "a+b+c+d", "C": "ab+cd", "D": "ac-bd" },
+      "correctAnswer": "A",
+      "difficulty": "hard",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q19",
+      "number": 19,
+      "text": "Which element has the highest melting point?",
+      "options": { "A": "Iron", "B": "Carbon", "C": "Tungsten", "D": "Gold" },
+      "correctAnswer": "C",
+      "difficulty": "hard",
+      "category": "Chemistry"
+    },
+    {
+      "id": "q20",
+      "number": 20,
+      "text": "Which galaxy do we live in?",
+      "options": {
+        "A": "Andromeda",
+        "B": "Whirlpool",
+        "C": "Milky Way",
+        "D": "Sombrero"
+      },
+      "correctAnswer": "C",
+      "difficulty": "hard",
+      "category": "Astronomy"
+    }
+  ]
+}

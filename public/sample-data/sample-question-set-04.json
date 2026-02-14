@@ -1,0 +1,233 @@
+{
+  "setId": "sample-set-4",
+  "setName": "Sample Set 4",
+  "questions": [
+    {
+      "id": "q1",
+      "number": 1,
+      "text": "What is the capital of Spain?",
+      "options": {
+        "A": "Madrid",
+        "B": "Barcelona",
+        "C": "Valencia",
+        "D": "Seville"
+      },
+      "correctAnswer": "A",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q2",
+      "number": 2,
+      "text": "How many sides does a triangle have?",
+      "options": { "A": "3", "B": "4", "C": "5", "D": "6" },
+      "correctAnswer": "A",
+      "difficulty": "easy",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q3",
+      "number": 3,
+      "text": "Which animal is the fastest on land?",
+      "options": { "A": "Lion", "B": "Cheetah", "C": "Horse", "D": "Leopard" },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "General Knowledge"
+    },
+    {
+      "id": "q4",
+      "number": 4,
+      "text": "What is the chemical symbol for oxygen?",
+      "options": { "A": "Ox", "B": "O2", "C": "O", "D": "Og" },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Science"
+    },
+    {
+      "id": "q5",
+      "number": 5,
+      "text": "Which month has 28 days in a common year?",
+      "options": {
+        "A": "January",
+        "B": "February",
+        "C": "March",
+        "D": "April"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "General Knowledge"
+    },
+
+    {
+      "id": "q6",
+      "number": 6,
+      "text": "Who developed the theory of evolution by natural selection?",
+      "options": { "A": "Darwin", "B": "Mendel", "C": "Pasteur", "D": "Curie" },
+      "correctAnswer": "A",
+      "difficulty": "medium",
+      "category": "Biology"
+    },
+    {
+      "id": "q7",
+      "number": 7,
+      "text": "What is the capital of South Korea?",
+      "options": { "A": "Busan", "B": "Seoul", "C": "Incheon", "D": "Daegu" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Geography"
+    },
+    {
+      "id": "q8",
+      "number": 8,
+      "text": "Which metal is liquid at room temperature?",
+      "options": { "A": "Mercury", "B": "Iron", "C": "Copper", "D": "Silver" },
+      "correctAnswer": "A",
+      "difficulty": "medium",
+      "category": "Chemistry"
+    },
+    {
+      "id": "q9",
+      "number": 9,
+      "text": "What is 18 x 7?",
+      "options": { "A": "116", "B": "126", "C": "136", "D": "146" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q10",
+      "number": 10,
+      "text": "Who was the first President of the United States?",
+      "options": {
+        "A": "Lincoln",
+        "B": "Washington",
+        "C": "Jefferson",
+        "D": "Adams"
+      },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "History"
+    },
+    {
+      "id": "q11",
+      "number": 11,
+      "text": "Which country is home to Mount Fuji?",
+      "options": {
+        "A": "China",
+        "B": "Japan",
+        "C": "South Korea",
+        "D": "Thailand"
+      },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Geography"
+    },
+    {
+      "id": "q12",
+      "number": 12,
+      "text": "What is the chemical formula of carbon dioxide?",
+      "options": { "A": "CO", "B": "CO2", "C": "C2O", "D": "O2C" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Science"
+    },
+    {
+      "id": "q13",
+      "number": 13,
+      "text": "How many bones are there in the adult human body?",
+      "options": { "A": "200", "B": "206", "C": "210", "D": "196" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Biology"
+    },
+    {
+      "id": "q14",
+      "number": 14,
+      "text": "Which instrument has keys, pedals, and strings?",
+      "options": { "A": "Guitar", "B": "Violin", "C": "Piano", "D": "Drum" },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Music"
+    },
+    {
+      "id": "q15",
+      "number": 15,
+      "text": "What is the currency of the United Kingdom?",
+      "options": {
+        "A": "Euro",
+        "B": "Dollar",
+        "C": "Pound Sterling",
+        "D": "Franc"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Geography"
+    },
+
+    {
+      "id": "q16",
+      "number": 16,
+      "text": "What is the value of Avogadro's number (approximately)?",
+      "options": {
+        "A": "6.02×10^23",
+        "B": "3.00×10^8",
+        "C": "9.81",
+        "D": "1.60×10^-19"
+      },
+      "correctAnswer": "A",
+      "difficulty": "hard",
+      "category": "Chemistry"
+    },
+    {
+      "id": "q17",
+      "number": 17,
+      "text": "Which mathematician proved Fermat's Last Theorem in 1994?",
+      "options": {
+        "A": "Euler",
+        "B": "Gauss",
+        "C": "Andrew Wiles",
+        "D": "Newton"
+      },
+      "correctAnswer": "C",
+      "difficulty": "hard",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q18",
+      "number": 18,
+      "text": "What is the capital city of Iceland?",
+      "options": {
+        "A": "Reykjavik",
+        "B": "Oslo",
+        "C": "Helsinki",
+        "D": "Copenhagen"
+      },
+      "correctAnswer": "A",
+      "difficulty": "hard",
+      "category": "Geography"
+    },
+    {
+      "id": "q19",
+      "number": 19,
+      "text": "Which particle has no electric charge?",
+      "options": {
+        "A": "Proton",
+        "B": "Electron",
+        "C": "Neutron",
+        "D": "Positron"
+      },
+      "correctAnswer": "C",
+      "difficulty": "hard",
+      "category": "Physics"
+    },
+    {
+      "id": "q20",
+      "number": 20,
+      "text": "Which ancient civilization built Machu Picchu?",
+      "options": { "A": "Aztec", "B": "Maya", "C": "Inca", "D": "Olmec" },
+      "correctAnswer": "C",
+      "difficulty": "hard",
+      "category": "History"
+    }
+  ]
+}

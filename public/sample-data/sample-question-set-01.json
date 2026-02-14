@@ -5,282 +5,224 @@
     {
       "id": "q1",
       "number": 1,
-      "text": "What is the capital of France?",
-      "options": {
-        "A": "London",
-        "B": "Paris",
-        "C": "Berlin",
-        "D": "Rome"
-      },
-      "correctAnswer": "B",
+      "text": "What is the capital of Italy?",
+      "options": { "A": "Rome", "B": "Paris", "C": "Madrid", "D": "Lisbon" },
+      "correctAnswer": "A",
       "difficulty": "easy",
       "category": "Geography"
     },
     {
       "id": "q2",
       "number": 2,
-      "text": "Who wrote 'Romeo and Juliet'?",
-      "options": {
-        "A": "Charles Dickens",
-        "B": "William Shakespeare",
-        "C": "Mark Twain",
-        "D": "Jane Austen"
-      },
+      "text": "Which planet is known as the Red Planet?",
+      "options": { "A": "Venus", "B": "Mars", "C": "Jupiter", "D": "Mercury" },
       "correctAnswer": "B",
       "difficulty": "easy",
-      "category": "Literature"
+      "category": "Science"
     },
     {
       "id": "q3",
       "number": 3,
-      "text": "What is the largest planet in our solar system?",
-      "options": {
-        "A": "Earth",
-        "B": "Mars",
-        "C": "Jupiter",
-        "D": "Saturn"
-      },
-      "correctAnswer": "C",
+      "text": "How many days are there in a leap year?",
+      "options": { "A": "365", "B": "366", "C": "364", "D": "367" },
+      "correctAnswer": "B",
       "difficulty": "easy",
-      "category": "Science"
+      "category": "General Knowledge"
     },
     {
       "id": "q4",
       "number": 4,
-      "text": "In which year did World War II end?",
-      "options": {
-        "A": "1943",
-        "B": "1944",
-        "C": "1945",
-        "D": "1946"
-      },
+      "text": "What is H2O commonly known as?",
+      "options": { "A": "Salt", "B": "Hydrogen", "C": "Water", "D": "Oxygen" },
       "correctAnswer": "C",
-      "difficulty": "medium",
-      "category": "History"
+      "difficulty": "easy",
+      "category": "Science"
     },
     {
       "id": "q5",
       "number": 5,
-      "text": "What is the chemical symbol for gold?",
+      "text": "Which animal is known as the King of the Jungle?",
+      "options": { "A": "Tiger", "B": "Elephant", "C": "Lion", "D": "Leopard" },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "General Knowledge"
+    },
+
+    {
+      "id": "q6",
+      "number": 6,
+      "text": "Who developed the theory of relativity?",
       "options": {
-        "A": "Go",
-        "B": "Au",
-        "C": "Gd",
-        "D": "Ag"
+        "A": "Newton",
+        "B": "Einstein",
+        "C": "Galileo",
+        "D": "Tesla"
       },
       "correctAnswer": "B",
       "difficulty": "medium",
       "category": "Science"
-    },
-    {
-      "id": "q6",
-      "number": 6,
-      "text": "Which ocean is the largest?",
-      "options": {
-        "A": "Atlantic Ocean",
-        "B": "Indian Ocean",
-        "C": "Arctic Ocean",
-        "D": "Pacific Ocean"
-      },
-      "correctAnswer": "D",
-      "difficulty": "easy",
-      "category": "Geography"
     },
     {
       "id": "q7",
       "number": 7,
-      "text": "Who painted the Mona Lisa?",
+      "text": "What is the largest mammal?",
       "options": {
-        "A": "Vincent van Gogh",
-        "B": "Pablo Picasso",
-        "C": "Leonardo da Vinci",
-        "D": "Michelangelo"
+        "A": "Elephant",
+        "B": "Blue Whale",
+        "C": "Shark",
+        "D": "Giraffe"
       },
-      "correctAnswer": "C",
-      "difficulty": "easy",
-      "category": "Art"
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Science"
     },
     {
       "id": "q8",
       "number": 8,
-      "text": "What is the speed of light in vacuum?",
-      "options": {
-        "A": "300,000 km/s",
-        "B": "150,000 km/s",
-        "C": "450,000 km/s",
-        "D": "600,000 km/s"
-      },
-      "correctAnswer": "A",
+      "text": "Which country hosted the 2016 Olympics?",
+      "options": { "A": "China", "B": "UK", "C": "Brazil", "D": "Japan" },
+      "correctAnswer": "C",
       "difficulty": "medium",
-      "category": "Science"
+      "category": "Sports"
     },
     {
       "id": "q9",
       "number": 9,
-      "text": "Which country is known as the Land of the Rising Sun?",
-      "options": {
-        "A": "China",
-        "B": "South Korea",
-        "C": "Japan",
-        "D": "Thailand"
-      },
-      "correctAnswer": "C",
-      "difficulty": "easy",
-      "category": "Geography"
+      "text": "What is the boiling point of water at sea level?",
+      "options": { "A": "90°C", "B": "100°C", "C": "80°C", "D": "120°C" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Science"
     },
     {
       "id": "q10",
       "number": 10,
-      "text": "What is the smallest prime number?",
+      "text": "Who painted Starry Night?",
       "options": {
-        "A": "0",
-        "B": "1",
-        "C": "2",
-        "D": "3"
+        "A": "Van Gogh",
+        "B": "Picasso",
+        "C": "Da Vinci",
+        "D": "Monet"
       },
-      "correctAnswer": "C",
+      "correctAnswer": "A",
       "difficulty": "medium",
-      "category": "Mathematics"
+      "category": "Art"
     },
     {
       "id": "q11",
       "number": 11,
-      "text": "Who is the author of 'Harry Potter' series?",
-      "options": {
-        "A": "J.R.R. Tolkien",
-        "B": "J.K. Rowling",
-        "C": "C.S. Lewis",
-        "D": "George R.R. Martin"
-      },
-      "correctAnswer": "B",
-      "difficulty": "easy",
-      "category": "Literature"
+      "text": "What is the square of 15?",
+      "options": { "A": "225", "B": "215", "C": "205", "D": "235" },
+      "correctAnswer": "A",
+      "difficulty": "medium",
+      "category": "Mathematics"
     },
     {
       "id": "q12",
       "number": 12,
-      "text": "What is the capital of Australia?",
+      "text": "Which gas do plants absorb?",
       "options": {
-        "A": "Sydney",
-        "B": "Melbourne",
-        "C": "Canberra",
-        "D": "Brisbane"
+        "A": "Oxygen",
+        "B": "Carbon Dioxide",
+        "C": "Nitrogen",
+        "D": "Helium"
       },
-      "correctAnswer": "C",
+      "correctAnswer": "B",
       "difficulty": "medium",
-      "category": "Geography"
+      "category": "Science"
     },
     {
       "id": "q13",
       "number": 13,
-      "text": "In which year was the first iPhone released?",
+      "text": "In which continent is Argentina?",
       "options": {
-        "A": "2005",
-        "B": "2006",
-        "C": "2007",
-        "D": "2008"
+        "A": "Europe",
+        "B": "Asia",
+        "C": "South America",
+        "D": "Africa"
       },
       "correctAnswer": "C",
       "difficulty": "medium",
-      "category": "Technology"
+      "category": "Geography"
     },
     {
       "id": "q14",
       "number": 14,
-      "text": "What is the hardest natural substance on Earth?",
+      "text": "Who wrote '1984'?",
       "options": {
-        "A": "Gold",
-        "B": "Iron",
-        "C": "Diamond",
-        "D": "Platinum"
+        "A": "Orwell",
+        "B": "Huxley",
+        "C": "Rowling",
+        "D": "Tolkien"
       },
-      "correctAnswer": "C",
-      "difficulty": "easy",
-      "category": "Science"
+      "correctAnswer": "A",
+      "difficulty": "medium",
+      "category": "Literature"
     },
     {
       "id": "q15",
       "number": 15,
-      "text": "How many continents are there?",
-      "options": {
-        "A": "5",
-        "B": "6",
-        "C": "7",
-        "D": "8"
-      },
+      "text": "What is the currency of Japan?",
+      "options": { "A": "Won", "B": "Yuan", "C": "Yen", "D": "Ringgit" },
       "correctAnswer": "C",
-      "difficulty": "easy",
+      "difficulty": "medium",
       "category": "Geography"
     },
+
     {
       "id": "q16",
       "number": 16,
-      "text": "Who discovered penicillin?",
-      "options": {
-        "A": "Marie Curie",
-        "B": "Alexander Fleming",
-        "C": "Louis Pasteur",
-        "D": "Isaac Newton"
-      },
-      "correctAnswer": "B",
-      "difficulty": "medium",
+      "text": "What is the atomic number of carbon?",
+      "options": { "A": "12", "B": "14", "C": "6", "D": "8" },
+      "correctAnswer": "C",
+      "difficulty": "hard",
       "category": "Science"
     },
     {
       "id": "q17",
       "number": 17,
-      "text": "What is the longest river in the world?",
+      "text": "Which treaty ended World War I?",
       "options": {
-        "A": "Amazon River",
-        "B": "Nile River",
-        "C": "Yangtze River",
-        "D": "Mississippi River"
+        "A": "Versailles",
+        "B": "Paris",
+        "C": "Rome",
+        "D": "Vienna"
       },
-      "correctAnswer": "B",
-      "difficulty": "medium",
-      "category": "Geography"
+      "correctAnswer": "A",
+      "difficulty": "hard",
+      "category": "History"
     },
     {
       "id": "q18",
       "number": 18,
-      "text": "In which country would you find the Great Barrier Reef?",
-      "options": {
-        "A": "Philippines",
-        "B": "Indonesia",
-        "C": "Australia",
-        "D": "Thailand"
-      },
-      "correctAnswer": "C",
-      "difficulty": "easy",
-      "category": "Geography"
+      "text": "What is the derivative of x^2?",
+      "options": { "A": "x", "B": "2x", "C": "x^2", "D": "2" },
+      "correctAnswer": "B",
+      "difficulty": "hard",
+      "category": "Mathematics"
     },
     {
       "id": "q19",
       "number": 19,
-      "text": "What is the square root of 144?",
-      "options": {
-        "A": "10",
-        "B": "11",
-        "C": "12",
-        "D": "13"
-      },
-      "correctAnswer": "C",
-      "difficulty": "easy",
-      "category": "Mathematics"
+      "text": "Which element has the chemical symbol 'Fe'?",
+      "options": { "A": "Fluorine", "B": "Iron", "C": "Zinc", "D": "Lead" },
+      "correctAnswer": "B",
+      "difficulty": "hard",
+      "category": "Science"
     },
     {
       "id": "q20",
       "number": 20,
-      "text": "Who was the first person to walk on the moon?",
+      "text": "What is the capital of Mongolia?",
       "options": {
-        "A": "Buzz Aldrin",
-        "B": "Neil Armstrong",
-        "C": "Yuri Gagarin",
-        "D": "John Glenn"
+        "A": "Astana",
+        "B": "Tashkent",
+        "C": "Ulaanbaatar",
+        "D": "Bishkek"
       },
-      "correctAnswer": "B",
-      "difficulty": "easy",
-      "category": "History"
+      "correctAnswer": "C",
+      "difficulty": "hard",
+      "category": "Geography"
     }
   ]
 }

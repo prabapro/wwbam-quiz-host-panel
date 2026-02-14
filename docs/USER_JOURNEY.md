@@ -466,11 +466,11 @@ const isMissingRequiredQuestionSets =
     D: Rome
     ```
   - Host panel shows: "Question loaded - Ready to display"
-  - **"Show Question"** button becomes enabled
+  - **"Push to Display"** button becomes enabled
 
 #### Step 2: Display Question to Public
 
-- Host clicks **"Show Question"** button
+- Host clicks **"Push to Display"** button
 - System:
   - Pushes question to Firebase **WITHOUT correct answer**:
 
@@ -753,7 +753,7 @@ const isMissingRequiredQuestionSets =
    - Answer pad (A/B/C/D buttons)
    - Lock Answer button
    - Lifeline buttons (Phone-a-Friend, 50/50)
-   - Load Question / Show Question / Next Question buttons
+   - Load Question / Push to Display / Next Question buttons
 
 2. **Team Status Panel** (Center)
 
@@ -792,17 +792,17 @@ Active Game, No Active Team (game-status: "active", current-team-id: null):
 
 Active Team, No Question Loaded:
   ✅ Load Question
-  ❌ Show Question disabled
+  ❌ Push to Display disabled
   ❌ Answer controls disabled
 
 Question Loaded (Host View Only):
-  ✅ Show Question
+  ✅ Push to Display
   ✅ Lifelines (if available)
   ❌ Answer pad disabled
   ❌ Lock Answer disabled
 
 Question Displayed to Public (question-visible: true):
-  ❌ Show Question disabled
+  ❌ Push to Display disabled
   ✅ Answer pad (A/B/C/D) enabled
   ✅ Lifelines (if team has unused ones)
   ❌ Lock Answer disabled (until team selects)
@@ -887,7 +887,7 @@ Answer Locked & Validated:
 
 ### Scenario D: Answer Already Visible, Need to Retract
 
-- Host accidentally clicked "Show Question" too early
+- Host accidentally clicked "Push to Display" too early
 - Clicks **"🔙 Hide Question"** button
 - System performs Firebase update:
 
@@ -901,7 +901,7 @@ Answer Locked & Validated:
 
 - Public display clears question
 - Returns to "Question Loaded" state
-- Can show question again when ready
+- Can Push to Display again when ready
 
 ### Scenario E: Wrong Answer Selected by Mistake
 
@@ -1070,7 +1070,7 @@ Answer Locked & Validated:
 - Initialize Game
 - Start Game (with confirmation)
 - Load Question (from localStorage)
-- Show Question (push to Firebase)
+- Push to Display (push to Firebase)
 - Register team's answer selection (A/B/C/D)
 - Lock Answer (triggers automatic validation)
 - Lifeline activation
@@ -1087,7 +1087,7 @@ Host Action → localStorage (question data) → Validation Logic → Firebase U
 Example Flow:
 1. Host loads Question 5 (from localStorage with correct answer)
 2. System shows question to host with correct answer indicator
-3. Host clicks "Show Question"
+3. Host clicks "Push to Display"
 4. Question pushed to Firebase WITHOUT correct answer
 5. Public display receives real-time update and renders question
 6. Team verbally announces answer: "B"
@@ -1171,7 +1171,7 @@ _Note: Each set must contain exactly `QUESTIONS_PER_SET` questions (defined in `
 [Active - No Question] (game-status: "active", question-visible: false)
     ↓ Load Question
 [Question Loaded] (host view only)
-    ↓ Show Question
+    ↓ Push to Display
 [Question Visible] (question-visible: true)
     ↓ Team Selects Answer
 [Answer Selected] (local state)
