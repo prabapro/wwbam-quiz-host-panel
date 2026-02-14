@@ -1,7 +1,9 @@
 // src/components/setup/SetupVerification.jsx
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSetupVerification } from '@hooks/useSetupVerification';
+import { loadSampleData } from '@utils/sampleDataLoader';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { Button } from '@components/ui/button';
 import { Badge } from '@components/ui/badge';
@@ -15,6 +17,8 @@ import {
   FileJson,
   DollarSign,
   ArrowRight,
+  Download,
+  Loader2,
 } from 'lucide-react';
 
 /**
@@ -115,14 +119,64 @@ const CheckGroup = ({ title, icon: Icon, checks, onConfigure }) => (
   </div>
 );
 
-export default function SetupVerification() {
+export default function SetupVerification({ refreshKey = 0, onRefresh }) {
   const navigate = useNavigate();
-  const { isReady, hasWarnings, checks, summary } = useSetupVerification();
+
+  // Use refreshKey from parent (managed in Home.jsx)
+  const { isReady, hasWarnings, checks, summary } =
+    useSetupVerification(refreshKey);
+
+  // Sample data loading state
+  const [isLoadingSampleData, setIsLoadingSampleData] = useState(false);
+  const [sampleDataProgress, setSampleDataProgress] = useState('');
+  const [sampleDataSuccess, setSampleDataSuccess] = useState(false);
+  const [sampleDataError, setSampleDataError] = useState(null);
 
   // Group checks by category
   const teamsChecks = checks.filter((c) => c.group === 'teams');
   const questionsChecks = checks.filter((c) => c.group === 'questions');
   const prizesChecks = checks.filter((c) => c.group === 'prizes');
+
+  /**
+   * Handle sample data loading
+   */
+  const handleLoadSampleData = async () => {
+    setIsLoadingSampleData(true);
+    setSampleDataProgress('Starting...');
+    setSampleDataError(null);
+    setSampleDataSuccess(false);
+
+    try {
+      const result = await loadSampleData((progress) => {
+        setSampleDataProgress(progress);
+      });
+
+      if (result.success) {
+        setSampleDataSuccess(true);
+        setSampleDataProgress(
+          `Loaded ${result.teams.count} teams and ${result.questionSets.count} question sets`,
+        );
+
+        // Call parent's refresh callback to trigger re-validation
+        if (onRefresh) {
+          onRefresh();
+        }
+
+        // Clear success message after 5 seconds
+        setTimeout(() => {
+          setSampleDataSuccess(false);
+          setSampleDataProgress('');
+        }, 5000);
+      } else {
+        setSampleDataError(result.error || 'Failed to load sample data');
+      }
+    } catch (error) {
+      console.error('Error loading sample data:', error);
+      setSampleDataError(error.message || 'Unexpected error occurred');
+    } finally {
+      setIsLoadingSampleData(false);
+    }
+  };
 
   return (
     <Card>
@@ -222,36 +276,70 @@ export default function SetupVerification() {
           </div>
         </div>
 
-        {/* Prize Pool Summary (if configured) */}
-        {/* {summary.totalPrizePool > 0 && (
-          <div className="p-4 bg-amber-50 dark:bg-amber-950 border-2 border-amber-200 dark:border-amber-800 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                <span className="font-semibold text-amber-900 dark:text-amber-100">
-                  Total Prize Pool
-                </span>
-              </div>
-              <span className="text-2xl font-bold text-amber-700 dark:text-amber-300">
-                Rs.{summary.totalPrizePool.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        )} */}
+        {/* Sample Data Success Alert */}
+        {sampleDataSuccess && (
+          <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <AlertTitle className="text-green-800 dark:text-green-200">
+              Sample Data Loaded!
+            </AlertTitle>
+            <AlertDescription className="text-green-700 dark:text-green-300">
+              {sampleDataProgress}
+            </AlertDescription>
+          </Alert>
+        )}
 
-        {/* Summary Alert - After stats */}
+        {/* Sample Data Error Alert */}
+        {sampleDataError && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>Failed to Load Sample Data</AlertTitle>
+            <AlertDescription>{sampleDataError}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Setup Incomplete Alert with Sample Data Button */}
         {!isReady && summary.criticalIssues > 0 && (
           <Alert variant="destructive">
             <XCircle className="h-4 w-4" />
             <AlertTitle>Setup Incomplete</AlertTitle>
             <AlertDescription>
-              Please resolve {summary.criticalIssues} critical issue
-              {summary.criticalIssues > 1 ? 's' : ''} before initializing the
-              game.
+              <div className="space-y-3">
+                <p>
+                  Please resolve {summary.criticalIssues} critical issue
+                  {summary.criticalIssues > 1 ? 's' : ''} before initializing
+                  the game.
+                </p>
+
+                {/* Sample Data Loading Progress */}
+                {isLoadingSampleData && (
+                  <div className="p-3 bg-destructive/10 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm font-medium">
+                        {sampleDataProgress}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sample Data Button */}
+                {!isLoadingSampleData && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLoadSampleData}
+                    className="bg-background hover:bg-muted">
+                    <Download className="w-4 h-4 mr-2" />
+                    Test with sample data
+                  </Button>
+                )}
+              </div>
             </AlertDescription>
           </Alert>
         )}
 
+        {/* Warnings Alert */}
         {!isReady && hasWarnings && summary.criticalIssues === 0 && (
           <Alert
             variant="default"
@@ -267,6 +355,7 @@ export default function SetupVerification() {
           </Alert>
         )}
 
+        {/* Success Alert */}
         {isReady && (
           <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
             <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />

@@ -20,8 +20,10 @@ import { GAME_STATUS } from '@constants/gameStates';
  * - Grouped check structure (teams, questions, prizes)
  * - Info status for 0/0 sufficient sets check
  * - Missing required question sets detection (for multi-browser edge case)
+ *
+ * @param {number} refreshKey - Optional key to force re-validation (increment to refresh)
  */
-export const useSetupVerification = () => {
+export const useSetupVerification = (refreshKey = 0) => {
   // Get teams from store with safe default
   const teamsObject = useTeamsStore((state) => state.teams) || {};
 
@@ -34,6 +36,7 @@ export const useSetupVerification = () => {
     useGameStore((state) => state.questionSetAssignments) || {};
 
   // Get question sets metadata from localStorage
+  // Now includes refreshKey as dependency to re-read when it changes
   const questionSetsMetadata = useMemo(() => {
     try {
       const metadata = localStorageService.getQuestionSetsMetadata();
@@ -42,7 +45,7 @@ export const useSetupVerification = () => {
       console.error('Failed to get question sets metadata:', error);
       return [];
     }
-  }, []);
+  }, [refreshKey]); // ← Now dependent on refreshKey
 
   // Check if game is initialized
   const isGameInitialized = gameStatus !== GAME_STATUS.NOT_STARTED;

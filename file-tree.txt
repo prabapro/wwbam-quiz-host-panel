@@ -20,6 +20,9 @@
 │   └── sample-data
 │       ├── initial-db-structure.json
 │       ├── sample-question-set-01.json
+│       ├── sample-question-set-02.json
+│       ├── sample-question-set-03.json
+│       ├── sample-question-set-04.json
 │       ├── sample-question-sets.zip
 │       └── sample-teams.json
 ├── src
@@ -137,6 +140,7 @@
 │   │   │   └── scoreCalculation.js
 │   │   ├── firebaseEnvironment.js
 │   │   ├── gameInitialization.js
+│   │   ├── sampleDataLoader.js
 │   │   ├── setupValidation.js
 │   │   ├── teamValidation.js
 │   │   ├── theme.js

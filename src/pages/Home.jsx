@@ -20,17 +20,20 @@ export default function Home() {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [showInitializeModal, setShowInitializeModal] = useState(false);
 
+  // Refresh key for setup verification (shared with SetupVerification component)
+  const [refreshKey, setRefreshKey] = useState(0);
+
   // Get loading states from stores
   const teamsLoading = useTeamsStore((state) => state.isLoading);
   const prizesLoading = usePrizeStore((state) => state.isLoading);
   const gameStatus = useGameStore((state) => state.gameStatus);
 
-  // Get setup verification (includes missing required question sets detection)
+  // Get setup verification with refreshKey (includes missing required question sets detection)
   const {
     isReady,
     isMissingRequiredQuestionSets,
     requiredQuestionSetsValidation,
-  } = useSetupVerification();
+  } = useSetupVerification(refreshKey);
 
   // Track if initial data load is happening
   const isLoadingInitialData = teamsLoading || prizesLoading;
@@ -75,6 +78,13 @@ export default function Home() {
     console.log('✅ All required question sets found - continuing to game');
   };
 
+  /**
+   * Callback to increment refresh key (called by SetupVerification after sample data load)
+   */
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
+
   return (
     <main className="container mx-auto py-8 px-4 max-w-7xl space-y-8 relative">
       {/* Loading Overlay with Blur Effect */}
@@ -111,7 +121,10 @@ export default function Home() {
         {/* SCENARIO 3: Game NOT initialized - Show Setup Verification */}
         {!isGameInitialized && (
           <>
-            <SetupVerification />
+            <SetupVerification
+              refreshKey={refreshKey}
+              onRefresh={handleRefresh}
+            />
 
             {/* Initialize Game Button - Show when ready and not initialized */}
             {isReady && (

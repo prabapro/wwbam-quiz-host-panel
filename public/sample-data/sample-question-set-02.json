@@ -1,0 +1,238 @@
+{
+  "setId": "sample-set-2",
+  "setName": "Sample Set 2",
+  "questions": [
+    {
+      "id": "q1",
+      "number": 1,
+      "text": "What is the capital of Canada?",
+      "options": {
+        "A": "Toronto",
+        "B": "Ottawa",
+        "C": "Vancouver",
+        "D": "Montreal"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q2",
+      "number": 2,
+      "text": "How many legs does a spider have?",
+      "options": { "A": "6", "B": "8", "C": "10", "D": "12" },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Science"
+    },
+    {
+      "id": "q3",
+      "number": 3,
+      "text": "What is 9 x 9?",
+      "options": { "A": "81", "B": "72", "C": "99", "D": "79" },
+      "correctAnswer": "A",
+      "difficulty": "easy",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q4",
+      "number": 4,
+      "text": "Which continent is Egypt in?",
+      "options": {
+        "A": "Asia",
+        "B": "Europe",
+        "C": "Africa",
+        "D": "South America"
+      },
+      "correctAnswer": "C",
+      "difficulty": "easy",
+      "category": "Geography"
+    },
+    {
+      "id": "q5",
+      "number": 5,
+      "text": "What gas do humans breathe in to survive?",
+      "options": {
+        "A": "Carbon Dioxide",
+        "B": "Oxygen",
+        "C": "Nitrogen",
+        "D": "Hydrogen"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Science"
+    },
+
+    {
+      "id": "q6",
+      "number": 6,
+      "text": "Who discovered gravity when observing a falling apple?",
+      "options": {
+        "A": "Einstein",
+        "B": "Newton",
+        "C": "Galileo",
+        "D": "Darwin"
+      },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Science"
+    },
+    {
+      "id": "q7",
+      "number": 7,
+      "text": "Which country is home to the Taj Mahal?",
+      "options": {
+        "A": "Pakistan",
+        "B": "India",
+        "C": "Nepal",
+        "D": "Bangladesh"
+      },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Geography"
+    },
+    {
+      "id": "q8",
+      "number": 8,
+      "text": "What is the freezing point of water?",
+      "options": { "A": "0°C", "B": "10°C", "C": "-10°C", "D": "5°C" },
+      "correctAnswer": "A",
+      "difficulty": "medium",
+      "category": "Science"
+    },
+    {
+      "id": "q9",
+      "number": 9,
+      "text": "Which language has the most native speakers worldwide?",
+      "options": {
+        "A": "English",
+        "B": "Spanish",
+        "C": "Hindi",
+        "D": "Mandarin Chinese"
+      },
+      "correctAnswer": "D",
+      "difficulty": "medium",
+      "category": "General Knowledge"
+    },
+    {
+      "id": "q10",
+      "number": 10,
+      "text": "Who composed the Fifth Symphony?",
+      "options": {
+        "A": "Mozart",
+        "B": "Bach",
+        "C": "Beethoven",
+        "D": "Chopin"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Music"
+    },
+    {
+      "id": "q11",
+      "number": 11,
+      "text": "What is the largest desert in the world?",
+      "options": {
+        "A": "Sahara",
+        "B": "Gobi",
+        "C": "Antarctica",
+        "D": "Arabian"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Geography"
+    },
+    {
+      "id": "q12",
+      "number": 12,
+      "text": "Which organ pumps blood through the body?",
+      "options": { "A": "Liver", "B": "Lungs", "C": "Heart", "D": "Brain" },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Science"
+    },
+    {
+      "id": "q13",
+      "number": 13,
+      "text": "What is 12 squared?",
+      "options": { "A": "124", "B": "144", "C": "132", "D": "154" },
+      "correctAnswer": "B",
+      "difficulty": "medium",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q14",
+      "number": 14,
+      "text": "Which planet has the most moons?",
+      "options": { "A": "Earth", "B": "Mars", "C": "Jupiter", "D": "Venus" },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Science"
+    },
+    {
+      "id": "q15",
+      "number": 15,
+      "text": "Who wrote 'The Hobbit'?",
+      "options": {
+        "A": "Lewis",
+        "B": "Rowling",
+        "C": "Tolkien",
+        "D": "Martin"
+      },
+      "correctAnswer": "C",
+      "difficulty": "medium",
+      "category": "Literature"
+    },
+
+    {
+      "id": "q16",
+      "number": 16,
+      "text": "What is the powerhouse of the cell?",
+      "options": {
+        "A": "Nucleus",
+        "B": "Ribosome",
+        "C": "Mitochondria",
+        "D": "Chloroplast"
+      },
+      "correctAnswer": "C",
+      "difficulty": "hard",
+      "category": "Biology"
+    },
+    {
+      "id": "q17",
+      "number": 17,
+      "text": "In which year did the Berlin Wall fall?",
+      "options": { "A": "1987", "B": "1988", "C": "1989", "D": "1990" },
+      "correctAnswer": "C",
+      "difficulty": "hard",
+      "category": "History"
+    },
+    {
+      "id": "q18",
+      "number": 18,
+      "text": "What is the integral of 1/x?",
+      "options": { "A": "ln|x| + C", "B": "x", "C": "1/x^2", "D": "x^2" },
+      "correctAnswer": "A",
+      "difficulty": "hard",
+      "category": "Mathematics"
+    },
+    {
+      "id": "q19",
+      "number": 19,
+      "text": "Which country has the longest coastline?",
+      "options": { "A": "USA", "B": "Australia", "C": "Russia", "D": "Canada" },
+      "correctAnswer": "D",
+      "difficulty": "hard",
+      "category": "Geography"
+    },
+    {
+      "id": "q20",
+      "number": 20,
+      "text": "What is the SI unit of electric resistance?",
+      "options": { "A": "Volt", "B": "Watt", "C": "Ohm", "D": "Ampere" },
+      "correctAnswer": "C",
+      "difficulty": "hard",
+      "category": "Physics"
+    }
+  ]
+}
