@@ -7,8 +7,8 @@
 | Requirement ID | Description                        | User Story                                                                        | Expected Behavior/Outcome                                                                                                                                                                                           |
 | -------------- | ---------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **P4-REQ-001** | Question Control Panel Component   | As a host, I need a question control panel so that I can manage question display  | - Compact panel with all controls (`/play`)<br>- Question preview (host only)<br>- Action buttons: Load, Show, Lock<br>- Current question number indicator                                                          |
-| **P4-REQ-002** | Load Question Functionality        | As a host, I need to load questions so that I can preview before showing          | - Fetch next question from localStorage<br>- Show question text + options to HOST<br>- Display correct answer (green indicator)<br>- Enable "Show Question" button                                                  |
-| **P4-REQ-003** | Show Question to Public            | As a host, I need to display questions so that teams can see them                 | - Push question to Firebase (WITHOUT correct answer)<br>- Set question-visible = true<br>- Set options-visible = true<br>- Public display updates instantly                                                         |
+| **P4-REQ-002** | Load Question Functionality        | As a host, I need to load questions so that I can preview before showing          | - Fetch next question from localStorage<br>- Push to Display text + options to HOST<br>- Display correct answer (green indicator)<br>- Enable "Push to Display" button                                              |
+| **P4-REQ-003** | Push to Display to Public          | As a host, I need to display questions so that teams can see them                 | - Push question to Firebase (WITHOUT correct answer)<br>- Set question-visible = true<br>- Set options-visible = true<br>- Public display updates instantly                                                         |
 | **P4-REQ-004** | Answer Pad Component               | As a host, I need an answer input so that I can register team's answer            | - 4 buttons: A, B, C, D<br>- Click to select (yellow highlight)<br>- Can change selection before lock<br>- Visual feedback on selection                                                                             |
 | **P4-REQ-005** | Lock Answer Functionality          | As a host, I need to lock answers so that validation occurs                       | - "Lock Answer" button<br>- Disabled until answer selected<br>- Triggers automatic validation<br>- Cannot unlock after validation                                                                                   |
 | **P4-REQ-006** | Automatic Answer Validation        | As a system, I need to validate answers so that correct/incorrect is determined   | - Compare selected vs localStorage correct answer<br>- Return boolean + correct answer<br>- Trigger appropriate flow (correct/incorrect)<br>- Log validation event                                                  |
@@ -85,7 +85,7 @@ src/pages/play/
 **GameControls.jsx** (P4-REQ-002, P4-REQ-003, P4-REQ-012)
 
 - Load Question button
-- Show Question button
+- Push to Display button
 - Hide Question button
 - Next Question button
 - Next Team button

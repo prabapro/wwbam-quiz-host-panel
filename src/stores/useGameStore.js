@@ -179,7 +179,7 @@ export const useGameStore = create()(
         },
 
         /**
-         * Show question to public (without correct answer)
+         * Push to Display to public (without correct answer)
          */
         showQuestion: () => {
           set({

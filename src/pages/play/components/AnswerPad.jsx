@@ -201,7 +201,7 @@ export default function AnswerPad() {
         {isWaitingForVisibility && (
           <Alert className="bg-orange-50 dark:bg-orange-950/20 border-orange-300 dark:border-orange-700">
             <AlertDescription className="text-xs text-orange-800 dark:text-orange-200 text-center">
-              <strong>👁️ Show question to public</strong> before accepting
+              <strong>👁️ Push to Display to public</strong> before accepting
               answers
             </AlertDescription>
           </Alert>

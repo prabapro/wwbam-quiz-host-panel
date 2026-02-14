@@ -22,7 +22,7 @@ import { cn } from '@lib/utils';
  *
  * Control Buttons (Stacked full-width for narrow column):
  * 1. "Load Question X" - Fetch next question from localStorage (dynamic label)
- * 2. "Show Question" - Push question to Firebase (visible to public)
+ * 2. "Push to Display" - Push question to Firebase (visible to public)
  * 3. "Hide Question" - Retract question from public view
  * 4. "Next Team" - Move to next team in queue (after elimination/completion)
  * 5. "Skip Question" - Skip current question (error handling)
@@ -76,7 +76,7 @@ export default function GameControls() {
           {isLoading ? 'Loading...' : `Load Question ${nextQuestionNumber}`}
         </Button>
 
-        {/* Show Question - Custom Blue Primary Button - Full Width */}
+        {/* Push to Display - Custom Blue Primary Button - Full Width */}
         <Button
           onClick={handleShowQuestion}
           disabled={!canShowQuestion || isLoading}
@@ -84,7 +84,7 @@ export default function GameControls() {
           size="lg"
           className="w-full gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white">
           <Eye className="w-4 h-4" />
-          {isLoading ? 'Showing...' : 'Show Question'}
+          {isLoading ? 'Showing...' : 'Push to Display'}
         </Button>
 
         {/* Hide Question - Full Width */}

@@ -21,9 +21,9 @@ import { cn } from '@lib/utils';
  *
  * States:
  * 1. No question loaded: "Load a question to begin"
- * 2. Question loaded (host view): Show question + correct answer indicator
- * 3. Question visible to public: Show question (synced to Firebase, no answer)
- * 4. Answer revealed: Show question + highlight correct answer
+ * 2. Question loaded (host view): Push to Display + correct answer indicator
+ * 3. Question visible to public: Push to Display (synced to Firebase, no answer)
+ * 4. Answer revealed: Push to Display + highlight correct answer
  *
  * Note: Options are styled as non-interactive (grayed out, cursor-not-allowed)
  * to prevent accidental clicks. Use Answer Pad for actual answer selection.
@@ -181,7 +181,7 @@ export default function QuestionPanel() {
         <Alert className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300 dark:border-yellow-700">
           <AlertDescription className="text-sm text-yellow-800 dark:text-yellow-200">
             <strong>🔒 Host View Only:</strong> This question is not yet visible
-            to the public. Click "Show Question" to display it.
+            to the public. Click "Push to Display" to display it.
           </AlertDescription>
         </Alert>
       )}

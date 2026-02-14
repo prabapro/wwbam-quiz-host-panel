@@ -21,7 +21,7 @@ import { useCurrentQuestion } from './useCurrentQuestion';
  *
  * Button State Rules:
  * - Load Question: Enabled when (no question loaded OR answer validated - ready for next)
- * - Show Question: Enabled when (question loaded AND not visible AND not revealed)
+ * - Push to Display: Enabled when (question loaded AND not visible AND not revealed)
  * - Hide Question: Enabled when (question visible AND not revealed)
  * - Next Team: Enabled when (team eliminated OR completed)
  * - Skip Question: Always enabled (with confirmation)
@@ -106,7 +106,7 @@ export function useGameControls() {
   }, [hostQuestion, currentQuestionNumber]);
 
   /**
-   * Can Show Question?
+   * Can Push to Display?
    * - Question is loaded (host view)
    * - Question is not yet visible to public
    * - Answer has not been revealed
@@ -190,13 +190,13 @@ export function useGameControls() {
   };
 
   /**
-   * Show question to public (push to Firebase)
+   * Push to Display to public (push to Firebase)
    */
   const handleShowQuestion = async () => {
     try {
       await showQuestion();
     } catch (err) {
-      console.error('Failed to show question:', err);
+      console.error('Failed to Push to Display:', err);
       throw err;
     }
   };

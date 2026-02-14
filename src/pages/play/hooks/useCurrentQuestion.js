@@ -121,7 +121,7 @@ export function useCurrentQuestion() {
   };
 
   /**
-   * Show question to public (push to Firebase)
+   * Push to Display to public (push to Firebase)
    * Removes correct answer before syncing
    */
   const showQuestion = async () => {
@@ -150,7 +150,7 @@ export function useCurrentQuestion() {
 
       setIsLoading(false);
     } catch (err) {
-      console.error('Failed to show question:', err);
+      console.error('Failed to Push to Display:', err);
       setError(err.message);
       setIsLoading(false);
       throw err;
