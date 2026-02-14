@@ -13,6 +13,7 @@ import { usePrizeStore } from '@stores/usePrizeStore';
 import { databaseService } from '@services/database.service';
 import { GAME_STATUS } from '@constants/gameStates';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { cn } from '@lib/utils';
 
 // Import Phase 4 Components
 import GameStatusBar from './components/GameStatusBar';
@@ -59,6 +60,10 @@ export default function Play() {
 
   // Prize Store State
   const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
+
+  // Answer Pad States for Card-level styling
+  const isWaitingForVisibility = !!hostQuestion && !questionVisible;
+  const isAnswerPadActive = questionVisible && !answerRevealed;
 
   // ✅ FIX: Listen to Firebase game state changes
   useEffect(() => {
@@ -192,7 +197,17 @@ export default function Play() {
 
         {/* Right Column - Answer Pad (1/4 width) */}
         <div className="lg:col-span-1 space-y-6">
-          <Card>
+          <Card
+            className={cn(
+              'transition-all duration-500',
+              // Low opacity when waiting for question to be shown
+              isWaitingForVisibility && 'opacity-40',
+              // Full opacity with ring animation when visible
+              isAnswerPadActive &&
+                'opacity-100 ring-4 ring-blue-500 dark:ring-blue-400 shadow-lg shadow-blue-500/50 animate-pulse',
+              // Normal state after answer revealed
+              answerRevealed && 'opacity-100',
+            )}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 Answer Pad
