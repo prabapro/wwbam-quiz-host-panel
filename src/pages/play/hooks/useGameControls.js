@@ -6,6 +6,7 @@ import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { GAME_STATUS } from '@constants/gameStates';
 import { TEAM_STATUS } from '@constants/teamStates';
+import { QUESTIONS_PER_SET } from '@constants/config';
 import { useCurrentQuestion } from './useCurrentQuestion';
 
 /**
@@ -71,13 +72,13 @@ export function useGameControls() {
    * Enabled when:
    * - No question loaded yet (start of game or ready for first question)
    * - OR answer has been validated (ready for next question)
-   * - AND current question number < 20 (not at max)
+   * - AND current question number < QUESTIONS_PER_SET (not at max)
    * - AND game is active
    */
   const canLoadQuestion = useMemo(() => {
     if (gameStatus !== GAME_STATUS.ACTIVE) return false;
     if (!currentTeam) return false;
-    if (currentQuestionNumber >= 20) return false; // Already at max questions
+    if (currentQuestionNumber >= QUESTIONS_PER_SET) return false; // ✅ FIX: Use constant instead of hardcoded 20
 
     // Can load if:
     // 1. No question loaded yet (start of game)
