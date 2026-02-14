@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
 import { databaseService } from '@services/database.service';
+import { localStorageService } from '@services/localStorage.service';
 import { useQuestionsStore } from './useQuestionsStore';
 
 const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
@@ -418,12 +419,26 @@ export const useGameStore = create()(
         /**
          * Reset app to factory defaults
          * DESTRUCTIVE - Deletes all data
+         * Orchestrates complete cleanup:
+         * 1. Reset Firebase database to defaults
+         * 2. Clear question sets from localStorage
+         * 3. Clear game store state
          */
         resetAppToFactoryDefaults: async () => {
           try {
-            // 1. Reset game store to defaults
+            console.log('🏭 Starting factory reset...');
+
+            // 1. Reset Firebase database to defaults
+            // This includes game-state, teams (empty), prize-structure, config
+            await databaseService.resetDatabaseToDefaults();
+
+            // 2. Clear question sets from localStorage
+            localStorageService.clearAllQuestionSets();
+            console.log('🗑️ Question sets cleared from localStorage');
+
+            // 3. Clear game store state (triggers localStorage clear via persist)
             set({
-              gameStatus: GAME_STATUS.NOT_STARTED,
+              gameStatus: DEFAULT_GAME_STATE,
               currentTeamId: null,
               currentQuestionNumber: 0,
               playQueue: [],
@@ -438,11 +453,11 @@ export const useGameStore = create()(
               lastUpdated: null,
             });
 
-            console.log('🏭 Factory reset complete');
+            console.log('✅ Factory reset completed successfully');
 
             return { success: true };
           } catch (error) {
-            console.error('Failed to reset to factory defaults:', error);
+            console.error('❌ Factory reset failed:', error);
             return { success: false, error: error.message };
           }
         },
