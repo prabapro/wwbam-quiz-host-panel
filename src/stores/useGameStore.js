@@ -12,7 +12,10 @@ const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
 /**
  * Game State Store
  * Manages game flow, team rotation, question navigation
- * Persisted to localStorage and synced to Firebase
+ *
+ * UPDATED: Added real-time Firebase listener for game state sync
+ * Reduced localStorage persistence - only critical game config is persisted
+ * All gameplay state is fetched fresh from Firebase
  */
 export const useGameStore = create()(
   devtools(
@@ -38,6 +41,7 @@ export const useGameStore = create()(
         questionSetAssignments: {},
 
         // Current question data (synced to Firebase for public display)
+        // NOTE: This is the PUBLIC question WITHOUT correct answer
         currentQuestion: null,
         questionVisible: false,
         optionsVisible: false,
@@ -91,7 +95,7 @@ export const useGameStore = create()(
         },
 
         /**
-         * Reveal correct answer
+         * Reveal answer to public
          */
         revealAnswer: (correctOption) => {
           set({
@@ -104,42 +108,15 @@ export const useGameStore = create()(
         },
 
         /**
-         * Set current team
-         */
-        setCurrentTeam: (teamId) => {
-          set({
-            currentTeamId: teamId,
-            lastUpdated: Date.now(),
-          });
-
-          console.log(`👥 Current team set: ${teamId}`);
-        },
-
-        /**
-         * Set game status
-         */
-        setGameStatus: (status) => {
-          set({
-            gameStatus: status,
-            lastUpdated: Date.now(),
-          });
-
-          console.log(`🎮 Game status changed: ${status}`);
-        },
-
-        /**
          * Initialize game
-         * Creates play queue and assigns question sets to teams
+         * Sets up play queue and question set assignments
          * Syncs to Firebase and updates local state
-         * @param {Array} playQueue - Array of team IDs in play order
-         * @param {Object} questionSetAssignments - { teamId: questionSetId }
-         * @returns {Promise<Object>} { success: boolean, error?: string }
          */
         initializeGame: async (playQueue, questionSetAssignments) => {
           try {
             const timestamp = Date.now();
 
-            // Update local state first
+            // Update local state
             set({
               gameStatus: GAME_STATUS.INITIALIZED,
               playQueue,
@@ -156,7 +133,7 @@ export const useGameStore = create()(
               initializedAt: timestamp,
             });
 
-            console.log('🎮 Game initialized and synced to Firebase');
+            console.log('🎲 Game initialized and synced to Firebase');
             return { success: true };
           } catch (error) {
             console.error('Failed to initialize game:', error);
@@ -165,83 +142,14 @@ export const useGameStore = create()(
         },
 
         /**
-         * Uninitialize game
-         * Resets game to NOT_STARTED state and clears play queue
-         * Also resets all teams to their initial state
-         * Syncs to Firebase and updates local state
-         * @returns {Promise<Object>} { success: boolean, error?: string }
-         */
-        uninitializeGame: async () => {
-          try {
-            const timestamp = Date.now();
-
-            // ✅ STEP 1: Reset all teams to initial state FIRST
-            // This must happen before updating game state
-            const resetTeamsResult = await useTeamsStore
-              .getState()
-              .resetAllTeamsProgress();
-
-            if (!resetTeamsResult || resetTeamsResult.error) {
-              console.warn(
-                '⚠️ Failed to reset teams, continuing anyway:',
-                resetTeamsResult?.error,
-              );
-            }
-
-            // ✅ STEP 2: Update local game state - reset to NOT_STARTED
-            set({
-              gameStatus: GAME_STATUS.NOT_STARTED,
-              currentTeamId: null,
-              currentQuestionNumber: 0,
-              playQueue: [],
-              questionSetAssignments: {},
-              currentQuestion: null,
-              questionVisible: false,
-              optionsVisible: false,
-              answerRevealed: false,
-              correctOption: null,
-              initializedAt: null,
-              startedAt: null,
-              lastUpdated: timestamp,
-            });
-
-            // ✅ STEP 3: Sync game state to Firebase
-            await databaseService.updateGameState({
-              gameStatus: GAME_STATUS.NOT_STARTED,
-              currentTeamId: null,
-              currentQuestionNumber: 0,
-              playQueue: [],
-              questionSetAssignments: {},
-              currentQuestion: null,
-              questionVisible: false,
-              optionsVisible: false,
-              answerRevealed: false,
-              correctOption: null,
-              initializedAt: null,
-              startedAt: null,
-            });
-
-            console.log('🔄 Game uninitialized and synced to Firebase');
-            console.log('👥 All teams reset to initial state');
-            return { success: true };
-          } catch (error) {
-            console.error('Failed to uninitialize game:', error);
-            return { success: false, error: error.message };
-          }
-        },
-
-        /**
          * Start game
          * Sets game to ACTIVE status and assigns first team
-         * Syncs to Firebase and updates local state
-         * @param {string} firstTeamId - ID of the first team to play
-         * @returns {Promise<Object>} { success: boolean, error?: string }
          */
         startGame: async (firstTeamId) => {
           try {
             const timestamp = Date.now();
 
-            // Update local game state
+            // Update local state
             set({
               gameStatus: GAME_STATUS.ACTIVE,
               currentTeamId: firstTeamId,
@@ -249,16 +157,16 @@ export const useGameStore = create()(
               lastUpdated: timestamp,
             });
 
-            // Sync game state to Firebase
+            // Update team status to ACTIVE in teams store
+            await useTeamsStore.getState().updateTeam(firstTeamId, {
+              status: 'active',
+            });
+
+            // Sync to Firebase
             await databaseService.updateGameState({
               gameStatus: GAME_STATUS.ACTIVE,
               currentTeamId: firstTeamId,
               startedAt: timestamp,
-            });
-
-            // Update current team status to 'active'
-            await databaseService.updateTeam(firstTeamId, {
-              status: 'active',
             });
 
             console.log('🎮 Game started and synced to Firebase');
@@ -271,24 +179,19 @@ export const useGameStore = create()(
 
         /**
          * Pause game
-         * Sets game status to PAUSED
-         * Syncs to Firebase and updates local state
-         * @returns {Promise<Object>} { success: boolean, error?: string }
          */
         pauseGame: async () => {
           try {
-            const timestamp = Date.now();
-
             set({
               gameStatus: GAME_STATUS.PAUSED,
-              lastUpdated: timestamp,
+              lastUpdated: Date.now(),
             });
 
             await databaseService.updateGameState({
               gameStatus: GAME_STATUS.PAUSED,
             });
 
-            console.log('⏸️ Game paused and synced to Firebase');
+            console.log('⏸️ Game paused');
             return { success: true };
           } catch (error) {
             console.error('Failed to pause game:', error);
@@ -298,24 +201,19 @@ export const useGameStore = create()(
 
         /**
          * Resume game
-         * Sets game status back to ACTIVE from PAUSED
-         * Syncs to Firebase and updates local state
-         * @returns {Promise<Object>} { success: boolean, error?: string }
          */
         resumeGame: async () => {
           try {
-            const timestamp = Date.now();
-
             set({
               gameStatus: GAME_STATUS.ACTIVE,
-              lastUpdated: timestamp,
+              lastUpdated: Date.now(),
             });
 
             await databaseService.updateGameState({
               gameStatus: GAME_STATUS.ACTIVE,
             });
 
-            console.log('▶️ Game resumed and synced to Firebase');
+            console.log('▶️ Game resumed');
             return { success: true };
           } catch (error) {
             console.error('Failed to resume game:', error);
@@ -325,27 +223,22 @@ export const useGameStore = create()(
 
         /**
          * Complete game
-         * Sets game status to COMPLETED and clears current question state
-         * Syncs to Firebase and updates local state
-         * @returns {Promise<Object>} { success: boolean, error?: string }
          */
         completeGame: async () => {
           try {
             const timestamp = Date.now();
 
-            // ✅ Update local state - set to COMPLETED and clear question state
             set({
               gameStatus: GAME_STATUS.COMPLETED,
-              currentTeamId: null, // ← Clear current team
-              currentQuestion: null, // ← Clear question
-              questionVisible: false, // ← Hide question
-              optionsVisible: false, // ← Hide options
-              answerRevealed: false, // ← Reset reveal state
-              correctOption: null, // ← Clear correct option
+              currentTeamId: null,
+              currentQuestion: null,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
               lastUpdated: timestamp,
             });
 
-            // ✅ Sync to Firebase - update all fields
             await databaseService.updateGameState({
               gameStatus: GAME_STATUS.COMPLETED,
               currentTeamId: null,
@@ -366,38 +259,32 @@ export const useGameStore = create()(
 
         /**
          * Move to next team in play queue
-         * Updates current team and resets question-related state
-         * Syncs to Firebase and updates local state
-         * @returns {Promise<Object>} { success: boolean, error?: string, nextTeamId?: string }
          */
         nextTeam: async () => {
           try {
             const { playQueue, currentTeamId } = get();
 
-            if (!playQueue || playQueue.length === 0) {
-              return {
-                success: false,
-                error: 'No teams in play queue',
-              };
-            }
-
             const currentIndex = playQueue.indexOf(currentTeamId);
             const nextIndex = currentIndex + 1;
 
             if (nextIndex >= playQueue.length) {
-              // No more teams - game is complete
-              await get().completeGame();
-              return {
-                success: true,
-                nextTeamId: null,
-                message: 'All teams completed',
-              };
+              console.warn('No more teams in queue');
+              return { success: false, error: 'No more teams in queue' };
             }
 
             const nextTeamId = playQueue[nextIndex];
-            const timestamp = Date.now();
 
-            // Reset question state for new team
+            // Update current team to waiting
+            await useTeamsStore.getState().updateTeam(currentTeamId, {
+              status: 'waiting',
+            });
+
+            // Update next team to active
+            await useTeamsStore.getState().updateTeam(nextTeamId, {
+              status: 'active',
+            });
+
+            // Update game state
             set({
               currentTeamId: nextTeamId,
               currentQuestionNumber: 0,
@@ -406,7 +293,7 @@ export const useGameStore = create()(
               optionsVisible: false,
               answerRevealed: false,
               correctOption: null,
-              lastUpdated: timestamp,
+              lastUpdated: Date.now(),
             });
 
             // Sync to Firebase
@@ -420,39 +307,7 @@ export const useGameStore = create()(
               correctOption: null,
             });
 
-            // ✅ FIX: Don't change status of teams in terminal states (completed/eliminated)
-            // Only teams that are 'active' should be set to 'waiting'
-            // This preserves the completed/eliminated status when moving to next team
-            if (currentTeamId) {
-              // Get current team from Teams store to check their status
-              const currentTeamState =
-                useTeamsStore.getState().teams[currentTeamId];
-              const currentStatus = currentTeamState?.status;
-
-              // Terminal states that should NOT be changed
-              const isTerminalState =
-                currentStatus === 'completed' || currentStatus === 'eliminated';
-
-              if (!isTerminalState && currentStatus === 'active') {
-                // Team was active but didn't complete/eliminate - set to waiting
-                await databaseService.updateTeam(currentTeamId, {
-                  status: 'waiting',
-                });
-                console.log(`👥 Previous team ${currentTeamId} set to waiting`);
-              } else if (isTerminalState) {
-                // Terminal state - preserve it
-                console.log(
-                  `👥 Previous team ${currentTeamId} status preserved: ${currentStatus}`,
-                );
-              }
-            }
-
-            // Set next team to active
-            await databaseService.updateTeam(nextTeamId, {
-              status: 'active',
-            });
-
-            console.log(`👥 Moved to next team: ${nextTeamId}`);
+            console.log(`➡️ Moved to next team: ${nextTeamId}`);
             return { success: true, nextTeamId };
           } catch (error) {
             console.error('Failed to move to next team:', error);
@@ -461,65 +316,76 @@ export const useGameStore = create()(
         },
 
         /**
-         * Reset game to default state (local only, does NOT sync to Firebase)
-         * Used for logout/cleanup scenarios
+         * Uninitialize game (reset to NOT_STARTED)
          */
-        resetGame: () => {
-          set({
-            gameStatus: DEFAULT_GAME_STATE,
-            currentTeamId: null,
-            currentQuestionNumber: 0,
-            playQueue: [],
-            questionSetAssignments: {},
-            currentQuestion: null,
-            questionVisible: false,
-            optionsVisible: false,
-            answerRevealed: false,
-            correctOption: null,
-            initializedAt: null,
-            startedAt: null,
-            lastUpdated: Date.now(),
-          });
-
-          console.log('🎮 Game reset to default state (local only)');
-        },
-
-        /**
-         * Reset app to factory defaults
-         * Clears ALL data including question sets
-         * Syncs to Firebase
-         * @returns {Promise<Object>} { success: boolean, error?: string }
-         */
-        resetAppToFactoryDefaults: async () => {
+        uninitializeGame: async () => {
           try {
-            console.log('🏭 Resetting app to factory defaults...');
+            const timestamp = Date.now();
 
-            // Reset database to defaults via Firebase service
-            await databaseService.resetDatabaseToDefaults();
+            // Reset all teams first
+            const resetTeamsResult = await useTeamsStore
+              .getState()
+              .resetAllTeamsProgress();
 
-            // Reset local game store
-            get().resetGame();
+            if (!resetTeamsResult || resetTeamsResult.error) {
+              console.warn(
+                '⚠️ Failed to reset teams:',
+                resetTeamsResult?.error,
+              );
+            }
 
-            console.log('✅ App reset to factory defaults');
+            // Reset local state
+            set({
+              gameStatus: GAME_STATUS.NOT_STARTED,
+              currentTeamId: null,
+              currentQuestionNumber: 0,
+              playQueue: [],
+              questionSetAssignments: {},
+              currentQuestion: null,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
+              initializedAt: null,
+              startedAt: null,
+              lastUpdated: timestamp,
+            });
+
+            // Sync to Firebase
+            await databaseService.updateGameState({
+              gameStatus: GAME_STATUS.NOT_STARTED,
+              currentTeamId: null,
+              currentQuestionNumber: 0,
+              playQueue: [],
+              questionSetAssignments: {},
+              currentQuestion: null,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
+              initializedAt: null,
+              startedAt: null,
+            });
+
+            console.log('🔄 Game uninitialized and synced to Firebase');
             return { success: true };
           } catch (error) {
-            console.error('Failed to reset app to factory defaults:', error);
+            console.error('Failed to uninitialize game:', error);
             return { success: false, error: error.message };
           }
         },
 
         /**
-         * Auto-load game state from Firebase (for Browser B scenario)
+         * Load game state from Firebase
+         * Fetches fresh data from Firebase and updates local state
          */
-        autoLoadFromFirebase: async () => {
+        loadFromFirebase: async () => {
           try {
-            console.log('🔄 Auto-loading game state from Firebase...');
-
             const gameState = await databaseService.getGameState();
 
             if (!gameState) {
-              console.warn('⚠️ No game state found in Firebase');
-              return { success: false, error: 'No game state in Firebase' };
+              console.warn('No game state found in Firebase');
+              return { success: false, error: 'No game state found' };
             }
 
             // Update local state with Firebase data
@@ -540,46 +406,95 @@ export const useGameStore = create()(
             });
 
             console.log('✅ Game state loaded from Firebase:', gameState);
-
             return { success: true, gameState };
           } catch (error) {
-            console.error('Failed to auto-load from Firebase:', error);
+            console.error('Failed to load game state from Firebase:', error);
             return { success: false, error: error.message };
           }
+        },
+
+        /**
+         * Start real-time Firebase listener for game state changes
+         * Returns unsubscribe function for cleanup
+         *
+         * IMPORTANT: This ensures the store always has fresh data from Firebase
+         * Call this in components/pages that need real-time game state updates
+         */
+        startGameListener: () => {
+          console.log('🔄 Starting real-time game state listener...');
+
+          const unsubscribe = databaseService.onGameStateChange(
+            (firebaseGameState) => {
+              if (firebaseGameState) {
+                console.log('🔄 Game state updated from Firebase:', {
+                  questionVisible: firebaseGameState.questionVisible,
+                  answerRevealed: firebaseGameState.answerRevealed,
+                  correctOption: firebaseGameState.correctOption,
+                  currentQuestionNumber:
+                    firebaseGameState.currentQuestionNumber,
+                });
+
+                // Update local state with Firebase data
+                // NOTE: We only update these fields to avoid overwriting local-only state
+                set({
+                  gameStatus: firebaseGameState.gameStatus,
+                  currentTeamId: firebaseGameState.currentTeamId,
+                  currentQuestionNumber:
+                    firebaseGameState.currentQuestionNumber,
+                  playQueue: firebaseGameState.playQueue || [],
+                  questionSetAssignments:
+                    firebaseGameState.questionSetAssignments || {},
+                  currentQuestion: firebaseGameState.currentQuestion,
+                  questionVisible: firebaseGameState.questionVisible,
+                  optionsVisible: firebaseGameState.optionsVisible,
+                  answerRevealed: firebaseGameState.answerRevealed,
+                  correctOption: firebaseGameState.correctOption,
+                  initializedAt: firebaseGameState.initializedAt,
+                  startedAt: firebaseGameState.startedAt,
+                  lastUpdated: Date.now(),
+                });
+              }
+            },
+          );
+
+          console.log('✅ Game state listener started');
+          return unsubscribe;
         },
       }),
       {
         name: `${appName}-game`,
-        version: 1,
+        version: 2, // Incremented version for new sync strategy
 
-        // Persist most fields except transient UI state
+        // ⚠️ REDUCED PERSISTENCE: Only persist essential game configuration
+        // Gameplay state is always fetched fresh from Firebase via listener
         partialize: (state) => ({
           gameStatus: state.gameStatus,
-          currentTeamId: state.currentTeamId,
-          currentQuestionNumber: state.currentQuestionNumber,
           playQueue: state.playQueue,
           questionSetAssignments: state.questionSetAssignments,
           initializedAt: state.initializedAt,
           startedAt: state.startedAt,
+          // NOT persisting: currentQuestion, questionVisible, answerRevealed, etc.
+          // These are always fetched fresh from Firebase
         }),
 
         onRehydrateStorage: () => (state) => {
           if (state) {
             console.log('🎮 Game store rehydrated from localStorage');
 
-            // Check if localStorage is empty and needs to sync from Firebase
-            const hasLocalStorageData = state.gameStatus !== DEFAULT_GAME_STATE;
+            // Check if localStorage has game config data
+            const hasGameConfig = state.gameStatus !== DEFAULT_GAME_STATE;
 
-            if (!hasLocalStorageData) {
-              // Auto-load from Firebase if no local data
+            if (!hasGameConfig) {
+              // No local data, auto-load from Firebase
               console.log(
-                '🔄 No local data found. Auto-loading from Firebase...',
+                '🔄 No local game data - auto-loading from Firebase...',
               );
-              state.autoLoadFromFirebase().then((result) => {
-                if (result.success) {
-                  console.log('🎮 Game: Auto-load complete ✅');
 
-                  // ✅ After auto-loading, reload current team's question set from Firebase
+              state.loadFromFirebase().then((result) => {
+                if (result.success) {
+                  console.log('✅ Game state auto-loaded from Firebase');
+
+                  // If game is in progress, reload current team's question set
                   const { currentTeamId, questionSetAssignments, gameStatus } =
                     useGameStore.getState();
 
@@ -597,15 +512,15 @@ export const useGameStore = create()(
 
                       useQuestionsStore
                         .getState()
-                        .loadQuestionSet(questionSetId)
+                        .loadQuestionSet(questionSetId, { forceFresh: true })
                         .then((loadResult) => {
                           if (loadResult.success) {
                             console.log(
-                              '✅ Question set loaded for current team',
+                              '✅ Question set reloaded fresh from Firebase',
                             );
                           } else {
                             console.warn(
-                              '⚠️ Failed to load question set:',
+                              '⚠️ Failed to reload question set:',
                               loadResult.error,
                             );
                           }
@@ -613,9 +528,13 @@ export const useGameStore = create()(
                     }
                   }
                 } else {
-                  console.warn('⚠️ Game: Auto-load failed:', result.error);
+                  console.warn('⚠️ Game state auto-load failed:', result.error);
                 }
               });
+            } else {
+              console.log(
+                `🎮 Game state loaded from localStorage: ${state.gameStatus}`,
+              );
             }
           }
         },
