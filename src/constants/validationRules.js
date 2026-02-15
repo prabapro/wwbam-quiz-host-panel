@@ -15,6 +15,7 @@ import {
   MIN_OPTION_TEXT_LENGTH,
   MIN_SET_ID_LENGTH,
   MAX_SET_ID_LENGTH,
+  QUESTIONS_PER_SET,
 } from './config';
 
 // ============================================================================
@@ -216,7 +217,7 @@ export const VALIDATION_ERRORS = {
   SET_NAME_REQUIRED: 'Set name is required',
 
   QUESTIONS_ARRAY_REQUIRED: 'Questions must be an array',
-  QUESTIONS_COUNT_INVALID: 'Question set must contain exactly 20 questions',
+  QUESTIONS_COUNT_INVALID: `Question set must contain exactly ${QUESTIONS_PER_SET} questions`,
 
   // General validation
   FIELD_REQUIRED: 'This field is required',
