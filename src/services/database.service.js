@@ -69,18 +69,36 @@ const kebabToCamel = (str) => {
 
 /**
  * Recursively convert object keys from camelCase to kebab-case
+ * Special handling for playQueue and questionSetAssignments to preserve team IDs
  * @param {Object|Array|*} obj - Object to convert
+ * @param {string} parentKey - Parent key name for context
  * @returns {Object|Array|*} Object with kebab-case keys
  */
-const convertKeysToKebab = (obj) => {
+const convertKeysToKebab = (obj, parentKey = '') => {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(convertKeysToKebab);
+  if (Array.isArray(obj)) {
+    // playQueue is an array of team IDs - preserve them as-is
+    if (parentKey === 'playQueue' || parentKey === 'play-queue') {
+      return obj; // Don't convert team IDs
+    }
+    return obj.map((item) => convertKeysToKebab(item, parentKey));
+  }
 
   const converted = {};
   Object.keys(obj).forEach((key) => {
     const kebabKey = camelToKebab(key);
-    converted[kebabKey] = convertKeysToKebab(obj[key]);
+
+    // Special handling for questionSetAssignments
+    if (
+      key === 'questionSetAssignments' ||
+      kebabKey === 'question-set-assignments'
+    ) {
+      // Preserve team IDs as keys and question set IDs as values
+      converted[kebabKey] = obj[key]; // Don't recursively convert
+    } else {
+      converted[kebabKey] = convertKeysToKebab(obj[key], kebabKey);
+    }
   });
   return converted;
 };
@@ -497,7 +515,7 @@ export const createTeam = async (teamData) => {
       contact: teamData.contact || '',
       status: 'waiting',
       'current-prize': 0,
-      'question-set-id': teamData.questionSetId || `set-${teamId}`,
+      'question-set-id': teamData.questionSetId || null,
       'current-question-index': 0,
       lifelines: {
         'phone-a-friend': true,

@@ -175,7 +175,7 @@ export const useGameStore = create()(
           try {
             const timestamp = Date.now();
 
-            // Update local state first
+            // Update local game state
             set({
               gameStatus: GAME_STATUS.ACTIVE,
               currentTeamId: firstTeamId,
@@ -183,11 +183,16 @@ export const useGameStore = create()(
               lastUpdated: timestamp,
             });
 
-            // Sync to Firebase
+            // Sync game state to Firebase
             await databaseService.updateGameState({
               gameStatus: GAME_STATUS.ACTIVE,
               currentTeamId: firstTeamId,
               startedAt: timestamp,
+            });
+
+            // Update current team status to 'active'
+            await databaseService.updateTeam(firstTeamId, {
+              status: 'active',
             });
 
             console.log('🎮 Game started and synced to Firebase');
