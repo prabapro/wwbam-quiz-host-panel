@@ -758,8 +758,11 @@ export const resetDatabaseToDefaults = async () => {
       updates[`${DB_PATHS.CONFIG}/${key}`] = configDefaults[key];
     });
 
-    // NOTE: We do NOT clear question-sets or allowed-hosts during factory reset
-    // These should be preserved across resets
+    // 5. Clear question sets (set to empty object)
+    updates[DB_PATHS.QUESTION_SETS] = {};
+
+    // NOTE: We clear question-sets during factory reset but preserve allowed-hosts
+    // allowed-hosts contains auth UIDs and should persist across resets
 
     // Perform atomic update
     await update(ref(database), updates);

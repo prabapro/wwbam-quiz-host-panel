@@ -129,8 +129,8 @@ export default function FactoryResetDialog({ open, onOpenChange, onSuccess }) {
                 app data:
               </p>
               <ul className="space-y-1 text-sm list-none">
-                <li>• All teams (from both localStorage and Firebase)</li>
-                <li>• All question sets (from localStorage)</li>
+                <li>• All teams (from Firebase)</li>
+                <li>• All question sets (from Firebase)</li>
                 <li>• Prize structure (reset to defaults in Firebase)</li>
                 <li>• Game state (reset to defaults in Firebase)</li>
               </ul>
