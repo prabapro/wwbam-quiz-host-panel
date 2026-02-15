@@ -137,6 +137,7 @@
 │   │   │   ├── answerValidation.js
 │   │   │   ├── lifelineLogic.js
 │   │   │   └── scoreCalculation.js
+│   │   ├── configSync.js
 │   │   ├── firebaseEnvironment.js
 │   │   ├── gameInitialization.js
 │   │   ├── sampleDataLoader.js
@@ -157,7 +158,6 @@
 ├── database.rules.json
 ├── eslint.config.js
 ├── file-tree.txt
-├── firebase-debug.log
 ├── firebase.json
 ├── index.html
 ├── jsconfig.json

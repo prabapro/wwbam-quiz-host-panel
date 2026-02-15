@@ -90,12 +90,11 @@ export const MILESTONE_QUESTIONS = [5, 10, 15, 20];
 // ============================================================================
 
 /**
- * Available lifeline types
+ * NOTE: Lifeline type definitions have been moved to teamStates.js
+ * Import LIFELINE_TYPE and DEFAULT_LIFELINES from there.
+ *
+ * This file only contains lifeline BEHAVIOR constants (timing, counts, etc.)
  */
-export const LIFELINE_TYPES = {
-  PHONE_A_FRIEND: 'phone-a-friend',
-  FIFTY_FIFTY: 'fifty-fifty',
-};
 
 /**
  * Number of options to remove in 50/50 lifeline
@@ -106,6 +105,43 @@ export const FIFTY_FIFTY_REMOVE_COUNT = 2;
  * Phone-a-Friend duration in minutes
  */
 export const PHONE_A_FRIEND_DURATION_MINUTES = 3;
+
+// ============================================================================
+// DISPLAY SETTINGS CONFIGURATION
+// ============================================================================
+
+/**
+ * Default display settings for game UI
+ */
+export const DEFAULT_SHOW_PRIZE_LADDER = true;
+export const DEFAULT_SHOW_TEAM_LIST = true;
+export const DEFAULT_ANIMATION_DURATION_MS = 500;
+
+/**
+ * Get default display settings object
+ * @returns {Object} Display settings
+ */
+export const getDefaultDisplaySettings = () => ({
+  showPrizeLadder: DEFAULT_SHOW_PRIZE_LADDER,
+  showTeamList: DEFAULT_SHOW_TEAM_LIST,
+  animationDuration: DEFAULT_ANIMATION_DURATION_MS,
+});
+
+// ============================================================================
+// TIMER CONFIGURATION
+// ============================================================================
+
+/**
+ * Default timer enabled state
+ */
+export const DEFAULT_TIMER_ENABLED = false;
+
+/**
+ * Default timer duration in seconds
+ * Uses phone-a-friend duration as default
+ */
+export const DEFAULT_TIMER_DURATION_SECONDS =
+  PHONE_A_FRIEND_DURATION_MINUTES * 60;
 
 // ============================================================================
 // VALIDATION CONFIGURATION
@@ -164,20 +200,6 @@ export const CURRENCY_SYMBOL = 'Rs.';
  * Default locale for number formatting
  */
 export const NUMBER_FORMAT_LOCALE = 'en-US';
-
-// ============================================================================
-// FIREBASE CONFIGURATION
-// ============================================================================
-
-/**
- * Firebase database paths
- */
-export const DB_PATHS = {
-  GAME_STATE: 'game-state',
-  TEAMS: 'teams',
-  PRIZE_STRUCTURE: 'prize-structure',
-  CONFIG: 'config',
-};
 
 // ============================================================================
 // STORAGE CONFIGURATION
@@ -271,12 +293,12 @@ export const getQuestionCountConfig = () => {
 };
 
 /**
- * Get lifeline configuration
- * @returns {Object} Lifeline settings
+ * Get lifeline behavior configuration
+ * Note: For lifeline types, import LIFELINE_TYPE from teamStates.js
+ * @returns {Object} Lifeline behavior settings
  */
-export const getLifelineConfig = () => {
+export const getLifelineBehaviorConfig = () => {
   return {
-    types: LIFELINE_TYPES,
     fiftyFiftyRemoveCount: FIFTY_FIFTY_REMOVE_COUNT,
     phoneAFriendDuration: PHONE_A_FRIEND_DURATION_MINUTES,
   };
