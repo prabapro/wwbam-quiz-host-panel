@@ -460,6 +460,56 @@ export const useGameStore = create()(
         },
 
         /**
+         * Reset game to default state (local only, does NOT sync to Firebase)
+         * Used for logout/cleanup scenarios
+         */
+        resetGame: () => {
+          set({
+            gameStatus: DEFAULT_GAME_STATE,
+            currentTeamId: null,
+            currentQuestionNumber: 0,
+            playQueue: [],
+            questionSetAssignments: {},
+            currentQuestion: null,
+            questionVisible: false,
+            optionsVisible: false,
+            answerRevealed: false,
+            correctOption: null,
+            initializedAt: null,
+            startedAt: null,
+            lastUpdated: Date.now(),
+          });
+
+          console.log('🎮 Game reset to default state (local only)');
+        },
+
+        /**
+         * Reset app to factory defaults
+         * Clears ALL data including question sets from Firebase
+         * Syncs to Firebase and resets local state
+         *
+         * @returns {Promise<Object>} { success: boolean, error?: string }
+         */
+        resetAppToFactoryDefaults: async () => {
+          try {
+            console.log('🏭 Resetting app to factory defaults...');
+
+            // Reset database to defaults via Firebase service
+            // This clears question sets and resets game state in Firebase
+            await databaseService.resetDatabaseToDefaults();
+
+            // Reset local game store
+            get().resetGame();
+
+            console.log('✅ App reset to factory defaults');
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to reset app to factory defaults:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
          * Start real-time Firebase listener for game state changes
          * Returns unsubscribe function for cleanup
          *

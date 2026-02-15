@@ -231,6 +231,40 @@ export const usePrizeStore = create()(
         },
 
         /**
+         * Reset to default prize structure (for factory reset)
+         * Immediately syncs to both state and Firebase
+         *
+         * @returns {Promise<Object>} { success: boolean, error?: string }
+         */
+        resetToDefault: async () => {
+          set({ isSyncing: true, error: null });
+
+          try {
+            // Save default structure to Firebase
+            await databaseService.setPrizeStructure(DEFAULT_PRIZE_STRUCTURE);
+
+            // Update local state
+            set({
+              prizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
+              editedPrizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
+              hasUnsavedChanges: false,
+              isSyncing: false,
+              lastSyncedAt: Date.now(),
+            });
+
+            console.log(
+              '✅ Prize structure reset to defaults and synced to Firebase',
+            );
+
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to reset prize structure:', error);
+            set({ isSyncing: false, error: error.message });
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
          * Start real-time Firebase listener for prize structure changes
          * Returns unsubscribe function for cleanup
          *
