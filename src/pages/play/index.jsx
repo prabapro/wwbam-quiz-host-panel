@@ -286,12 +286,12 @@ export default function Play() {
         <div className="lg:col-span-1 space-y-6">
           <Card
             className={cn(
-              'transition-all duration-500',
+              'border transition-all duration-200',
               // Low opacity when waiting for question to be shown
               isWaitingForVisibility && 'opacity-40',
               // Full opacity with ring animation when visible
               isAnswerPadActive &&
-                'opacity-100 ring-1 ring-blue-500 dark:ring-blue-400 shadow-lg shadow-blue-500/50 animate-pulse',
+                'opacity-100 ring-2 ring-purple-500 dark:ring-purple-400 shadow-lg shadow-purple-500/50 bg-purple-100/50 dark:bg-purple-800/20',
               // Normal state after answer revealed
               answerRevealed && 'opacity-100',
             )}>

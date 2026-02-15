@@ -7,7 +7,7 @@
     "build:viz": "pnpm dlx vite-bundle-visualizer --report dist/stats.json --output dist/bundle-visualizer.html",
     "build": "vite build",
     "deploy:firebase": "firebase deploy --only database",
-    "dev:questions": "VITE_QUESTIONS_PER_SET=2 pnpm dev",
+    "dev:questions": "VITE_QUESTIONS_PER_SET=3 pnpm dev",
     "dev:emulator": "firebase emulators:start --only auth,database --import=emulator-data --export-on-exit=emulator-data",
     "dev": "infisical run -- vite",
     "emulator:erase": "rm -rf emulator-data",

@@ -1,11 +1,11 @@
 // src/pages/play/components/GameStatusBar.jsx
 
-import { useGameStore } from '@stores/useGameStore';
-import { useTeamsStore } from '@stores/useTeamsStore';
-import { usePrizeStore } from '@stores/usePrizeStore';
-import { formatPrize } from '@utils/gameplay/scoreCalculation';
 import { Badge } from '@components/ui/badge';
+import { formatPrize } from '@utils/gameplay/scoreCalculation';
+import { QUESTIONS_PER_SET } from '@/constants/config';
+import { useGameStore } from '@stores/useGameStore';
 import { Users, ListOrdered, Trophy, Clock } from 'lucide-react';
+import { useTeamsStore } from '@stores/useTeamsStore';
 
 /**
  * Game Status Bar Component
@@ -31,12 +31,6 @@ export default function GameStatusBar() {
   // Teams Store
   const teams = useTeamsStore((state) => state.teams);
   const currentTeam = teams[currentTeamId];
-
-  // Prize Store
-  const prizeStructure = usePrizeStore((state) => state.prizeStructure);
-
-  // Calculate total questions
-  const totalQuestions = prizeStructure?.length || 20;
 
   // Current prize (from team data)
   const currentPrize = currentTeam?.currentPrize || 0;
@@ -78,7 +72,7 @@ export default function GameStatusBar() {
               Question
             </p>
             <p className="text-sm font-bold">
-              {currentQuestionNumber}/{totalQuestions}
+              {currentQuestionNumber}/{QUESTIONS_PER_SET}
             </p>
           </div>
         </div>
