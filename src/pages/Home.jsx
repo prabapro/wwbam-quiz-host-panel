@@ -8,16 +8,34 @@ import { useGameStore } from '@stores/useGameStore';
 import SetupVerification from '@components/setup/SetupVerification';
 import GameControlPanel from '@components/game/GameControlPanel';
 import InitializeGameModal from '@components/game/InitializeGameModal';
+import MissingQuestionSetsAlert from '@components/game/MissingQuestionSetsAlert';
+import UninitializeGameDialog from '@components/game/UninitializeGameDialog';
 import LoadingSpinner from '@components/common/LoadingSpinner';
 import { useSetupVerification } from '@hooks/useSetupVerification';
 import { Button } from '@components/ui/button';
-import { Rocket } from 'lucide-react';
-import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
+import { Badge } from '@components/ui/badge';
+import { Alert, AlertDescription } from '@components/ui/alert';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@components/ui/card';
+import {
+  Trophy,
+  CheckCircle2,
+  BarChart,
+  RotateCcw,
+  Rocket,
+} from 'lucide-react';
+import { GAME_STATUS } from '@constants/gameStates';
 
 export default function Home() {
   const navigate = useNavigate();
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [showInitializeModal, setShowInitializeModal] = useState(false);
+  const [showUninitializeModal, setShowUninitializeModal] = useState(false);
 
   // Refresh key for setup verification (shared with SetupVerification component)
   const [refreshKey, setRefreshKey] = useState(0);
@@ -27,14 +45,20 @@ export default function Home() {
   const prizesLoading = usePrizeStore((state) => state.isLoading);
   const gameStatus = useGameStore((state) => state.gameStatus);
 
-  // Get setup verification with refreshKey
-  const { isReady } = useSetupVerification(refreshKey);
+  // Get setup verification with refreshKey (includes missing required question sets detection)
+  const {
+    isReady,
+    isMissingRequiredQuestionSets,
+    requiredQuestionSetsValidation,
+  } = useSetupVerification(refreshKey);
 
   // Track if initial data load is happening
   const isLoadingInitialData = teamsLoading || prizesLoading;
 
-  // Check if game is initialized
-  const isGameInitialized = gameStatus !== DEFAULT_GAME_STATE;
+  // Specific game status checks
+  const isNotStarted = gameStatus === GAME_STATUS.NOT_STARTED;
+  const isInitialized = gameStatus === GAME_STATUS.INITIALIZED;
+  const isCompleted = gameStatus === GAME_STATUS.COMPLETED;
 
   // Auto-redirect to /play if game is active or paused
   useEffect(() => {
@@ -63,6 +87,17 @@ export default function Home() {
   }, [teamsLoading, prizesLoading, initialLoadComplete]);
 
   /**
+   * Handle continue from missing question sets alert
+   * This is called when all required question sets are found
+   */
+  const handleContinueFromMissingSets = () => {
+    // Just let the component re-render
+    // The isMissingRequiredQuestionSets flag will be false now
+    // and GameControlPanel will be shown
+    console.log('✅ All required question sets found - continuing to game');
+  };
+
+  /**
    * Callback to increment refresh key (called by SetupVerification after sample data load)
    */
   const handleRefresh = () => {
@@ -89,11 +124,64 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Game initialized - Show Game Control Panel */}
-        {isGameInitialized && <GameControlPanel />}
+        {/* SCENARIO 1: Game is COMPLETED - Show completion message */}
+        {isCompleted && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-green-600" />
+                    Game Completed
+                  </CardTitle>
+                  <CardDescription>Event has concluded</CardDescription>
+                </div>
+                <Badge className="bg-green-600 hover:bg-green-700">
+                  Finished
+                </Badge>
+              </div>
+            </CardHeader>
 
-        {/* Game NOT initialized - Show Setup Verification */}
-        {!isGameInitialized && (
+            <CardContent className="space-y-4">
+              <Alert className="bg-green-50 dark:bg-green-950/20 border-green-500">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription>
+                  All teams have finished playing. You can view the results or
+                  uninitialize the game to prepare for a new event.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex gap-3">
+                <Button onClick={() => navigate('/play')} className="flex-1">
+                  <BarChart className="w-4 h-4 mr-2" />
+                  View Results
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowUninitializeModal(true)}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Uninitialize
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* SCENARIO 2: Game INITIALIZED but missing question sets */}
+        {isInitialized && isMissingRequiredQuestionSets && (
+          <MissingQuestionSetsAlert
+            requiredQuestionSetsValidation={requiredQuestionSetsValidation}
+            onContinue={handleContinueFromMissingSets}
+          />
+        )}
+
+        {/* SCENARIO 3: Game INITIALIZED and ready - Show Game Control Panel */}
+        {isInitialized && !isMissingRequiredQuestionSets && (
+          <GameControlPanel />
+        )}
+
+        {/* SCENARIO 4: Game NOT_STARTED - Show Setup Verification */}
+        {isNotStarted && (
           <>
             <SetupVerification
               refreshKey={refreshKey}
@@ -120,6 +208,12 @@ export default function Home() {
       <InitializeGameModal
         open={showInitializeModal}
         onOpenChange={setShowInitializeModal}
+      />
+
+      {/* Uninitialize Game Modal */}
+      <UninitializeGameDialog
+        open={showUninitializeModal}
+        onOpenChange={setShowUninitializeModal}
       />
     </main>
   );
