@@ -4,8 +4,8 @@
 
 ---
 
-- **Document Version:** 1.0
-- **Last Updated:** February 07, 2026
+- **Document Version:** 1.1
+- **Last Updated:** February 2026
 - **Project:** WWBAM Quiz Host Panel
 - **Development Approach:** Sequential Phased Development
 
@@ -36,7 +36,7 @@ Build a real-time quiz competition host panel for managing multiple teams compet
 
 - Host can manage 7-10 teams through 20 questions each
 - Real-time synchronization between host panel and public display
-- Secure question management (localStorage + Firebase)
+- Secure question management with Firebase access control
 - Zero question leakage to public
 - Smooth game flow with minimal host intervention
 
@@ -45,7 +45,7 @@ Build a real-time quiz competition host panel for managing multiple teams compet
 - Frontend: React 19 + Vite
 - State: Zustand
 - Database: Firebase Realtime Database
-- Storage: Browser localStorage (questions)
+- Storage: Firebase (questions with access control)
 - Styling: Tailwind CSS 4
 
 ## Appendix
@@ -109,9 +109,10 @@ Phase 2 (Setup) ← Phase 3 (Init)
 
 ### E. Change Log
 
-| Version | Date       | Changes             | Author                                   |
-| ------- | ---------- | ------------------- | ---------------------------------------- |
-| 1.0     | 2026-02-07 | Initial PRD created | [@prabapro](https://github.com/prabapro) |
+| Version | Date          | Changes                              | Author                                   |
+| ------- | ------------- | ------------------------------------ | ---------------------------------------- |
+| 1.1     | 2026-02 (Feb) | Updated question storage to Firebase | [@prabapro](https://github.com/prabapro) |
+| 1.0     | 2026-02-07    | Initial PRD created                  | [@prabapro](https://github.com/prabapro) |
 
 ---
 

@@ -1,6 +1,6 @@
 # WWBAM Quiz Competition - Host Panel
 
-Real-time quiz competition system with multi-team gameplay, Firebase backend, and localStorage-based question management.
+Real-time quiz competition system with multi-team gameplay with Firebase backend.
 
 ---
 
@@ -21,7 +21,6 @@ pnpm dev
 - React 19 + Vite + Tailwind CSS 4
 - Zustand (state management)
 - Firebase Realtime Database + Auth
-- localStorage (question sets)
 
 ### Prerequisites
 
@@ -116,18 +115,6 @@ All sample data files are in `/public/sample-data/`:
 2. Upload question sets from zip file
 3. Upload teams JSON or create manually
 4. Verify setup → Initialize game
-
-### Multi-Browser Edge Case
-
-**Scenario:** Open initialized game in different browser without question sets.
-
-**Expected:** `MissingQuestionSetsAlert` appears showing:
-
-- Required question set IDs
-- Which sets are found vs missing
-- Upload button to add missing sets
-
-**Fix:** Upload missing question sets (must match exact set IDs). Alert updates automatically and allows continuation once all sets found.
 
 ---
 

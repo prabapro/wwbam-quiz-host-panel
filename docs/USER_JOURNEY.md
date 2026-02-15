@@ -23,7 +23,7 @@ This document outlines the complete user journey for the quiz competition host p
 - System validates the JSON structure:
   - Each set must have exactly `QUESTIONS_PER_SET` questions (defined in `src/constants/config.js`, currently 20)
   - Each question must have: text, 4 options (A/B/C/D), correct answer
-- Question set stored in localStorage with unique ID
+- Question set stored in Firebase question-sets node with unique ID
 - Host sees confirmation: "Question Set 1 uploaded (20 questions)"
 - Host repeats for all required sets (e.g., uploads 7-10 question sets)
 
@@ -95,7 +95,7 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
 - Logs into the panel
 - Dashboard shows:
   - All teams with `status: "waiting"`
-  - Question sets loaded in localStorage
+  - Question sets loaded to Firebase
   - Game Status: `game-status: "not-started"`
   - Setup Verification: All checks passing ✅
   - **"Initialize Game"** button enabled
@@ -251,7 +251,7 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
 - Host reviews first team and question set details
 - Host clicks **"Start Game"** button to confirm
 - System performs:
-  1. **Load question set** from localStorage (first team's assigned set via `loadQuestionSet()`)
+  1. **Load question set** from Firebase question-sets (first team's assigned set via `loadQuestionSet()`)
   2. **Atomic Firebase update**:
 
 ```javascript
@@ -276,168 +276,6 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
 
 ---
 
-## Journey 2.5: Multi-Browser Edge Case - Missing Question Sets
-
-### Scenario: Opening Initialized Game on Different Browser
-
-**Context:** Game has been initialized on Browser A, but host needs to open the game on Browser B (different machine or browser). Teams and game state are in Firebase, but question sets are only in Browser A's localStorage.
-
-### Step 1: Detect Missing Question Sets
-
-- Host opens dashboard on Browser B
-- System detects:
-  - Game is initialized (`game-status: "initialized"` or `"active"`)
-  - Question set assignments exist in Firebase
-  - Required question sets are MISSING from localStorage
-- **MissingQuestionSetsAlert** component appears instead of normal dashboard
-
-### Step 2: View Missing Sets Alert
-
-**Alert Display:**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ ⚠️ Game Initialized - Question Sets Required   [1 Missing] │
-│                                                             │
-│ This game has been initialized on another browser.         │
-│ Please upload the required question sets to continue.      │
-│                                                             │
-│ ⚠️ Why am I seeing this?                                    │
-│ The game was initialized on a different browser or device. │
-│ Question sets are stored locally in each browser, so you   │
-│ need to upload them here to access the initialized game.   │
-│                                                             │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ Summary Stats:                                          │ │
-│ │ ┌───────────┬───────────┬───────────┐                  │ │
-│ │ │ Required  │  Found    │  Missing  │                  │ │
-│ │ │    7      │    6      │     1     │                  │ │
-│ │ └───────────┴───────────┴───────────┘                  │ │
-│ └─────────────────────────────────────────────────────────┘ │
-│                                                             │
-│ Required Question Set IDs:                   [7 Total]     │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ ✅ set-1     Available in localStorage      [Found]    │ │
-│ │ ✅ set-2     Available in localStorage      [Found]    │ │
-│ │ ❌ set-3     Not found in localStorage      [Missing]  │ │
-│ │ ✅ set-4     Available in localStorage      [Found]    │ │
-│ │ ✅ set-5     Available in localStorage      [Found]    │ │
-│ │ ✅ set-6     Available in localStorage      [Found]    │ │
-│ │ ✅ set-7     Available in localStorage      [Found]    │ │
-│ └─────────────────────────────────────────────────────────┘ │
-│                                                             │
-│ 📤 Next Steps:                                              │
-│ Upload the missing question set files (set-3) to the       │
-│ Question Management page. Make sure the set IDs in your    │
-│ uploaded files match exactly.                              │
-│                                                             │
-│            [📤 Upload Question Sets]                        │
-│                                                             │
-│ The component will update automatically as you upload      │
-│ the required question sets.                                │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Step 3: Upload Missing Question Sets
-
-- Host clicks **"📤 Upload Question Sets"** button
-- Redirected to Question Management page (`/questions`)
-- Host uploads the missing question set file (set-3)
-- System validates:
-  - File structure is correct
-  - Set ID matches the required ID exactly (case-sensitive: `set-3`)
-  - Contains `QUESTIONS_PER_SET` questions (currently 20)
-- Question set saved to localStorage
-
-### Step 4: Auto-Detection and Update
-
-- **MissingQuestionSetsAlert** component automatically re-validates
-- Component uses `useSetupVerification` hook with:
-  - `requiredQuestionSetsValidation` from Firebase assignments
-  - Real-time check against localStorage question sets
-- Alert updates in real-time as sets are uploaded:
-
-```
-Missing count: 1 → 0
-Status badge: "1 Missing" → "All Sets Found"
-set-3 status: ❌ Missing → ✅ Found
-```
-
-### Step 5: Continue to Game
-
-- Once all required sets are found (`allFound: true`)
-- Alert shows success state:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ ⚠️ Game Initialized - Question Sets Required [All Found ✅] │
-│                                                             │
-│ ✅ All required question sets have been found.              │
-│                                                             │
-│ Summary Stats:                                             │
-│ ┌───────────┬───────────┬───────────┐                      │
-│ │ Required  │  Found    │  Missing  │                      │
-│ │    7      │    7      │     0     │                      │
-│ └───────────┴───────────┴───────────┘                      │
-│                                                             │
-│         [➡️ Continue to Game Control Panel]                 │
-│                                                             │
-│ All required question sets have been found.                │
-│ The game is ready to continue.                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-- Host clicks **"➡️ Continue to Game Control Panel"**
-- Alert disappears
-- Normal **GameControlPanel** appears
-- Host can now continue managing the game
-
-### Step 6: Resume Normal Operations
-
-- Host now has full access to game controls
-- Can continue from where the previous browser left off
-- Question sets loaded from this browser's localStorage
-- Game state synchronized with Firebase
-- No data loss or disruption to game flow
-
-### Technical Details
-
-**Why This Happens:**
-
-- Game state (teams, assignments, status) → Stored in **Firebase** (shared across browsers)
-- Question sets with correct answers → Stored in **localStorage** (browser-specific)
-- Security: Correct answers never sent to Firebase to prevent exposure on public display
-
-**Detection Logic:**
-
-```javascript
-// From useSetupVerification hook
-const isGameInitialized = gameStatus !== GAME_STATUS.NOT_STARTED;
-const requiredQuestionSetsValidation = validateRequiredQuestionSets(
-  questionSetAssignments, // From Firebase
-  questionSetsMetadata, // From localStorage
-);
-const isMissingRequiredQuestionSets =
-  isGameInitialized && !requiredQuestionSetsValidation.allFound;
-```
-
-**Validation Function:**
-
-- Extracts unique set IDs from `question-set-assignments` in Firebase
-- Checks if each required set exists in localStorage
-- Returns lists of missing and found sets
-- Component updates automatically when sets are uploaded
-
-**Important Notes:**
-
-- Set IDs must match **exactly** (case-sensitive)
-- Each set must have exactly `QUESTIONS_PER_SET` questions (currently 20)
-- Only missing sets need to be uploaded (not all sets)
-- Component provides real-time feedback as sets are uploaded
-- Once all sets found, normal game flow resumes seamlessly
-
----
-
 ## Journey 3: Active Game Play (Team by Team)
 
 ### Phase A: Team's Turn Begins (Automatic)
@@ -455,7 +293,7 @@ const isMissingRequiredQuestionSets =
 
 - Host clicks **"Load Question"** button
 - System:
-  - Fetches next question from localStorage (Question 1 from Set 5)
+  - Fetches next question from Firebase question-sets (Question 1 from Set 5)
   - Loads question data INCLUDING correct answer key
   - Shows question to **HOST ONLY**:
     ```
@@ -526,7 +364,7 @@ const isMissingRequiredQuestionSets =
 
 - Host clicks **"Lock Answer"** button
 - System performs automatic validation:
-  1. Compares selected answer (B) with correct answer from localStorage (B)
+  1. Compares selected answer (B) with correct answer from Firebase question-sets (B)
   2. Result: ✅ CORRECT
 
 **If Correct:**
@@ -562,7 +400,7 @@ const isMissingRequiredQuestionSets =
 
 - Host clicks **"Lock Answer"** button
 - System performs automatic validation:
-  1. Compares selected answer (C) with correct answer from localStorage (B)
+  1. Compares selected answer (C) with correct answer from Firebase question-sets (B)
   2. Result: ❌ INCORRECT
 
 **System checks lifeline status:**
@@ -729,7 +567,7 @@ const isMissingRequiredQuestionSets =
 
 - Public display shows: "Next up: Team Alpha!"
 - Dashboard highlights new active team (Team Alpha)
-- Host loads Team Alpha's assigned question set (Set 2) from localStorage
+- Host loads Team Alpha's assigned question set (Set 2) from Firebase question-sets
 - Question counter resets to 0
 - Returns to Phase B, Step 1 (Load Next Question)
 
@@ -1002,7 +840,6 @@ Answer Locked & Validated:
   - Reset team statuses to "waiting"
   - Clear team progress/prizes/lifelines
   - Keep team configurations (can be edited)
-  - Keep question sets in localStorage
   - Require re-initialization
 
   [Cancel]  [Reset Event]
@@ -1069,7 +906,7 @@ Answer Locked & Validated:
 
 - Initialize Game
 - Start Game (with confirmation)
-- Load Question (from localStorage)
+- Load Question (from Firebase question-sets)
 - Push to Display (push to Firebase)
 - Register team's answer selection (A/B/C/D)
 - Lock Answer (triggers automatic validation)
@@ -1082,10 +919,10 @@ Answer Locked & Validated:
 ### Data Flow Summary
 
 ```
-Host Action → localStorage (question data) → Validation Logic → Firebase Update → Public Display Update
+Host Action → Firebase question data → Validation Logic → Firebase Update → Public Display Update
 
 Example Flow:
-1. Host loads Question 5 (from localStorage with correct answer)
+1. Host loads Question 5 (from Firebase question-sets with correct answer)
 2. System shows question to host with correct answer indicator
 3. Host clicks "Push to Display"
 4. Question pushed to Firebase WITHOUT correct answer
@@ -1093,7 +930,7 @@ Example Flow:
 6. Team verbally announces answer: "B"
 7. Host clicks "B" button (local state, no Firebase sync)
 8. Host clicks "Lock Answer"
-9. System validates B against correct answer from localStorage
+9. System validates B against correct answer from Firebase question-sets
 10. If correct: System updates Firebase with new prize, question number
 11. Public display receives update and shows green checkmark + new prize
 ```
@@ -1117,7 +954,7 @@ Example Flow:
 
 ## Question Set JSON Structure (Reference)
 
-For uploading question sets to localStorage:
+For uploading question sets:
 
 _Note: Each set must contain exactly `QUESTIONS_PER_SET` questions (defined in `src/constants/config.js`, currently 20)_
 
@@ -1200,7 +1037,7 @@ This updated journey reflects:
 - ✅ Correct kebab-case Firebase key references throughout
 - ✅ Clear distinction between initialization and starting the event
 - ✅ **Start Game confirmation dialog with team and question set details**
-- ✅ **Question set loading from localStorage before navigation**
+- ✅ **Question set loading from Firebase question-sets before navigation**
 - ✅ **Success toast notification on game start**
 - ✅ Automatic random team selection and question set assignment (1:1 mapping)
 - ✅ Automatic answer validation with single "Lock Answer" button
