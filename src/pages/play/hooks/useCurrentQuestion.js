@@ -12,13 +12,14 @@ import { databaseService } from '@services/database.service';
  *
  * Responsibilities:
  * - Load question from question-sets (with correct answer for host ONLY)
+ * - Clear previous question from game-state when loading new question
  * - Push question to game-state Firebase (without correct answer when displaying)
  * - Manage question visibility flags (questionVisible, optionsVisible)
  * - Handle question state transitions
  * - Track question loading and error states
  *
  * Flow:
- * 1. loadQuestion() - Loads from question-sets WITH answer, stores LOCALLY only (host view)
+ * 1. loadQuestion() - Loads from question-sets WITH answer, stores LOCALLY only, CLEARS game-state
  * 2. showQuestion() - Pushes to game-state WITHOUT answer, sets visibility=true (public can see)
  * 3. revealAnswer() - Pushes correct answer to game-state (public can see answer)
  *
@@ -37,7 +38,7 @@ import { databaseService } from '@services/database.service';
  *   isVisible: boolean,                // Is question visible to public
  *
  *   // Actions
- *   loadQuestion: (questionNumber) => Promise<void>,  // Load from question-sets (LOCAL ONLY)
+ *   loadQuestion: (questionNumber) => Promise<void>,  // Load from question-sets (LOCAL ONLY) + Clear game-state
  *   showQuestion: () => Promise<void>,                // Push to game-state & set visible
  *   hideQuestion: () => Promise<void>,                // Hide from public
  *   clearQuestion: () => void,                        // Clear current question
@@ -73,6 +74,7 @@ export function useCurrentQuestion() {
    * Load question from question-sets for host view
    * Includes correct answer for host validation
    * ONLY loads into local state - does NOT push to Firebase yet
+   * Clears previous question state from Firebase game-state
    * Host must click "Push to Display" to push to Firebase game-state
    */
   const loadQuestion = async (questionNumber) => {
@@ -117,11 +119,22 @@ export function useCurrentQuestion() {
         throw new Error(result.error || 'Failed to load question');
       }
 
-      // Update current question number in local game state only
+      // Update current question number in local game state
       setQuestionNumber(questionNumber);
 
+      // ✅ Clear previous question state from Firebase game-state
+      // This resets visibility, answer flags, and removes previous question
+      await databaseService.updateGameState({
+        currentQuestionNumber: questionNumber,
+        currentQuestion: null, // Clear previous question
+        questionVisible: false, // Reset visibility
+        optionsVisible: false, // Reset options visibility
+        answerRevealed: false, // Reset answer reveal
+        correctOption: null, // Clear previous correct answer
+      });
+
       console.log(
-        `✅ Question ${questionNumber} loaded locally for HOST (with answer). Not pushed to Firebase yet - click "Push to Display" to make visible.`,
+        `✅ Question ${questionNumber} loaded locally for HOST (with answer). Firebase game-state cleared. Click "Push to Display" to make visible.`,
       );
 
       setIsLoading(false);

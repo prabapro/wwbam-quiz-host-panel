@@ -16,17 +16,17 @@ import { cn } from '@lib/utils';
  * - Question number
  * - Question text
  * - Four answer options (A, B, C, D) - DISPLAY ONLY, non-interactive
- * - Correct answer indicator (HOST VIEW ONLY - never synced to Firebase)
+ * - Correct answer indicator (HOST VIEW ONLY - always visible to host)
  * - Visual states: loading, visible, revealed
  *
  * States:
  * 1. No question loaded: "Load a question to begin"
- * 2. Question loaded (host view): Push to Display + correct answer indicator
- * 3. Question visible to public: Push to Display (synced to Firebase, no answer)
- * 4. Answer revealed: Push to Display + highlight correct answer
+ * 2. Question loaded (host view): Correct answer visible to host
+ * 3. Question visible to public: Correct answer still visible to host
+ * 4. Answer revealed: Correct answer highlighted
  *
- * Note: Options are styled as non-interactive (grayed out, cursor-not-allowed)
- * to prevent accidental clicks. Use Answer Pad for actual answer selection.
+ * Note: This is the HOST panel - correct answer is ALWAYS visible here.
+ * Public display is separate and reads from Firebase game-state.
  */
 export default function QuestionPanel() {
   // Questions Store
@@ -56,8 +56,8 @@ export default function QuestionPanel() {
   }
 
   // Determine which correct answer to show
-  // - Before reveal: hostQuestion.correctAnswer (host only)
-  // - After reveal: correctOption from Firebase (synced)
+  // - Before reveal: hostQuestion.correctAnswer (from question-sets)
+  // - After reveal: correctOption from Firebase (synced to public)
   const displayCorrectAnswer = answerRevealed
     ? correctOption
     : hostQuestion.correctAnswer;
@@ -112,8 +112,11 @@ export default function QuestionPanel() {
       {/* Answer Options - Non-Interactive Display */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-75">
         {Object.entries(hostQuestion.options).map(([option, text]) => {
-          const isCorrect = option === displayCorrectAnswer;
-          const showCorrectIndicator = !questionVisible || answerRevealed;
+          // Normalize both sides for case-insensitive comparison
+          const isCorrect =
+            option.toUpperCase() === displayCorrectAnswer?.toUpperCase();
+          // Host ALWAYS sees correct answer (this is host panel, not public display)
+          const showCorrectIndicator = true;
 
           return (
             <div
@@ -122,7 +125,7 @@ export default function QuestionPanel() {
                 'p-4 rounded-lg border-2 border-dashed transition-all duration-300',
                 // Non-interactive styling - grayed out
                 'cursor-not-allowed select-none',
-                // Correct answer styling (host view or revealed)
+                // Correct answer styling (always visible to host)
                 isCorrect && showCorrectIndicator
                   ? 'bg-green-50/50 dark:bg-green-950/10 border-green-400/50 dark:border-green-700/50'
                   : 'bg-gray-50/50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700',
@@ -135,12 +138,12 @@ export default function QuestionPanel() {
                 {/* Option Letter */}
                 <div
                   className={cn(
-                    'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm',
+                    'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm uppercase',
                     isCorrect && showCorrectIndicator
                       ? 'bg-green-500/70 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
                   )}>
-                  {option}
+                  {option.toUpperCase()}
                 </div>
 
                 {/* Option Text */}
