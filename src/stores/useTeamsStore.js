@@ -106,11 +106,17 @@ export const useTeamsStore = create()(
             const currentStatus = teams[teamId].status;
             const newStatus = updates.status;
 
-            if (!isValidTeamTransition(currentStatus, newStatus)) {
-              console.warn(
-                `Invalid team status transition: ${currentStatus} -> ${newStatus}`,
-              );
-              return { success: false, error: 'Invalid status transition' };
+            // Only validate if status is actually changing
+            if (currentStatus !== newStatus) {
+              if (!isValidTeamTransition(currentStatus, newStatus)) {
+                console.warn(
+                  `Invalid team status transition: ${currentStatus} -> ${newStatus}`,
+                );
+                return { success: false, error: 'Invalid status transition' };
+              }
+            } else {
+              // Status isn't changing, skip validation
+              console.log(`Team ${teamId} status unchanged: ${currentStatus}`);
             }
           }
 
