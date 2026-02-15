@@ -166,16 +166,36 @@ export const useGameStore = create()(
 
         /**
          * Start game
+         * Sets game to ACTIVE status and assigns first team
+         * Syncs to Firebase and updates local state
+         * @param {string} firstTeamId - ID of the first team to play
+         * @returns {Promise<Object>} { success: boolean, error?: string }
          */
-        startGame: (firstTeamId) => {
-          set({
-            gameStatus: GAME_STATUS.ACTIVE,
-            currentTeamId: firstTeamId,
-            startedAt: Date.now(),
-            lastUpdated: Date.now(),
-          });
+        startGame: async (firstTeamId) => {
+          try {
+            const timestamp = Date.now();
 
-          console.log('🎮 Game started');
+            // Update local state first
+            set({
+              gameStatus: GAME_STATUS.ACTIVE,
+              currentTeamId: firstTeamId,
+              startedAt: timestamp,
+              lastUpdated: timestamp,
+            });
+
+            // Sync to Firebase
+            await databaseService.updateGameState({
+              gameStatus: GAME_STATUS.ACTIVE,
+              currentTeamId: firstTeamId,
+              startedAt: timestamp,
+            });
+
+            console.log('🎮 Game started and synced to Firebase');
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to start game:', error);
+            return { success: false, error: error.message };
+          }
         },
 
         /**

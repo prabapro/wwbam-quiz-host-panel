@@ -143,7 +143,7 @@ export default function InitializeGameModal({ open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="min-w-3xl max-h-[90vh]">
         {/* STAGE 1: PREVIEW */}
         {stage === 'preview' && (
           <>

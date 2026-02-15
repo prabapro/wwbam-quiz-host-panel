@@ -76,7 +76,7 @@ export default function GameControlPanel() {
     (state) => state.questionSetAssignments,
   );
   const currentTeamId = useGameStore((state) => state.currentTeamId);
-  const startEvent = useGameStore((state) => state.startEvent);
+  const startGame = useGameStore((state) => state.startGame);
 
   const teamsObject = useTeamsStore((state) => state.teams);
 
@@ -141,11 +141,11 @@ export default function GameControlPanel() {
         );
       }
 
-      // 2. Start event (updates game state + Firebase)
-      const startResult = await startEvent();
+      // 2. Start game (updates game state + Firebase)
+      const startResult = await startGame(firstTeamId);
 
       if (!startResult.success) {
-        throw new Error(startResult.error || 'Failed to start event');
+        throw new Error(startResult.error || 'Failed to start game');
       }
 
       // 3. Success! Show toast and navigate
