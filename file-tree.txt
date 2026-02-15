@@ -157,6 +157,7 @@
 ├── database.rules.json
 ├── eslint.config.js
 ├── file-tree.txt
+├── firebase-debug.log
 ├── firebase.json
 ├── index.html
 ├── jsconfig.json
