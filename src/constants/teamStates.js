@@ -71,9 +71,15 @@ export const TEAM_STATUS_META = {
 /**
  * Valid team status transitions
  * Defines which status changes are allowed
+ *
+ * NOTE: waiting -> completed is allowed to handle Firebase real-time sync race conditions
+ * where a team might complete while their local status shows 'waiting' due to sync timing
  */
 export const TEAM_STATUS_TRANSITIONS = {
-  [TEAM_STATUS.WAITING]: [TEAM_STATUS.ACTIVE],
+  [TEAM_STATUS.WAITING]: [
+    TEAM_STATUS.ACTIVE,
+    TEAM_STATUS.COMPLETED, // Allow completion from waiting (Firebase sync edge case)
+  ],
   [TEAM_STATUS.ACTIVE]: [
     TEAM_STATUS.ELIMINATED,
     TEAM_STATUS.COMPLETED,
@@ -109,66 +115,29 @@ export const getTeamStatusMeta = (status) => {
 /**
  * Check if team status is valid
  * @param {string} status - Status to validate
- * @returns {boolean} True if status is valid
+ * @returns {boolean} True if status exists in TEAM_STATUS enum
  */
 export const isValidTeamStatus = (status) => {
   return Object.values(TEAM_STATUS).includes(status);
 };
 
 /**
- * Check if team status is terminal (cannot transition)
- * @param {string} status - Team status
- * @returns {boolean} True if status is terminal
- */
-export const isTerminalStatus = (status) => {
-  return status === TEAM_STATUS.ELIMINATED || status === TEAM_STATUS.COMPLETED;
-};
-
-/**
- * Get all valid next statuses from current status
- * @param {string} currentStatus - Current team status
- * @returns {string[]} Array of valid next statuses
- */
-export const getValidNextStatuses = (currentStatus) => {
-  return TEAM_STATUS_TRANSITIONS[currentStatus] || [];
-};
-
-/**
- * Default team status
+ * Default team status for new teams
  */
 export const DEFAULT_TEAM_STATUS = TEAM_STATUS.WAITING;
 
 /**
  * Lifeline types
- * @readonly
- * @enum {string}
  */
 export const LIFELINE_TYPE = {
-  PHONE_A_FRIEND: 'phone-a-friend',
-  FIFTY_FIFTY: 'fifty-fifty',
+  PHONE_A_FRIEND: 'phoneAFriend',
+  FIFTY_FIFTY: 'fiftyFifty',
 };
 
 /**
- * Lifeline metadata
+ * Default lifeline state (all available)
  */
-export const LIFELINE_META = {
-  [LIFELINE_TYPE.PHONE_A_FRIEND]: {
-    label: 'Phone a Friend',
-    icon: '📞',
-    description: 'Call someone for help (3 minutes)',
-  },
-  [LIFELINE_TYPE.FIFTY_FIFTY]: {
-    label: '50/50',
-    icon: '✂️',
-    description: 'Remove two incorrect answers',
-  },
-};
-
-/**
- * Get lifeline metadata
- * @param {string} lifelineType - Lifeline type
- * @returns {Object} Lifeline metadata
- */
-export const getLifelineMeta = (lifelineType) => {
-  return LIFELINE_META[lifelineType];
+export const DEFAULT_LIFELINES = {
+  [LIFELINE_TYPE.PHONE_A_FRIEND]: true,
+  [LIFELINE_TYPE.FIFTY_FIFTY]: true,
 };

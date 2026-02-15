@@ -5,6 +5,7 @@ import { databaseService } from '@services/database.service';
 import { devtools, persist } from 'zustand/middleware';
 import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
 import { useQuestionsStore } from './useQuestionsStore';
+import { useTeamsStore } from './useTeamsStore';
 
 const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
 
@@ -391,12 +392,34 @@ export const useGameStore = create()(
               correctOption: null,
             });
 
-            // Update team statuses
+            // ✅ FIX: Don't change status of teams in terminal states (completed/eliminated)
+            // Only teams that are 'active' should be set to 'waiting'
+            // This preserves the completed/eliminated status when moving to next team
             if (currentTeamId) {
-              await databaseService.updateTeam(currentTeamId, {
-                status: 'waiting',
-              });
+              // Get current team from Teams store to check their status
+              const currentTeamState =
+                useTeamsStore.getState().teams[currentTeamId];
+              const currentStatus = currentTeamState?.status;
+
+              // Terminal states that should NOT be changed
+              const isTerminalState =
+                currentStatus === 'completed' || currentStatus === 'eliminated';
+
+              if (!isTerminalState && currentStatus === 'active') {
+                // Team was active but didn't complete/eliminate - set to waiting
+                await databaseService.updateTeam(currentTeamId, {
+                  status: 'waiting',
+                });
+                console.log(`👥 Previous team ${currentTeamId} set to waiting`);
+              } else if (isTerminalState) {
+                // Terminal state - preserve it
+                console.log(
+                  `👥 Previous team ${currentTeamId} status preserved: ${currentStatus}`,
+                );
+              }
             }
+
+            // Set next team to active
             await databaseService.updateTeam(nextTeamId, {
               status: 'active',
             });

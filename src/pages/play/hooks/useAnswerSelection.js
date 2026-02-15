@@ -112,7 +112,7 @@ export function useAnswerSelection() {
           prizeStructure,
         );
 
-        // ✅ FIX: Check if team completed all questions
+        // Check if team completed all questions
         const questionsAnsweredAfterThis = currentTeam.questionsAnswered + 1;
         const isLastQuestion = questionsAnsweredAfterThis >= QUESTIONS_PER_SET;
 
@@ -122,7 +122,12 @@ export function useAnswerSelection() {
             `🏆 Team completed all ${QUESTIONS_PER_SET} questions! Final prize: Rs.${newPrize}`,
           );
 
-          const completeResult = await completeTeam(currentTeamId, newPrize);
+          // Pass the current question number as the 3rd parameter
+          const completeResult = await completeTeam(
+            currentTeamId,
+            newPrize,
+            currentQuestionNumber,
+          );
 
           if (!completeResult.success) {
             throw new Error('Failed to mark team as completed');

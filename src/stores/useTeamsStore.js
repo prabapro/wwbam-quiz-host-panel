@@ -163,6 +163,7 @@ export const useTeamsStore = create()(
             await databaseService.deleteTeam(teamId);
 
             // Remove from local state
+            // eslint-disable-next-line no-unused-vars
             const { [teamId]: removed, ...remainingTeams } = teams;
 
             set({ teams: remainingTeams, isLoading: false });
@@ -305,15 +306,23 @@ export const useTeamsStore = create()(
 
         /**
          * Mark team as completed (won maximum prize)
+         * @param {string} teamId - Team ID
+         * @param {number} finalPrize - Final prize amount
+         * @param {number} finalQuestionNumber - Final question number answered
+         * @returns {Promise<Object>} Update result
          */
-        completeTeam: (teamId, finalPrize) => {
+        completeTeam: (teamId, finalPrize, finalQuestionNumber) => {
           const result = get().updateTeam(teamId, {
             currentPrize: finalPrize,
             status: TEAM_STATUS.COMPLETED,
             completedAt: Date.now(),
+            questionsAnswered: finalQuestionNumber,
+            currentQuestionIndex: finalQuestionNumber,
           });
 
-          console.log(`🏆 Team completed: ${teamId}`);
+          console.log(
+            `🏆 Team completed: ${teamId} with ${finalQuestionNumber} questions answered`,
+          );
 
           return result;
         },
