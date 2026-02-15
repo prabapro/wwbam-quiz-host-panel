@@ -166,20 +166,6 @@ export const CURRENCY_SYMBOL = 'Rs.';
 export const NUMBER_FORMAT_LOCALE = 'en-US';
 
 // ============================================================================
-// FIREBASE CONFIGURATION
-// ============================================================================
-
-/**
- * Firebase database paths
- */
-export const DB_PATHS = {
-  GAME_STATE: 'game-state',
-  TEAMS: 'teams',
-  PRIZE_STRUCTURE: 'prize-structure',
-  CONFIG: 'config',
-};
-
-// ============================================================================
 // STORAGE CONFIGURATION
 // ============================================================================
 

@@ -49,6 +49,7 @@ const DEFAULT_EXCLUDES = [
   '.firebase',
   'emulator-data',
   'database-debug.log',
+  'firebase-debug.log',
 ];
 
 // Configuration

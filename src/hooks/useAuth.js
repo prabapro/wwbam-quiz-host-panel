@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@stores/useAuthStore';
 import { authService } from '@services/auth.service';
+import { syncConfigWithFirebase } from '@utils/configSync';
 
 /**
  * Custom hook for authentication
@@ -86,6 +87,25 @@ export const useAuth = () => {
 
       // Small delay to ensure state propagation to localStorage
       await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // ✨ TRIGGER CONFIG SYNC AFTER SUCCESSFUL LOGIN
+      // This ensures config is synced when user logs in mid-session
+      // Using silent mode to avoid cluttering console during login
+      syncConfigWithFirebase({ silent: false })
+        .then((syncResult) => {
+          if (syncResult.action === 'updated') {
+            console.log(
+              '🔄 Config synced after login:',
+              syncResult.differences,
+            );
+          } else if (syncResult.action === 'initialized') {
+            console.log('📝 Config initialized after login');
+          }
+        })
+        .catch((error) => {
+          // Non-critical error - don't block login flow
+          console.warn('⚠️  Config sync after login failed:', error);
+        });
 
       return result;
     } catch (error) {
