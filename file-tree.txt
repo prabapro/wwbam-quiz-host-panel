@@ -122,8 +122,7 @@
 │   │   └── AppRouter.jsx
 │   ├── services
 │   │   ├── auth.service.js
-│   │   ├── database.service.js
-│   │   └── localStorage.service.js
+│   │   └── database.service.js
 │   ├── stores
 │   │   ├── useAuthStore.js
 │   │   ├── useGameStore.js
