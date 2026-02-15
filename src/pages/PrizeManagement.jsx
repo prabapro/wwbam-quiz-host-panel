@@ -6,17 +6,49 @@ import PrizeStructureEditor from '@components/prizes/PrizeStructureEditor';
 import { Alert, AlertDescription, AlertTitle } from '@components/ui/alert';
 import { DollarSign, AlertCircle, CheckCircle2 } from 'lucide-react';
 
+/**
+ * Prize Management Page
+ * Configure prize structure for the competition
+ *
+ * UPDATED: Added real-time Firebase listener for multi-host sync
+ * All hosts will see prize updates in real-time
+ */
 export default function PrizeManagement() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Prize Store
   const loadPrizeStructure = usePrizeStore((state) => state.loadPrizeStructure);
+  const startPrizeListener = usePrizeStore((state) => state.startPrizeListener);
   const isLoading = usePrizeStore((state) => state.isLoading);
   const error = usePrizeStore((state) => state.error);
 
-  // Load prize structure from Firebase on mount
+  // ============================================================
+  // INITIAL LOAD & REAL-TIME SYNC
+  // ============================================================
+
+  /**
+   * Load prize structure from Firebase and start real-time listener
+   */
   useEffect(() => {
+    // Initial load
     loadPrizeStructure();
-  }, [loadPrizeStructure]);
+
+    // Start real-time listener for updates
+    console.log('💰 Prize Management: Starting real-time listener...');
+    const unsubscribe = startPrizeListener();
+
+    // Cleanup listener on unmount
+    return () => {
+      console.log('💰 Prize Management: Stopping real-time listener');
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [loadPrizeStructure, startPrizeListener]);
+
+  // ============================================================
+  // SUCCESS HANDLING
+  // ============================================================
 
   const handleSaveSuccess = () => {
     setSaveSuccess(true);
@@ -26,6 +58,10 @@ export default function PrizeManagement() {
       setSaveSuccess(false);
     }, 5000);
   };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -47,7 +83,7 @@ export default function PrizeManagement() {
           <AlertTitle className="text-green-600">Saved Successfully</AlertTitle>
           <AlertDescription className="text-green-600">
             Prize structure has been synced to Firebase and will be used in the
-            competition.
+            competition. All hosts will see the updates in real-time.
           </AlertDescription>
         </Alert>
       )}

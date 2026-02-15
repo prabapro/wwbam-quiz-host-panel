@@ -688,6 +688,26 @@ export const setPrizeStructure = async (prizes) => {
   }
 };
 
+/**
+ * Listen to prize structure changes
+ * @param {Function} callback - Callback function receiving prize structure array
+ * @returns {Function} Unsubscribe function
+ */
+export const onPrizeStructureChange = (callback) => {
+  const prizeRef = ref(database, DB_PATHS.PRIZE_STRUCTURE);
+  onValue(prizeRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback(null);
+      return;
+    }
+
+    const prizeStructure = snapshot.val();
+    callback(prizeStructure);
+  });
+
+  return () => off(prizeRef);
+};
+
 // ============================================================================
 // CONFIG OPERATIONS
 // ============================================================================
@@ -831,6 +851,7 @@ export const databaseService = {
   // Prize Structure
   getPrizeStructure,
   setPrizeStructure,
+  onPrizeStructureChange,
 
   // Config
   getConfig,

@@ -106,11 +106,17 @@ export const useTeamsStore = create()(
             const currentStatus = teams[teamId].status;
             const newStatus = updates.status;
 
-            if (!isValidTeamTransition(currentStatus, newStatus)) {
-              console.warn(
-                `Invalid team status transition: ${currentStatus} -> ${newStatus}`,
-              );
-              return { success: false, error: 'Invalid status transition' };
+            // Only validate if status is actually changing
+            if (currentStatus !== newStatus) {
+              if (!isValidTeamTransition(currentStatus, newStatus)) {
+                console.warn(
+                  `Invalid team status transition: ${currentStatus} -> ${newStatus}`,
+                );
+                return { success: false, error: 'Invalid status transition' };
+              }
+            } else {
+              // Status isn't changing, skip validation
+              console.log(`Team ${teamId} status unchanged: ${currentStatus}`);
             }
           }
 
@@ -273,7 +279,7 @@ export const useTeamsStore = create()(
         /**
          * Move to next question
          */
-        moveToNextQuestion: (teamId, prizeWon) => {
+        moveToNextQuestion: async (teamId, prizeWon) => {
           const { teams } = get();
           const team = teams[teamId];
 
@@ -282,7 +288,7 @@ export const useTeamsStore = create()(
             return { success: false, error: 'Team not found' };
           }
 
-          return get().updateTeam(teamId, {
+          return await get().updateTeam(teamId, {
             currentQuestionIndex: team.currentQuestionIndex + 1,
             questionsAnswered: team.questionsAnswered + 1,
             currentPrize: prizeWon,
@@ -292,8 +298,8 @@ export const useTeamsStore = create()(
         /**
          * Eliminate team (wrong answer or quit)
          */
-        eliminateTeam: (teamId, finalPrize) => {
-          const result = get().updateTeam(teamId, {
+        eliminateTeam: async (teamId, finalPrize) => {
+          const result = await get().updateTeam(teamId, {
             status: TEAM_STATUS.ELIMINATED,
             currentPrize: finalPrize,
             eliminatedAt: Date.now(),
@@ -311,8 +317,8 @@ export const useTeamsStore = create()(
          * @param {number} finalQuestionNumber - Final question number answered
          * @returns {Promise<Object>} Update result
          */
-        completeTeam: (teamId, finalPrize, finalQuestionNumber) => {
-          const result = get().updateTeam(teamId, {
+        completeTeam: async (teamId, finalPrize, finalQuestionNumber) => {
+          const result = await get().updateTeam(teamId, {
             currentPrize: finalPrize,
             status: TEAM_STATUS.COMPLETED,
             completedAt: Date.now(),
@@ -330,8 +336,8 @@ export const useTeamsStore = create()(
         /**
          * Assign question set to team
          */
-        assignQuestionSet: (teamId, questionSetId) => {
-          return get().updateTeam(teamId, { questionSetId });
+        assignQuestionSet: async (teamId, questionSetId) => {
+          return await get().updateTeam(teamId, { questionSetId });
         },
 
         /**
@@ -415,8 +421,8 @@ export const useTeamsStore = create()(
         /**
          * Reset team progress (for new game)
          */
-        resetTeamProgress: (teamId) => {
-          return get().updateTeam(teamId, {
+        resetTeamProgress: async (teamId) => {
+          return await get().updateTeam(teamId, {
             status: DEFAULT_TEAM_STATUS,
             currentPrize: 0,
             currentQuestionIndex: 0,

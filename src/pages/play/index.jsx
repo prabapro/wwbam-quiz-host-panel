@@ -10,16 +10,8 @@ import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
-import { databaseService } from '@services/database.service';
 import { GAME_STATUS } from '@constants/gameStates';
-import {
-  ArrowLeft,
-  AlertTriangle,
-  CheckCircle2,
-  Trophy,
-  RotateCcw,
-  Download,
-} from 'lucide-react';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { cn } from '@lib/utils';
 import GameStatusBar from './components/GameStatusBar';
 import QuestionPanel from './components/QuestionPanel';
@@ -32,13 +24,15 @@ import GameControls from './components/GameControls';
  * Play Page - Main Gameplay Interface
  * Orchestrates all gameplay components and pulls state from stores
  *
+ * UPDATED: Now uses store-level Firebase listener instead of component-level
+ * This ensures consistent real-time sync across navigation and page refreshes
+ *
  * Layout:
  * - Top: Game Status Bar (full width)
  * - Left Column (1/4): Game Controls (stacked buttons)
  * - Middle Column (2/4): Question Display
  * - Right Column (1/4): Answer Pad (2x2 grid)
  * - Bottom Row: Team Status (1/2), Lifelines (1/2)
- * - Debug Info (development mode)
  */
 export default function Play() {
   const navigate = useNavigate();
@@ -52,6 +46,7 @@ export default function Play() {
   const playQueue = useGameStore((state) => state.playQueue);
   const questionVisible = useGameStore((state) => state.questionVisible);
   const answerRevealed = useGameStore((state) => state.answerRevealed);
+  const startGameListener = useGameStore((state) => state.startGameListener);
 
   // Teams Store State
   const teams = useTeamsStore((state) => state.teams);
@@ -59,7 +54,6 @@ export default function Play() {
 
   // Questions Store State
   const hostQuestion = useQuestionsStore((state) => state.hostQuestion);
-  const loadedSets = useQuestionsStore((state) => state.loadedSets);
   const selectedAnswer = useQuestionsStore((state) => state.selectedAnswer);
   const validationResult = useQuestionsStore((state) => state.validationResult);
 
@@ -67,40 +61,39 @@ export default function Play() {
   const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
 
   // Answer Pad States for Card-level styling
-  const isWaitingForVisibility = !!hostQuestion && !questionVisible;
+  const isWaitingForVisibility = !hostQuestion && !questionVisible;
   const isAnswerPadActive = questionVisible && !answerRevealed;
 
-  // Listen to Firebase game state changes
+  // ============================================================
+  // REAL-TIME FIREBASE SYNC - MOVED TO STORE LEVEL
+  // ============================================================
+
+  /**
+   * Start Firebase game state listener on mount
+   * The listener is now managed by the store for consistency
+   */
   useEffect(() => {
-    console.log('🔄 Starting Firebase game state listener...');
+    console.log('🎮 Play Page: Starting game state listener...');
 
-    const unsubscribe = databaseService.onGameStateChange((gameState) => {
-      if (gameState) {
-        console.log('🔄 Game state updated from Firebase:', {
-          questionVisible: gameState.questionVisible,
-          answerRevealed: gameState.answerRevealed,
-          correctOption: gameState.correctOption,
-          currentQuestionNumber: gameState.currentQuestionNumber,
-        });
-
-        // Update local game store with Firebase data
-        useGameStore.setState({
-          questionVisible: gameState.questionVisible,
-          answerRevealed: gameState.answerRevealed,
-          correctOption: gameState.correctOption,
-          currentQuestionNumber: gameState.currentQuestionNumber,
-        });
-      }
-    });
+    // Start store-level listener
+    const unsubscribe = startGameListener();
 
     // Cleanup listener on unmount
     return () => {
-      console.log('🛑 Stopping Firebase game state listener');
-      unsubscribe();
+      console.log('🎮 Play Page: Stopping game state listener');
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
-  }, []);
+  }, [startGameListener]);
 
-  // Redirect only if game is not in a playable state
+  // ============================================================
+  // NAVIGATION GUARD
+  // ============================================================
+
+  /**
+   * Redirect if game is not in a valid play page state
+   */
   useEffect(() => {
     const isValidPlayPageState =
       gameStatus === GAME_STATUS.ACTIVE ||
@@ -115,147 +108,58 @@ export default function Play() {
     }
   }, [gameStatus, navigate]);
 
-  // ✅ Early return handling - distinguish between error state and completed state
-  if (!currentTeam) {
-    // If game is completed, show post-game placeholder
-    if (gameStatus === GAME_STATUS.COMPLETED) {
-      return (
-        <main className="container mx-auto py-8 px-4 max-w-7xl">
-          {/* Page Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold">Game Completed! 🏆</h1>
-              <p className="text-muted-foreground">
-                All teams have finished playing
-              </p>
-            </div>
-            <Button onClick={() => navigate('/')} variant="outline">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </div>
+  // ============================================================
+  // GAME COMPLETED STATE
+  // ============================================================
 
-          {/* Game Completed Info */}
-          <Alert className="mb-6 bg-green-50 dark:bg-green-950/20 border-green-500">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <AlertTitle>Event Concluded</AlertTitle>
-            <AlertDescription>
-              The quiz competition has ended. All teams have completed their
-              rounds.
-            </AlertDescription>
-          </Alert>
-
-          {/* Post-Game Content Placeholder */}
-          <Card className="border-dashed border-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-muted-foreground">
-                <Trophy className="w-5 h-5" />
-                Post-Game Content (Coming Soon)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Placeholder Items */}
-              <div className="grid gap-4">
-                <div className="p-4 bg-muted/30 rounded-lg border-dashed border">
-                  <h3 className="font-semibold mb-2">🏆 Winner Rankings</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Display final rankings with team names, prizes won, and
-                    questions answered
-                  </p>
-                </div>
-
-                <div className="p-4 bg-muted/30 rounded-lg border-dashed border">
-                  <h3 className="font-semibold mb-2">📊 Game Statistics</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Show total teams, questions asked, prize distribution, and
-                    game duration
-                  </p>
-                </div>
-
-                <div className="p-4 bg-muted/30 rounded-lg border-dashed border">
-                  <h3 className="font-semibold mb-2">💾 Export Summary</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Push final results to Firebase for public display panel
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t">
-                <Button variant="outline" onClick={() => navigate('/')}>
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Return to Dashboard
-                </Button>
-                <Button variant="outline" disabled>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export Results (Coming Soon)
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      );
-    }
-
-    // Otherwise, show error (game is not completed but no team exists - shouldn't happen)
+  if (!currentTeam && gameStatus === GAME_STATUS.COMPLETED) {
     return (
       <main className="container mx-auto py-8 px-4 max-w-7xl">
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>No Active Team</AlertTitle>
+        {/* Page Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Game Completed! 🏆</h1>
+            <p className="text-muted-foreground">
+              All teams have finished playing
+            </p>
+          </div>
+          <Button onClick={() => navigate('/')} variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </div>
+
+        {/* Game Completed Info */}
+        <Alert className="mb-6 bg-green-50 dark:bg-green-950/20 border-green-500">
+          <CheckCircle2 className="h-5 w-5 text-green-600" />
+          <AlertTitle>Event Concluded</AlertTitle>
           <AlertDescription>
-            There is no active team. Please return to the home page and start
-            the game.
+            The quiz competition has ended. All teams have completed their
+            rounds.
           </AlertDescription>
         </Alert>
-        <Button
-          onClick={() => navigate('/')}
-          variant="outline"
-          className="mt-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Home
-        </Button>
+
+        {/* Post-game actions could go here */}
       </main>
     );
   }
 
+  // ============================================================
+  // MAIN GAMEPLAY INTERFACE
+  // ============================================================
+
   return (
-    <main className="container mx-auto py-6 px-4 max-w-7xl">
-      {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Game Play</h1>
-          <p className="text-muted-foreground">
-            Host control panel for managing the quiz competition
-          </p>
-        </div>
-        <Button onClick={() => navigate('/')} variant="outline">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
-        </Button>
-      </div>
+    <main className="container mx-auto py-8 px-4 max-w-7xl space-y-6">
+      {/* Top Bar - Game Status */}
+      <GameStatusBar />
 
-      {/* Paused State Banner */}
-      {gameStatus === GAME_STATUS.PAUSED && (
-        <Alert className="mb-6 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-500">
-          <AlertDescription className="text-center">
-            <strong>⏸️ Game Paused</strong> - Click "Resume" to continue playing
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Game Status Bar */}
-      <div className="mb-6">
-        <GameStatusBar />
-      </div>
-
-      {/* Main Gameplay Layout - 4 Column Grid */}
+      {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Column - Game Controls (1/4 width) */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Game Controls</CardTitle>
+              <CardTitle className="text-base">Controls</CardTitle>
             </CardHeader>
             <CardContent>
               <GameControls />
@@ -263,23 +167,9 @@ export default function Play() {
           </Card>
         </div>
 
-        {/* Middle Column - Question Display (2/4 = 1/2 width) */}
+        {/* Middle Column - Question Display (2/4 width) */}
         <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                Question Display
-                {hostQuestion && (
-                  <Badge variant="outline" className="ml-auto">
-                    Q{hostQuestion.number} Loaded
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <QuestionPanel />
-            </CardContent>
-          </Card>
+          <QuestionPanel />
         </div>
 
         {/* Right Column - Answer Pad (1/4 width) */}
@@ -322,7 +212,7 @@ export default function Play() {
       </div>
 
       {/* Bottom Row - Team Status & Lifelines */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Team Status Card */}
         <Card>
           <CardHeader>
@@ -346,7 +236,7 @@ export default function Play() {
 
       {/* Debug Info - Store State (Development) */}
       {import.meta.env.DEV && (
-        <Card className="mt-6 border-dashed bg-muted/30">
+        <Card className="border-dashed bg-muted/30">
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
               🔧 Debug: Store State
@@ -389,32 +279,32 @@ export default function Play() {
                 <p className="text-muted-foreground">
                   Visible:{' '}
                   <span className="text-foreground font-semibold">
-                    {questionVisible ? 'Yes' : 'No'}
+                    {questionVisible ? '👁️ Yes' : '🙈 No'}
                   </span>
                 </p>
                 <p className="text-muted-foreground">
                   Revealed:{' '}
                   <span className="text-foreground font-semibold">
-                    {answerRevealed ? 'Yes' : 'No'}
+                    {answerRevealed ? '✅ Yes' : '❌ No'}
                   </span>
                 </p>
               </div>
 
               {/* Questions Store */}
               <div className="space-y-1">
-                <p className="font-semibold text-purple-600 dark:text-purple-400 mb-2">
+                <p className="font-semibold text-green-600 dark:text-green-400 mb-2">
                   Questions Store:
                 </p>
                 <p className="text-muted-foreground">
-                  Loaded Sets:{' '}
+                  Loaded:{' '}
                   <span className="text-foreground font-semibold">
-                    {Object.keys(loadedSets).length}
+                    {hostQuestion ? '✅' : '❌'}
                   </span>
                 </p>
                 <p className="text-muted-foreground">
-                  Host Question:{' '}
+                  Q Number:{' '}
                   <span className="text-foreground font-semibold">
-                    {hostQuestion ? `Q${hostQuestion.number}` : 'None'}
+                    {hostQuestion?.number || 'N/A'}
                   </span>
                 </p>
                 <p className="text-muted-foreground">
@@ -426,40 +316,52 @@ export default function Play() {
                 <p className="text-muted-foreground">
                   Validated:{' '}
                   <span className="text-foreground font-semibold">
-                    {validationResult ? 'Yes' : 'No'}
+                    {validationResult ? '✅' : '❌'}
                   </span>
                 </p>
+                {validationResult && (
+                  <p className="text-muted-foreground">
+                    Result:{' '}
+                    <span
+                      className={cn(
+                        'font-semibold',
+                        validationResult.isCorrect
+                          ? 'text-green-600'
+                          : 'text-red-600',
+                      )}>
+                      {validationResult.isCorrect ? '✅ Correct' : '❌ Wrong'}
+                    </span>
+                  </p>
+                )}
               </div>
 
-              {/* Team Store */}
+              {/* Teams & Prize Store */}
               <div className="space-y-1">
-                <p className="font-semibold text-green-600 dark:text-green-400 mb-2">
-                  Current Team:
+                <p className="font-semibold text-purple-600 dark:text-purple-400 mb-2">
+                  Teams & Prizes:
                 </p>
                 <p className="text-muted-foreground">
-                  Name:{' '}
+                  Team:{' '}
                   <span className="text-foreground font-semibold">
-                    {currentTeam.name}
+                    {currentTeam?.name || 'N/A'}
                   </span>
                 </p>
                 <p className="text-muted-foreground">
                   Status:{' '}
                   <span className="text-foreground font-semibold">
-                    {currentTeam.status}
+                    {currentTeam?.status || 'N/A'}
                   </span>
                 </p>
                 <p className="text-muted-foreground">
                   Prize:{' '}
                   <span className="text-foreground font-semibold">
-                    Rs.{currentTeam.currentPrize || 0}
+                    Rs.{currentTeam?.currentPrize?.toLocaleString() || 0}
                   </span>
                 </p>
                 <p className="text-muted-foreground">
-                  Lifelines:{' '}
+                  Structure:{' '}
                   <span className="text-foreground font-semibold">
-                    {Object.values(currentTeam.lifelines || {}).filter(Boolean)
-                      .length || 0}
-                    /2
+                    {prizeStructure.length} levels
                   </span>
                 </p>
               </div>

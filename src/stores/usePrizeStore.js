@@ -10,6 +10,9 @@ const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
 /**
  * Prize Structure Store
  * Manages prize structure state and Firebase synchronization
+ *
+ * UPDATED: Added real-time Firebase listener for prize updates
+ * Ensures prize structure stays fresh across all host instances
  */
 export const usePrizeStore = create()(
   devtools(
@@ -123,34 +126,35 @@ export const usePrizeStore = create()(
         },
 
         /**
+         * Reset edited structure to saved structure
+         */
+        resetEditedStructure: () => {
+          const { prizeStructure } = get();
+          set({
+            editedPrizeStructure: [...prizeStructure],
+            hasUnsavedChanges: false,
+          });
+        },
+
+        /**
          * Add a new prize level
          */
-        addPrizeLevel: () => {
+        addPrizeLevel: (value) => {
           const { editedPrizeStructure } = get();
-
-          const lastValue =
-            editedPrizeStructure[editedPrizeStructure.length - 1] || 0;
-          const newValue = lastValue + 500;
-
           set({
-            editedPrizeStructure: [...editedPrizeStructure, newValue],
+            editedPrizeStructure: [...editedPrizeStructure, value],
             hasUnsavedChanges: true,
           });
         },
 
         /**
-         * Remove last prize level
+         * Remove a prize level
          */
-        removePrizeLevel: () => {
+        removePrizeLevel: (index) => {
           const { editedPrizeStructure } = get();
-
-          if (editedPrizeStructure.length <= 1) {
-            console.warn('Cannot remove - must have at least 1 prize level');
-            return;
-          }
-
-          const newStructure = editedPrizeStructure.slice(0, -1);
-
+          const newStructure = editedPrizeStructure.filter(
+            (_, i) => i !== index,
+          );
           set({
             editedPrizeStructure: newStructure,
             hasUnsavedChanges: true,
@@ -158,8 +162,79 @@ export const usePrizeStore = create()(
         },
 
         /**
+         * Get prize by index
+         */
+        getPrizeByIndex: (index) => {
+          const { prizeStructure } = get();
+          return prizeStructure[index] || 0;
+        },
+
+        /**
+         * Check if there are unsaved changes
+         */
+        hasChanges: () => {
+          const { prizeStructure, editedPrizeStructure } = get();
+          return (
+            JSON.stringify(prizeStructure) !==
+            JSON.stringify(editedPrizeStructure)
+          );
+        },
+
+        /**
+         * Validate prize structure
+         */
+        validatePrizeStructure: () => {
+          const { editedPrizeStructure } = get();
+
+          const errors = [];
+
+          if (!editedPrizeStructure || editedPrizeStructure.length === 0) {
+            errors.push('Prize structure cannot be empty');
+          }
+
+          editedPrizeStructure.forEach((prize, index) => {
+            if (typeof prize !== 'number' || prize < 0) {
+              errors.push(`Prize at index ${index} must be a positive number`);
+            }
+          });
+
+          return {
+            isValid: errors.length === 0,
+            errors,
+          };
+        },
+
+        /**
+         * Get prize structure summary
+         */
+        getPrizeSummary: () => {
+          const { editedPrizeStructure } = get();
+
+          if (!editedPrizeStructure || editedPrizeStructure.length === 0) {
+            return {
+              totalQuestions: 0,
+              maxPrizePerTeam: 0,
+              minPrize: 0,
+              maxPrize: 0,
+            };
+          }
+
+          const min = Math.min(...editedPrizeStructure);
+          const max = Math.max(...editedPrizeStructure);
+
+          return {
+            totalQuestions: editedPrizeStructure.length,
+            maxPrizePerTeam: max,
+            minPrize: min,
+            maxPrize: max,
+          };
+        },
+
+        /**
          * Reset to default prize structure (for factory reset)
          * Immediately syncs to both state and Firebase
+         *
+         * @returns {Promise<Object>} { success: boolean, error?: string }
          */
         resetToDefault: async () => {
           set({ isSyncing: true, error: null });
@@ -190,80 +265,43 @@ export const usePrizeStore = create()(
         },
 
         /**
-         * Use default structure (local only, needs save)
+         * Start real-time Firebase listener for prize structure changes
+         * Returns unsubscribe function for cleanup
+         *
+         * IMPORTANT: This ensures all host instances see prize updates in real-time
+         * Call this in PrizeManagement page or any component that needs live prize data
          */
-        useDefaultStructure: () => {
-          set({
-            editedPrizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
-            hasUnsavedChanges: true,
-          });
+        startPrizeListener: () => {
+          console.log('🔄 Starting real-time prize structure listener...');
 
-          console.log('📋 Using default prize structure (not saved)');
-        },
+          const unsubscribe = databaseService.onPrizeStructureChange(
+            (firebasePrizes) => {
+              if (firebasePrizes && Array.isArray(firebasePrizes)) {
+                const { editedPrizeStructure } = get();
+                const hasLocalEdits =
+                  JSON.stringify(firebasePrizes) !==
+                  JSON.stringify(editedPrizeStructure);
 
-        /**
-         * Reset to saved Firebase structure (discard changes)
-         */
-        discardChanges: () => {
-          const { prizeStructure } = get();
+                // Only update if there are no unsaved local edits
+                if (!hasLocalEdits || !get().hasUnsavedChanges) {
+                  set({
+                    prizeStructure: firebasePrizes,
+                    editedPrizeStructure: [...firebasePrizes],
+                    hasUnsavedChanges: false,
+                    lastSyncedAt: Date.now(),
+                  });
+                  console.log('🔄 Prize structure updated from Firebase');
+                } else {
+                  console.log(
+                    '⚠️ Prize structure changed in Firebase but local edits exist - skipping update',
+                  );
+                }
+              }
+            },
+          );
 
-          set({
-            editedPrizeStructure: [...prizeStructure],
-            hasUnsavedChanges: false,
-          });
-
-          console.log('🔄 Changes discarded');
-        },
-
-        /**
-         * Validate prize structure
-         */
-        validatePrizeStructure: (structure = null) => {
-          const prizes = structure || get().editedPrizeStructure;
-
-          const errors = [];
-
-          if (!Array.isArray(prizes)) {
-            errors.push('Prize structure must be an array');
-            return { isValid: false, errors };
-          }
-
-          if (prizes.length === 0) {
-            errors.push('Must have at least 1 prize level');
-            return { isValid: false, errors };
-          }
-
-          prizes.forEach((prize, index) => {
-            if (typeof prize !== 'number' || isNaN(prize)) {
-              errors.push(`Question ${index + 1}: Prize must be a number`);
-            } else if (prize < 0) {
-              errors.push(`Question ${index + 1}: Prize cannot be negative`);
-            }
-          });
-
-          return {
-            isValid: errors.length === 0,
-            errors: errors.length > 0 ? errors : null,
-          };
-        },
-
-        /**
-         * Get prize structure summary
-         * Note: Total prize pool = maxPrizePerTeam × teamCount
-         * Use getTotalPrizePool(teamCount, editedPrizeStructure) for actual pool calculation
-         */
-        getPrizeSummary: () => {
-          const { editedPrizeStructure } = get();
-
-          const min = Math.min(...editedPrizeStructure);
-          const max = Math.max(...editedPrizeStructure);
-
-          return {
-            totalQuestions: editedPrizeStructure.length,
-            maxPrizePerTeam: max,
-            minPrize: min,
-            maxPrize: max,
-          };
+          console.log('✅ Prize structure listener started');
+          return unsubscribe;
         },
 
         /**
@@ -273,9 +311,9 @@ export const usePrizeStore = create()(
       }),
       {
         name: `${appName}-prizes`,
-        version: 1,
+        version: 2, // Incremented version for new sync strategy
 
-        // Don't persist loading/error states
+        // Don't persist loading/error states or unsaved edits
         partialize: (state) => ({
           prizeStructure: state.prizeStructure,
           lastSyncedAt: state.lastSyncedAt,
@@ -297,7 +335,7 @@ export const usePrizeStore = create()(
             state.editedPrizeStructure = [...state.prizeStructure];
             state.hasUnsavedChanges = false;
 
-            // AUTO-LOAD: Check if prize structure is empty (cleared localStorage or first load)
+            // AUTO-LOAD: Check if prize structure is empty
             const hasPrizes =
               state.prizeStructure && state.prizeStructure.length > 0;
 
@@ -306,7 +344,7 @@ export const usePrizeStore = create()(
                 '💰 Prizes: Empty state detected - auto-loading from Firebase...',
               );
 
-              // Trigger async load - don't await to avoid blocking rehydration
+              // Trigger async load
               state.loadPrizeStructure().then((result) => {
                 if (result.success) {
                   console.log('💰 Prizes: Auto-load complete ✅');
