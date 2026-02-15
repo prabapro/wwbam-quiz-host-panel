@@ -167,7 +167,7 @@ export const useGameStore = create()(
         /**
          * Uninitialize game
          * Resets game to NOT_STARTED state and clears play queue
-         * Keeps teams, prizes, and question sets intact
+         * Also resets all teams to their initial state
          * Syncs to Firebase and updates local state
          * @returns {Promise<Object>} { success: boolean, error?: string }
          */
@@ -175,7 +175,20 @@ export const useGameStore = create()(
           try {
             const timestamp = Date.now();
 
-            // Update local state first - reset to NOT_STARTED
+            // ✅ STEP 1: Reset all teams to initial state FIRST
+            // This must happen before updating game state
+            const resetTeamsResult = await useTeamsStore
+              .getState()
+              .resetAllTeamsProgress();
+
+            if (!resetTeamsResult || resetTeamsResult.error) {
+              console.warn(
+                '⚠️ Failed to reset teams, continuing anyway:',
+                resetTeamsResult?.error,
+              );
+            }
+
+            // ✅ STEP 2: Update local game state - reset to NOT_STARTED
             set({
               gameStatus: GAME_STATUS.NOT_STARTED,
               currentTeamId: null,
@@ -192,7 +205,7 @@ export const useGameStore = create()(
               lastUpdated: timestamp,
             });
 
-            // Sync to Firebase
+            // ✅ STEP 3: Sync game state to Firebase
             await databaseService.updateGameState({
               gameStatus: GAME_STATUS.NOT_STARTED,
               currentTeamId: null,
@@ -209,6 +222,7 @@ export const useGameStore = create()(
             });
 
             console.log('🔄 Game uninitialized and synced to Firebase');
+            console.log('👥 All teams reset to initial state');
             return { success: true };
           } catch (error) {
             console.error('Failed to uninitialize game:', error);

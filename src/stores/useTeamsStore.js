@@ -438,13 +438,18 @@ export const useTeamsStore = create()(
           const { teams } = get();
           const teamIds = Object.keys(teams);
 
-          for (const teamId of teamIds) {
-            await get().resetTeamProgress(teamId);
+          try {
+            for (const teamId of teamIds) {
+              await get().resetTeamProgress(teamId);
+            }
+
+            console.log('🔄 All teams progress reset');
+            return { success: true }; // ✅ Add return value
+          } catch (error) {
+            console.error('Failed to reset teams progress:', error);
+            return { success: false, error: error.message }; // ✅ Return error
           }
-
-          console.log('🔄 All teams progress reset');
         },
-
         /**
          * Clear all teams
          */

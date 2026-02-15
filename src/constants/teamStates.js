@@ -72,21 +72,25 @@ export const TEAM_STATUS_META = {
  * Valid team status transitions
  * Defines which status changes are allowed
  *
- * NOTE: waiting -> completed is allowed to handle Firebase real-time sync race conditions
- * where a team might complete while their local status shows 'waiting' due to sync timing
+ * NOTE: Terminal states (completed/eliminated) can transition back to waiting
+ * for game reset/uninitialize scenarios
  */
 export const TEAM_STATUS_TRANSITIONS = {
   [TEAM_STATUS.WAITING]: [
     TEAM_STATUS.ACTIVE,
-    TEAM_STATUS.COMPLETED, // Allow completion from waiting (Firebase sync edge case)
+    TEAM_STATUS.COMPLETED, // ← Allow completion from waiting (Firebase sync edge case)
   ],
   [TEAM_STATUS.ACTIVE]: [
     TEAM_STATUS.ELIMINATED,
     TEAM_STATUS.COMPLETED,
     TEAM_STATUS.WAITING,
   ],
-  [TEAM_STATUS.ELIMINATED]: [], // Terminal state
-  [TEAM_STATUS.COMPLETED]: [], // Terminal state
+  [TEAM_STATUS.ELIMINATED]: [
+    TEAM_STATUS.WAITING, // ← Allow reset to waiting (for game uninitialize)
+  ],
+  [TEAM_STATUS.COMPLETED]: [
+    TEAM_STATUS.WAITING, // ← Allow reset to waiting (for game uninitialize)
+  ],
 };
 
 /**
