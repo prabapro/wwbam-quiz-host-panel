@@ -1,11 +1,35 @@
 // src/utils/sampleDataLoader.js
 
-import { localStorageService } from '@services/localStorage.service';
+/**
+ * Sample Data Loader Utility
+ *
+ * Purpose: Load sample teams and question sets from /public/sample-data/
+ * Used for testing and demonstrations
+ *
+ * Features:
+ * - Loads sample teams JSON
+ * - Loads sample question set JSONs
+ * - Trims questions to QUESTIONS_PER_SET from config
+ * - Clears existing data first (atomic operation)
+ * - Progress callbacks for UI feedback
+ * - Comprehensive error handling
+ *
+ * Usage:
+ * const result = await loadSampleData((message) => {
+ *   console.log(message);
+ * });
+ *
+ * if (result.success) {
+ *   console.log(`Loaded ${result.teams.count} teams and ${result.questionSets.count} sets`);
+ * }
+ */
+
+import { databaseService } from '@services/database.service';
 import { useTeamsStore } from '@stores/useTeamsStore';
+import { QUESTIONS_PER_SET } from '@constants/config';
 
 /**
- * Sample Data Configuration
- * Defines paths to sample data files in /public/sample-data/
+ * Sample data file paths
  */
 const SAMPLE_FILES = {
   teams: '/sample-data/sample-teams.json',
@@ -18,7 +42,7 @@ const SAMPLE_FILES = {
 };
 
 /**
- * Fetch JSON file from public directory
+ * Fetch JSON from public folder
  * @param {string} path - Path to JSON file
  * @returns {Promise<Object>} Parsed JSON data
  */
@@ -29,11 +53,11 @@ const fetchJSON = async (path) => {
     throw new Error(`Failed to fetch ${path}: ${response.statusText}`);
   }
 
-  return await response.json();
+  return response.json();
 };
 
 /**
- * Clear all existing data (teams and question sets)
+ * Clear existing data (teams and question sets)
  * @param {Function} onProgress - Progress callback
  * @returns {Promise<Object>} Result object
  */
@@ -41,28 +65,27 @@ const clearExistingData = async (onProgress) => {
   try {
     onProgress?.('Clearing existing data...');
 
-    // Clear teams from Firebase (also clears localStorage via persist middleware)
-    const deleteTeamsResult = await useTeamsStore
-      .getState()
-      .deleteAllTeamsFromFirebase();
+    // 1. Clear all teams from Firebase
+    await databaseService.deleteAllTeams();
 
-    if (!deleteTeamsResult.success) {
-      throw new Error('Failed to clear teams: ' + deleteTeamsResult.error);
+    // 2. Clear all question sets from Firebase
+    const existingSets = await databaseService.getAllQuestionSets();
+
+    if (existingSets) {
+      const setIds = Object.keys(existingSets);
+
+      for (const setId of setIds) {
+        await databaseService.deleteQuestionSet(setId);
+      }
+
+      console.log(`🗑️ Deleted ${setIds.length} existing question sets`);
     }
 
-    // Clear question sets from localStorage
-    const clearQuestionsResult = localStorageService.clearAllQuestionSets();
+    console.log('✅ Existing data cleared');
 
-    if (!clearQuestionsResult.success) {
-      throw new Error(
-        'Failed to clear question sets: ' + clearQuestionsResult.error,
-      );
-    }
-
-    console.log('✅ Existing data cleared successfully');
     return { success: true };
   } catch (error) {
-    console.error('❌ Failed to clear existing data:', error);
+    console.error('Failed to clear existing data:', error);
     return { success: false, error: error.message };
   }
 };
@@ -70,7 +93,7 @@ const clearExistingData = async (onProgress) => {
 /**
  * Load sample teams from JSON file
  * @param {Function} onProgress - Progress callback
- * @returns {Promise<Object>} Result object with loaded team count
+ * @returns {Promise<Object>} Result object with loaded team IDs
  */
 const loadSampleTeams = async (onProgress) => {
   try {
@@ -86,7 +109,7 @@ const loadSampleTeams = async (onProgress) => {
     const teams = teamsData.teams;
     const uploadedTeamIds = [];
 
-    // Upload teams sequentially
+    // Upload teams sequentially to Firebase
     for (let i = 0; i < teams.length; i++) {
       const team = teams[i];
 
@@ -124,7 +147,7 @@ const loadSampleTeams = async (onProgress) => {
 /**
  * Load sample question sets from JSON files
  * @param {Function} onProgress - Progress callback
- * @returns {Promise<Object>} Result object with loaded set count
+ * @returns {Promise<Object>} Result object with loaded set IDs
  */
 const loadSampleQuestionSets = async (onProgress) => {
   try {
@@ -133,7 +156,7 @@ const loadSampleQuestionSets = async (onProgress) => {
     const questionSetFiles = SAMPLE_FILES.questionSets;
     const uploadedSetIds = [];
 
-    // Upload question sets sequentially
+    // Upload question sets sequentially to Firebase
     for (let i = 0; i < questionSetFiles.length; i++) {
       const filePath = questionSetFiles[i];
 
@@ -144,8 +167,27 @@ const loadSampleQuestionSets = async (onProgress) => {
       // Fetch question set JSON
       const questionSet = await fetchJSON(filePath);
 
-      // Save to localStorage (includes validation)
-      const result = localStorageService.saveQuestionSet(questionSet);
+      // ✅ TRIM QUESTIONS TO QUESTIONS_PER_SET (same as QuestionUploader)
+      const trimmedQuestions = questionSet.questions.slice(
+        0,
+        QUESTIONS_PER_SET,
+      );
+
+      const trimmedQuestionSet = {
+        ...questionSet,
+        questions: trimmedQuestions,
+        totalQuestions: trimmedQuestions.length,
+      };
+
+      // Log if questions were trimmed
+      if (questionSet.questions.length > QUESTIONS_PER_SET) {
+        console.log(
+          `✂️ Trimmed question set '${questionSet.setId}' from ${questionSet.questions.length} to ${QUESTIONS_PER_SET} questions`,
+        );
+      }
+
+      // Save to Firebase (includes validation)
+      const result = await databaseService.saveQuestionSet(trimmedQuestionSet);
 
       if (!result.success) {
         throw new Error(
@@ -243,13 +285,35 @@ export const loadSampleData = async (onProgress) => {
       elapsed,
     };
   } catch (error) {
-    console.error('❌ Unexpected error loading sample data:', error);
+    console.error('❌ Sample data load failed:', error);
 
     return {
       success: false,
-      error: error.message || 'Unexpected error occurred',
+      error: error.message || 'Unknown error during sample data load',
     };
   }
 };
 
-export default loadSampleData;
+/**
+ * Check if sample data files exist
+ * @returns {Promise<boolean>} True if all sample files exist
+ */
+export const checkSampleDataExists = async () => {
+  try {
+    // Check teams file
+    const teamsResponse = await fetch(SAMPLE_FILES.teams, { method: 'HEAD' });
+
+    if (!teamsResponse.ok) return false;
+
+    // Check question set files
+    for (const filePath of SAMPLE_FILES.questionSets) {
+      const response = await fetch(filePath, { method: 'HEAD' });
+      if (!response.ok) return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to check sample data files:', error);
+    return false;
+  }
+};

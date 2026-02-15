@@ -30,5 +30,11 @@
     },
     "timer-enabled": false,
     "timer-duration": 60
-  }
+  },
+  "allowed-hosts": {
+    "WVzWa43oPAGE1M5W9QXhGr80McYu": true,
+    "jM3db3covCPYMl6juUo7pB3BlCH3": true,
+    "a58X8r8fu4RCxRIE0Oc9fX35lAC3": true
+  },
+  "question-sets": {}
 }

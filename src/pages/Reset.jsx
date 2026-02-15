@@ -168,7 +168,7 @@ export default function Reset() {
                 <li>Reset game status to NOT_STARTED</li>
                 <li>Clear play queue and question assignments</li>
                 <li>Keep all teams in Firebase</li>
-                <li>Keep all question sets in localStorage</li>
+                <li>Keep all question sets in Firebase</li>
                 <li>Keep prize structure</li>
               </ul>
             </div>
@@ -200,8 +200,8 @@ export default function Reset() {
                 ⚠️ This will PERMANENTLY delete:
               </p>
               <ul className="space-y-1 text-sm text-muted-foreground list-disc list-inside">
-                <li>All teams (from localStorage AND Firebase)</li>
-                <li>All question sets (from localStorage)</li>
+                <li>All teams (from Firebase)</li>
+                <li>All question sets (from Firebase)</li>
                 <li>Prize structure (reset to defaults in Firebase)</li>
                 <li>Game state (reset to defaults in Firebase)</li>
               </ul>

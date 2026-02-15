@@ -1,6 +1,6 @@
 // src/components/game/GameControlPanel.jsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -35,7 +35,7 @@ import FactoryResetDialog from './FactoryResetDialog';
 import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
-import { localStorageService } from '@services/localStorage.service';
+import { databaseService } from '@services/database.service';
 import { getPlayQueuePreview } from '@utils/gameInitialization';
 import { toast } from 'sonner';
 import {
@@ -62,9 +62,13 @@ export default function GameControlPanel() {
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState(null);
 
-  // Modular dialog states - simplified (no loading/error states needed)
+  // Modular dialog states
   const [showUninitializeDialog, setShowUninitializeDialog] = useState(false);
   const [showFactoryResetDialog, setShowFactoryResetDialog] = useState(false);
+
+  // Question sets metadata state
+  const [questionSetsMetadata, setQuestionSetsMetadata] = useState([]);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(true);
 
   // Store state
   const playQueue = useGameStore((state) => state.playQueue);
@@ -72,15 +76,29 @@ export default function GameControlPanel() {
     (state) => state.questionSetAssignments,
   );
   const currentTeamId = useGameStore((state) => state.currentTeamId);
-  const startEvent = useGameStore((state) => state.startEvent);
+  const startGame = useGameStore((state) => state.startGame);
 
   const teamsObject = useTeamsStore((state) => state.teams);
 
   const loadQuestionSet = useQuestionsStore((state) => state.loadQuestionSet);
 
-  // Get question sets metadata
-  const questionSetsMetadata =
-    localStorageService.getQuestionSetsMetadata().sets || [];
+  // Load question sets metadata from Firebase
+  useEffect(() => {
+    const loadMetadata = async () => {
+      setIsLoadingMetadata(true);
+      try {
+        const metadata = await databaseService.getQuestionSetsMetadata();
+        setQuestionSetsMetadata(metadata.sets || []);
+      } catch (error) {
+        console.error('Failed to load question sets metadata:', error);
+        setQuestionSetsMetadata([]);
+      } finally {
+        setIsLoadingMetadata(false);
+      }
+    };
+
+    loadMetadata();
+  }, []);
 
   // Generate play queue preview
   const playQueuePreview = getPlayQueuePreview(
@@ -114,20 +132,20 @@ export default function GameControlPanel() {
     setStartError(null);
 
     try {
-      // 1. Load first team's question set from localStorage into memory
-      const loadResult = loadQuestionSet(firstTeamQuestionSetId);
+      // 1. Load first team's question set from Firebase into memory
+      const loadResult = await loadQuestionSet(firstTeamQuestionSetId);
 
       if (!loadResult.success) {
         throw new Error(
-          loadResult.error || 'Failed to load question set from localStorage',
+          loadResult.error || 'Failed to load question set from Firebase',
         );
       }
 
-      // 2. Start event (updates game state + Firebase)
-      const startResult = await startEvent();
+      // 2. Start game (updates game state + Firebase)
+      const startResult = await startGame(firstTeamId);
 
       if (!startResult.success) {
-        throw new Error(startResult.error || 'Failed to start event');
+        throw new Error(startResult.error || 'Failed to start game');
       }
 
       // 3. Success! Show toast and navigate
@@ -153,6 +171,16 @@ export default function GameControlPanel() {
     }
   };
 
+  if (isLoadingMetadata) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-8">
+          <LoadingSpinner text="Loading game data..." />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <>
       <Card>
@@ -172,119 +200,98 @@ export default function GameControlPanel() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Play Queue - Always Visible */}
-          <div className="border rounded-lg p-4 bg-muted/20">
+          {/* Play Queue */}
+          <div>
             <PlayQueueDisplay
               playQueuePreview={playQueuePreview}
               currentTeamId={currentTeamId}
-              maxHeight="auto"
-              showHeader={true}
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
-            <Button className="flex-1" size="lg" onClick={handlePlayGameClick}>
-              <Play className="w-4 h-4 mr-2" />
+          <div className="flex gap-3 pt-4">
+            {/* Play Game Button (Primary Action) */}
+            <Button
+              size="lg"
+              className="flex-1"
+              onClick={handlePlayGameClick}
+              disabled={!firstTeam || !firstTeamQuestionSet}>
+              <Play className="w-5 h-5 mr-2" />
               Start Game
             </Button>
 
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setShowUninitializeDialog(true)}>
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Uninitialize
-            </Button>
-
-            {/* More Actions Dropdown */}
+            {/* More Options Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="lg">
-                  <MoreVertical className="w-4 h-4" />
+                <Button size="lg" variant="outline">
+                  <MoreVertical className="w-5 h-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => setShowFactoryResetDialog(true)}>
+                  onClick={() => setShowUninitializeDialog(true)}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Uninitialize Game
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowFactoryResetDialog(true)}
+                  className="text-destructive">
                   <Recycle className="w-4 h-4 mr-2" />
-                  Reset App to Factory Defaults
+                  Factory Reset
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
-          {/* Info Text */}
-          <p className="text-xs text-muted-foreground text-center">
-            Click "Start Game" to begin the competition or "Uninitialize" to
-            reset and change settings
-          </p>
         </CardContent>
       </Card>
 
-      {/* Start Game Confirmation Dialog - PRESERVED */}
+      {/* Start Game Confirmation Dialog */}
       <AlertDialog
         open={showStartGameDialog}
         onOpenChange={setShowStartGameDialog}>
-        <AlertDialogContent className="max-w-md">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Start Game?</AlertDialogTitle>
-            <AlertDialogDescription>
-              The first team will be activated and the game will begin. Make
-              sure you're ready!
+            <AlertDialogTitle>Start the Game?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>
+                  You're about to start the competition with{' '}
+                  <strong>{firstTeam?.name}</strong> going first.
+                </p>
+
+                {/* First Team Info */}
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-semibold">{firstTeam?.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FileJson className="w-4 h-4" />
+                    <span>{firstTeamQuestionSet?.setName}</span>
+                  </div>
+                </div>
+
+                {/* Error Message */}
+                {startError && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{startError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <p className="text-sm text-muted-foreground">
+                  This action will activate gameplay mode and load the first
+                  question.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-
-          {/* First Team Info */}
-          {firstTeam && (
-            <div className="space-y-3 py-2">
-              {/* Team Info */}
-              <div className="p-3 bg-muted/30 rounded-lg border">
-                <div className="flex items-start gap-2 mb-2">
-                  <Users className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold">{firstTeam.name}</p>
-                    {firstTeam.participants && (
-                      <p className="text-sm text-muted-foreground">
-                        {firstTeam.participants}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Question Set Info */}
-              {firstTeamQuestionSet && (
-                <div className="p-3 bg-muted/30 rounded-lg border">
-                  <div className="flex items-start gap-2">
-                    <FileJson className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">Question Set</p>
-                      <p className="text-sm text-muted-foreground">
-                        {firstTeamQuestionSet.setName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {firstTeamQuestionSet.totalQuestions} questions
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Error Alert */}
-          {startError && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{startError}</AlertDescription>
-            </Alert>
-          )}
-
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isStarting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleStartGame} disabled={isStarting}>
+            <AlertDialogAction
+              onClick={handleStartGame}
+              disabled={isStarting}
+              className="bg-green-600 hover:bg-green-700">
               {isStarting ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
@@ -301,13 +308,13 @@ export default function GameControlPanel() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modular Uninitialize Dialog */}
+      {/* Uninitialize Game Dialog */}
       <UninitializeGameDialog
         open={showUninitializeDialog}
         onOpenChange={setShowUninitializeDialog}
       />
 
-      {/* Modular Factory Reset Dialog */}
+      {/* Factory Reset Dialog */}
       <FactoryResetDialog
         open={showFactoryResetDialog}
         onOpenChange={setShowFactoryResetDialog}

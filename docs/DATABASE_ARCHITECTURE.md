@@ -12,7 +12,7 @@ Real-time quiz competition system using Firebase Realtime Database. This documen
 **Key Principles:**
 
 - Real-time synchronization between host panel and public display
-- Questions stored in browser localStorage (not in Firebase)
+- Questions stored securely in Firebase with access control
 - Atomic updates for consistency across nodes
 - kebab-case for all Firebase keys
 
@@ -64,6 +64,8 @@ firebase deploy --only database:staging
 
 ```
 /
+├── allowed-hosts/       # Authorized host UIDs
+├── question-sets/       # Question sets with correct answers
 ├── game-state/          # Current session state
 ├── teams/              # Team data and progress
 ├── prize-structure/    # Prize values array
@@ -72,7 +74,99 @@ firebase deploy --only database:staging
 
 ---
 
-## 1. game-state Node
+## 1. allowed-hosts Node
+
+**Purpose:** Access control for authorized hosts. Contains UIDs of users permitted to manage the game.
+
+### Schema
+
+Simple object with Firebase Auth UIDs as keys.
+
+### Example
+
+```json
+{
+  "allowed-hosts": {
+    "AbcXYZ123def456GHI": true,
+    "JklMNO789pqr012STU": true
+  }
+}
+```
+
+### Security
+
+- Read: Authenticated users only
+- Write: Manually via Firebase Console only
+- Used in security rules to authorize write operations
+
+---
+
+## 2. question-sets Node
+
+**Purpose:** Stores question sets with full data including correct answers. Access restricted to authorized hosts only.
+
+### Schema
+
+| Field         | Type   | Description                            |
+| ------------- | ------ | -------------------------------------- |
+| `set-id`      | string | Unique identifier for the question set |
+| `set-name`    | string | Display name of the question set       |
+| `questions`   | array  | Array of question objects (exactly 20) |
+| `uploaded-at` | number | Server timestamp when set was uploaded |
+
+### Question Object Structure
+
+| Field           | Type   | Description                      |
+| --------------- | ------ | -------------------------------- |
+| `id`            | string | Unique question identifier       |
+| `number`        | number | Question number (1-20)           |
+| `text`          | string | Question text                    |
+| `options`       | object | Answer options: `{ A, B, C, D }` |
+| `correctAnswer` | string | Correct answer key (A/B/C/D)     |
+| `difficulty`    | string | Optional: easy/medium/hard       |
+| `category`      | string | Optional: question category      |
+
+### Example
+
+```json
+{
+  "question-sets": {
+    "set-1": {
+      "set-id": "set-1",
+      "set-name": "General Knowledge Set 1",
+      "uploaded-at": 1770789376649,
+      "questions": [
+        {
+          "id": "q1",
+          "number": 1,
+          "text": "What is the capital of France?",
+          "options": {
+            "A": "London",
+            "B": "Paris",
+            "C": "Berlin",
+            "D": "Rome"
+          },
+          "correctAnswer": "B",
+          "difficulty": "easy",
+          "category": "Geography"
+        }
+        // ... 19 more questions
+      ]
+    }
+  }
+}
+```
+
+### Security
+
+- Read: Authenticated users who are in `allowed-hosts`
+- Write: Authenticated users who are in `allowed-hosts`
+- Each set must have exactly 20 questions
+- Validation enforced via security rules
+
+---
+
+## 3. game-state Node
 
 **Purpose:** Manages current game session, play queue, and question display state.
 
@@ -117,9 +211,9 @@ not-started → initialized → active ⇄ paused → completed
     "correct-option": null,
     "play-queue": ["team-1", "team-2", "team-3"],
     "question-set-assignments": {
-      "team-1": "set-alpha",
-      "team-2": "set-beta",
-      "team-3": "set-gamma"
+      "team-1": "set-1",
+      "team-2": "set-2",
+      "team-3": "set-3"
     },
     "initialized-at": 1770789376649,
     "started-at": null,
@@ -130,7 +224,7 @@ not-started → initialized → active ⇄ paused → completed
 
 ---
 
-## 2. teams Node
+## 4. teams Node
 
 **Purpose:** Stores team data, progress, and status for all participating teams.
 
@@ -143,7 +237,7 @@ not-started → initialized → active ⇄ paused → completed
 | `contact`                | string       | Contact phone number                                                   |
 | `status`                 | string       | Team state: `waiting` \| `active` \| `eliminated` \| `completed`       |
 | `current-prize`          | number       | Accumulated prize money (Rs.)                                          |
-| `question-set-id`        | string\|null | Assigned question set ID (from localStorage)                           |
+| `question-set-id`        | string\|null | Assigned question set ID (from question-sets node)                     |
 | `current-question-index` | number       | 0-based index of current question (0-19)                               |
 | `questions-answered`     | number       | Count of successfully answered questions                               |
 | `lifelines`              | object       | Available lifelines: `{ "phone-a-friend": bool, "fifty-fifty": bool }` |
@@ -171,7 +265,7 @@ waiting → active → eliminated (terminal)
       "contact": "+94 77 123 4567",
       "status": "waiting",
       "current-prize": 0,
-      "question-set-id": "sample-set-1",
+      "question-set-id": "set-1",
       "current-question-index": 0,
       "questions-answered": 0,
       "lifelines": {
@@ -189,7 +283,7 @@ waiting → active → eliminated (terminal)
 
 ---
 
-## 3. prize-structure Node
+## 5. prize-structure Node
 
 **Purpose:** Defines prize values for each question level.
 
@@ -213,7 +307,7 @@ Simple array of numbers (prize values in Rs.). Index 0 = Question 1, Index 19 = 
 
 ---
 
-## 4. config Node
+## 6. config Node
 
 **Purpose:** Global game configuration settings.
 
@@ -308,18 +402,15 @@ await update(ref(database), {
 
 ### Question Security
 
-**Questions are NEVER stored in Firebase.** They remain in browser localStorage on the host panel. Only question text and options (without correct answer) are pushed to Firebase for public display.
+Questions are stored in Firebase `question-sets` node with full data including correct answers. Access is restricted to authorized hosts via security rules.
+
+For public display, only question text and options (without correct answer) are pushed to `game-state/current-question`:
 
 ```javascript
-// Host panel localStorage
-const question = {
-  id: 'q5',
-  text: 'What is the capital of France?',
-  options: { A: 'London', B: 'Paris', C: 'Berlin', D: 'Rome' },
-  correctAnswer: 'B', // ← NEVER sent to Firebase
-};
+// Host loads question from Firebase question-sets (includes correct answer)
+const question = await databaseService.getQuestionSet(setId);
 
-// Sent to Firebase (public display)
+// Push to game-state for public display (WITHOUT correct answer)
 await databaseService.setCurrentQuestion(
   {
     id: 'q5',
@@ -331,6 +422,17 @@ await databaseService.setCurrentQuestion(
 );
 ```
 
+**Security Rules:**
+
+```json
+{
+  "question-sets": {
+    ".read": "auth != null && root.child('allowed-hosts').child(auth.uid).exists()",
+    ".write": "auth != null && root.child('allowed-hosts').child(auth.uid).exists()"
+  }
+}
+```
+
 ---
 
 ## Game Flow & State Transitions
@@ -338,8 +440,8 @@ await databaseService.setCurrentQuestion(
 ### Initialization Flow
 
 ```
-1. Host uploads question sets → localStorage (Route: /questions)
-2. Host creates teams → Firebase (Route: /teams)
+1. Host uploads question sets → Firebase question-sets (Route: /questions)
+2. Host creates teams → Firebase teams (Route: /teams)
 3. Host initializes game → Generates play queue & assignments (Route: /)
 4. Atomic update:
    - /game-state/game-status = "initialized"
@@ -348,16 +450,16 @@ await databaseService.setCurrentQuestion(
    - /teams/{teamId}/question-set-id = setId (for each team)
 ```
 
-### Starting Event Flow
+### Starting Game Flow
 
 ```
-1. Host clicks "Start Event"
+1. Host clicks "Start Game"
 2. Atomic update:
    - /game-state/game-status = "active"
    - /game-state/current-team-id = first team from play-queue
    - /teams/{firstTeamId}/status = "active"
-3. Host loads first question from localStorage
-4. Host shows question → push to /game-state/current-question
+3. Host loads first question from Firebase question-sets
+4. Host shows question → push to /game-state/current-question (without answer)
 5. Public display renders question in real-time
 ```
 
@@ -365,16 +467,16 @@ await databaseService.setCurrentQuestion(
 
 ```
 1. Load Question (Host Only)
-   - Fetch from localStorage with correct answer
+   - Fetch from Firebase question-sets with correct answer
    - Display to host with all options + correct answer
 
 2. Push to Display (Public Display)
-   - Push question WITHOUT correct answer to Firebase
+   - Push question WITHOUT correct answer to game-state
    - Set question-visible = true
    - Public display renders question
 
 3. Team Answers
-   - Host validates answer locally (against localStorage)
+   - Host validates answer locally (against Firebase data)
    - Update team progress in Firebase
 
 4. Reveal Answer
@@ -390,133 +492,55 @@ await databaseService.setCurrentQuestion(
 2. Update current team status in /teams
 3. Get next team from play-queue
 4. Atomic update:
-   - /game-state/current-team-id = next team ID
-   - /game-state/current-question-number = 0
+   - /game-state/current-team-id = next team
    - /teams/{nextTeamId}/status = "active"
-   - Clear current question state
+   - /teams/{previousTeamId}/status = "eliminated" or "completed"
+5. Reset question state for new team
 ```
+
+### Firebase Key Naming (Important!)
+
+**All Firebase keys use kebab-case:**
+
+- ✅ `game-status` (not gameStatus)
+- ✅ `current-team-id` (not currentTeamId)
+- ✅ `question-visible` (not questionVisible)
+- ✅ `phone-a-friend` (not phoneAFriend)
+
+**JavaScript code uses camelCase:**
+
+- Application code uses camelCase for variables
+- DatabaseService handles automatic conversion between camelCase ↔ kebab-case
+- This ensures consistency across database and application code
 
 ---
 
-## Security Rules
+## Question Set JSON Structure (Reference)
+
+For uploading question sets to Firebase:
+
+_Note: Each set must contain exactly `QUESTIONS_PER_SET` questions (defined in `src/constants/config.js`, currently 20)_
 
 ```json
 {
-  "rules": {
-    "game-state": {
-      ".read": true, // Public read for display screen
-      ".write": "auth != null" // Only authenticated host can write
-    },
-    "teams": {
-      ".read": true,
-      ".write": "auth != null"
-    },
-    "prize-structure": {
-      ".read": true,
-      ".write": "auth != null"
-    },
-    "config": {
-      ".read": true,
-      ".write": "auth != null"
+  "setId": "set-1",
+  "setName": "General Knowledge Set 1",
+  "questions": [
+    {
+      "id": "q1",
+      "number": 1,
+      "text": "What is the capital of France?",
+      "options": {
+        "A": "London",
+        "B": "Paris",
+        "C": "Berlin",
+        "D": "Rome"
+      },
+      "correctAnswer": "B",
+      "difficulty": "easy",
+      "category": "Geography"
     }
-  }
+    // ... 19 more questions
+  ]
 }
 ```
-
-**Rationale:**
-
-- Public read access enables real-time public display updates
-- Write access restricted to authenticated host panel
-- Questions never in Firebase = no exposure risk
-
----
-
-## Quick Reference
-
-### Common Update Patterns
-
-```javascript
-// Update single field
-await databaseService.updateGameState({ gameStatus: 'active' });
-
-// Update team
-await databaseService.updateTeam('team-1', { currentPrize: 5000 });
-
-// Atomic multi-path update
-const updates = {};
-updates['game-state/game-status'] = 'active';
-updates['teams/team-1/status'] = 'active';
-await databaseService.atomicUpdate(updates);
-
-// Set current question (no correct answer)
-await databaseService.setCurrentQuestion(questionData, questionNumber);
-
-// Reveal answer
-await databaseService.revealAnswer('B');
-
-// Use lifeline
-await databaseService.useLifeline('team-1', 'fifty-fifty');
-
-// Eliminate team
-await databaseService.eliminateTeam('team-1');
-```
-
-### Database Paths
-
-| Path                                   | Purpose                     |
-| -------------------------------------- | --------------------------- |
-| `/game-state`                          | Current session state       |
-| `/game-state/play-queue`               | Team play order             |
-| `/game-state/question-set-assignments` | Team → question set mapping |
-| `/teams/{teamId}`                      | Individual team data        |
-| `/teams/{teamId}/lifelines`            | Team lifeline status        |
-| `/prize-structure`                     | Prize values array          |
-| `/config`                              | Global settings             |
-
-### Real-time Listeners
-
-```javascript
-// Listen to game state changes (public display)
-const unsubscribe = databaseService.onGameStateChange((gameState) => {
-  // Update display with new game state
-});
-
-// Listen to teams changes (team list updates)
-const unsubscribe = databaseService.onTeamsChange((teams) => {
-  // Update team list display
-});
-
-// Clean up listeners
-unsubscribe();
-```
-
----
-
-## Future Development Notes
-
-### For Gameplay Features:
-
-- Implement timer logic using `game-state/timer-started-at` and `config/timer-duration`
-- Add audience poll lifeline support in `teams/{teamId}/lifelines`
-- Consider adding `game-state/paused-at` for pause/resume tracking
-
-### For Public Display App:
-
-- Subscribe to `game-state` for question updates
-- Subscribe to `teams` for team status/prize updates
-- Subscribe to `prize-structure` for ladder display
-- Implement UI animations based on `config/display-settings/animation-duration`
-- Handle network disconnections gracefully (Firebase offline persistence)
-
-### Performance Considerations:
-
-- Use `.indexOn` rules for frequently queried fields
-- Limit listener scope to specific paths (avoid listening to root)
-- Implement connection state monitoring for offline handling
-- Consider pagination for team lists if exceeding 20 teams
-
----
-
-**Document Version:** 2.1.0
-**Last Updated:** February 2026
-**Status:** Production Reference

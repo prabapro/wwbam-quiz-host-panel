@@ -11,11 +11,23 @@ import { databaseService } from '@services/database.service';
  * Purpose: Manage current question state and visibility logic
  *
  * Responsibilities:
- * - Load question from localStorage (with correct answer)
- * - Push question to Firebase (without correct answer)
+ * - Load question from question-sets (with correct answer for host ONLY)
+ * - Clear previous question from game-state when loading new question
+ * - Push question to game-state Firebase (without correct answer when displaying)
  * - Manage question visibility flags (questionVisible, optionsVisible)
  * - Handle question state transitions
  * - Track question loading and error states
+ *
+ * Flow:
+ * 1. loadQuestion() - Loads from question-sets WITH answer, stores LOCALLY only, CLEARS game-state
+ * 2. showQuestion() - Pushes to game-state WITHOUT answer, sets visibility=true (public can see)
+ * 3. revealAnswer() - Pushes correct answer to game-state (public can see answer)
+ *
+ * Security Model:
+ * - question-sets node: Contains answers, only readable by authenticated hosts
+ * - game-state node: Public readable, but answers only added when explicitly revealed
+ * - Host always sees answer locally from question-sets
+ * - Public only sees answer after revealAnswer() is called
  *
  * Returns:
  * {
@@ -26,32 +38,29 @@ import { databaseService } from '@services/database.service';
  *   isVisible: boolean,                // Is question visible to public
  *
  *   // Actions
- *   loadQuestion: (questionNumber) => Promise<void>,  // Load from localStorage
- *   showQuestion: () => Promise<void>,                // Push to Firebase
+ *   loadQuestion: (questionNumber) => Promise<void>,  // Load from question-sets (LOCAL ONLY) + Clear game-state
+ *   showQuestion: () => Promise<void>,                // Push to game-state & set visible
  *   hideQuestion: () => Promise<void>,                // Hide from public
  *   clearQuestion: () => void,                        // Clear current question
  * }
- *
- * Usage in Component:
- * const { question, loadQuestion, showQuestion } = useCurrentQuestion();
- *
- * await loadQuestion(5);  // Loads Q5 from localStorage
- * await showQuestion();   // Pushes to Firebase (no correct answer)
  */
 export function useCurrentQuestion() {
   // Local loading/error state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Questions Store (localStorage operations)
+  // Questions Store (Firebase operations)
   const hostQuestion = useQuestionsStore((state) => state.hostQuestion);
   const loadHostQuestion = useQuestionsStore((state) => state.loadHostQuestion);
+  // eslint-disable-next-line no-unused-vars
   const getPublicQuestion = useQuestionsStore(
     (state) => state.getPublicQuestion,
   );
   const clearHostQuestion = useQuestionsStore(
     (state) => state.clearHostQuestion,
   );
+  const loadQuestionSet = useQuestionsStore((state) => state.loadQuestionSet);
+  const loadedSets = useQuestionsStore((state) => state.loadedSets);
 
   // Game Store (Firebase operations)
   const currentTeamId = useGameStore((state) => state.currentTeamId);
@@ -62,9 +71,11 @@ export function useCurrentQuestion() {
   const setQuestionNumber = useGameStore((state) => state.setQuestionNumber);
 
   /**
-   * Load question from localStorage for host view
+   * Load question from question-sets for host view
    * Includes correct answer for host validation
-   * Clears previous question state and syncs question number to Firebase
+   * ONLY loads into local state - does NOT push to Firebase yet
+   * Clears previous question state from Firebase game-state
+   * Host must click "Push to Display" to push to Firebase game-state
    */
   const loadQuestion = async (questionNumber) => {
     setIsLoading(true);
@@ -87,7 +98,21 @@ export function useCurrentQuestion() {
         );
       }
 
-      // Load question from localStorage (0-indexed: questionNumber - 1)
+      // Check if question set is already loaded in memory
+      if (!loadedSets[questionSetId]) {
+        console.log(
+          `📥 Question set ${questionSetId} not in memory, loading from Firebase...`,
+        );
+        const loadResult = await loadQuestionSet(questionSetId);
+
+        if (!loadResult.success) {
+          throw new Error(
+            loadResult.error || 'Failed to load question set from Firebase',
+          );
+        }
+      }
+
+      // Load question from loaded set (0-indexed: questionNumber - 1)
       const result = loadHostQuestion(questionSetId, questionNumber - 1);
 
       if (!result.success) {
@@ -97,7 +122,8 @@ export function useCurrentQuestion() {
       // Update current question number in local game state
       setQuestionNumber(questionNumber);
 
-      // ✅ FIX: Clear previous question state and sync new question number to Firebase
+      // ✅ Clear previous question state from Firebase game-state
+      // This resets visibility, answer flags, and removes previous question
       await databaseService.updateGameState({
         currentQuestionNumber: questionNumber,
         currentQuestion: null, // Clear previous question
@@ -108,7 +134,7 @@ export function useCurrentQuestion() {
       });
 
       console.log(
-        `✅ Question ${questionNumber} loaded from localStorage and synced to Firebase (previous state cleared)`,
+        `✅ Question ${questionNumber} loaded locally for HOST (with answer). Firebase game-state cleared. Click "Push to Display" to make visible.`,
       );
 
       setIsLoading(false);
@@ -121,8 +147,8 @@ export function useCurrentQuestion() {
   };
 
   /**
-   * Push to Display to public (push to Firebase)
-   * Removes correct answer before syncing
+   * Push to Display - Push question to Firebase game-state (without answer) and make visible
+   * This is when the question becomes available on the public display
    */
   const showQuestion = async () => {
     setIsLoading(true);
@@ -133,24 +159,22 @@ export function useCurrentQuestion() {
         throw new Error('No question loaded. Load a question first.');
       }
 
-      // Get public version (without correct answer)
-      const publicQuestion = getPublicQuestion();
+      // Get current question number from game store
+      const { currentQuestionNumber } = useGameStore.getState();
 
-      if (!publicQuestion) {
-        throw new Error('Failed to generate public question');
-      }
+      // Push to Firebase game-state (setCurrentQuestion removes answer and sets visibility=true)
+      await databaseService.setCurrentQuestion(
+        hostQuestion,
+        currentQuestionNumber,
+      );
 
-      // ✅ Use hostQuestion.number instead of currentQuestionNumber
-      const questionNumber = hostQuestion.number;
-
-      // Push to Firebase (without correct answer)
-      await databaseService.setCurrentQuestion(publicQuestion, questionNumber);
-
-      console.log(`✅ Question ${questionNumber} shown to public`);
+      console.log(
+        `👁️ Question ${currentQuestionNumber} pushed to Firebase game-state (WITHOUT answer, visibility=true)`,
+      );
 
       setIsLoading(false);
     } catch (err) {
-      console.error('Failed to Push to Display:', err);
+      console.error('Failed to show question:', err);
       setError(err.message);
       setIsLoading(false);
       throw err;
@@ -158,8 +182,7 @@ export function useCurrentQuestion() {
   };
 
   /**
-   * Hide question from public display
-   * Sets questionVisible = false in Firebase
+   * Hide question from public
    */
   const hideQuestion = async () => {
     setIsLoading(true);
@@ -170,7 +193,7 @@ export function useCurrentQuestion() {
         questionVisible: false,
       });
 
-      console.log(`✅ Question hidden from public`);
+      console.log('🙈 Question hidden from public');
 
       setIsLoading(false);
     } catch (err) {
@@ -182,13 +205,11 @@ export function useCurrentQuestion() {
   };
 
   /**
-   * Clear current question from host view
-   * Does NOT affect Firebase state
+   * Clear current question
    */
   const clearQuestion = () => {
     clearHostQuestion();
     setError(null);
-    console.log('🧹 Question cleared from host view');
   };
 
   return {

@@ -3,6 +3,8 @@
 /**
  * Storage Constants
  * Centralized localStorage and session storage keys
+ *
+ * NOTE: Question sets are now stored in Firebase, not localStorage
  */
 
 import { STORAGE_PREFIX } from './config';
@@ -10,16 +12,6 @@ import { STORAGE_PREFIX } from './config';
 // ============================================================================
 // LOCALSTORAGE KEYS
 // ============================================================================
-
-/**
- * Question sets storage key
- */
-export const QUESTION_SETS_KEY = `${STORAGE_PREFIX}question-sets`;
-
-/**
- * Metadata storage key
- */
-export const METADATA_KEY = `${STORAGE_PREFIX}metadata`;
 
 /**
  * Settings storage key
@@ -32,17 +24,17 @@ export const SETTINGS_KEY = `${STORAGE_PREFIX}settings`;
 export const AUTH_KEY = `${STORAGE_PREFIX}auth`;
 
 /**
- * Teams storage key
+ * Teams storage key (for Zustand persist)
  */
 export const TEAMS_KEY = `${STORAGE_PREFIX}teams`;
 
 /**
- * Game state storage key
+ * Game state storage key (for Zustand persist)
  */
 export const GAME_KEY = `${STORAGE_PREFIX}game`;
 
 /**
- * Prizes storage key
+ * Prizes storage key (for Zustand persist)
  */
 export const PRIZES_KEY = `${STORAGE_PREFIX}prizes`;
 
@@ -58,7 +50,7 @@ export const STORAGE_VERSION_KEY = `${STORAGE_PREFIX}version`;
 /**
  * Current storage schema version
  */
-export const CURRENT_STORAGE_VERSION = 1;
+export const CURRENT_STORAGE_VERSION = 2; // Incremented for Firebase migration
 
 // ============================================================================
 // CACHE KEYS
@@ -79,7 +71,7 @@ export const LAST_ROUTE_KEY = `${STORAGE_PREFIX}last-route`;
 // ============================================================================
 
 /**
- * Estimated localStorage limit (5MB for most browsers)
+ * Estimated localStorage limit in bytes (5MB for most browsers)
  */
 export const STORAGE_LIMIT_BYTES = 5 * 1024 * 1024;
 
@@ -88,179 +80,81 @@ export const STORAGE_LIMIT_BYTES = 5 * 1024 * 1024;
  */
 export const STORAGE_WARNING_THRESHOLD = STORAGE_LIMIT_BYTES * 0.8;
 
-/**
- * Critical threshold (90% of limit)
- */
-export const STORAGE_CRITICAL_THRESHOLD = STORAGE_LIMIT_BYTES * 0.9;
-
 // ============================================================================
-// STORAGE UTILITIES
+// STORAGE UTILITY FUNCTIONS
 // ============================================================================
-
-/**
- * Get all storage keys used by the app
- * @returns {string[]} Array of storage keys
- */
-export const getAllStorageKeys = () => {
-  return [
-    QUESTION_SETS_KEY,
-    METADATA_KEY,
-    SETTINGS_KEY,
-    AUTH_KEY,
-    TEAMS_KEY,
-    GAME_KEY,
-    PRIZES_KEY,
-    STORAGE_VERSION_KEY,
-    THEME_CACHE_KEY,
-    LAST_ROUTE_KEY,
-  ];
-};
-
-/**
- * Check if a key belongs to this app
- * @param {string} key - Storage key to check
- * @returns {boolean} True if app key
- */
-export const isAppStorageKey = (key) => {
-  return key.startsWith(STORAGE_PREFIX);
-};
 
 /**
  * Get storage usage information
- * @returns {Object} Storage usage stats
+ * @returns {Object|null} Storage usage details or null if not supported
  */
 export const getStorageUsage = () => {
   try {
-    let totalUsed = 0;
-    let appUsed = 0;
+    let totalSize = 0;
 
-    // Calculate total and app-specific usage
+    // Calculate total localStorage size
     for (let key in localStorage) {
+      // eslint-disable-next-line no-prototype-builtins
       if (localStorage.hasOwnProperty(key)) {
-        const itemSize = localStorage[key].length + key.length;
-        totalUsed += itemSize;
-
-        if (isAppStorageKey(key)) {
-          appUsed += itemSize;
-        }
+        totalSize += localStorage[key].length + key.length;
       }
     }
 
-    const percentUsed = ((totalUsed / STORAGE_LIMIT_BYTES) * 100).toFixed(2);
-    const percentAppUsed = ((appUsed / STORAGE_LIMIT_BYTES) * 100).toFixed(2);
-    const available = STORAGE_LIMIT_BYTES - totalUsed;
+    // Convert to bytes (each char = 2 bytes in UTF-16)
+    const usedBytes = totalSize * 2;
+    const percentUsed = (usedBytes / STORAGE_LIMIT_BYTES) * 100;
 
     return {
-      totalUsed,
-      appUsed,
-      estimatedLimit: STORAGE_LIMIT_BYTES,
-      available,
-      percentUsed: parseFloat(percentUsed),
-      percentAppUsed: parseFloat(percentAppUsed),
-      isNearLimit: totalUsed >= STORAGE_WARNING_THRESHOLD,
-      isCritical: totalUsed >= STORAGE_CRITICAL_THRESHOLD,
+      usedBytes,
+      totalBytes: STORAGE_LIMIT_BYTES,
+      percentUsed: Math.round(percentUsed * 100) / 100,
+      isNearLimit: usedBytes > STORAGE_WARNING_THRESHOLD,
+      availableBytes: STORAGE_LIMIT_BYTES - usedBytes,
     };
   } catch (error) {
-    console.error('Failed to get storage usage:', error);
+    console.error('Failed to calculate storage usage:', error);
     return null;
   }
 };
 
 /**
- * Clear all app storage keys
- * @returns {Object} Result with success status
+ * Check if localStorage is available
+ * @returns {boolean} True if available
+ */
+export const isLocalStorageAvailable = () => {
+  try {
+    const testKey = '__storage_test__';
+    localStorage.setItem(testKey, 'test');
+    localStorage.removeItem(testKey);
+    return true;
+    // eslint-disable-next-line no-unused-vars
+  } catch (error) {
+    return false;
+  }
+};
+
+/**
+ * Clear all app-specific localStorage data
+ * @returns {boolean} Success status
  */
 export const clearAppStorage = () => {
   try {
-    const keys = getAllStorageKeys();
+    const keysToRemove = [];
 
-    keys.forEach((key) => {
-      localStorage.removeItem(key);
-    });
-
-    console.log('✅ All app storage cleared');
-
-    return {
-      success: true,
-      clearedKeys: keys.length,
-    };
-  } catch (error) {
-    console.error('Failed to clear app storage:', error);
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
-};
-
-/**
- * Export app storage data
- * @returns {Object} Exported data
- */
-export const exportAppStorage = () => {
-  try {
-    const data = {};
-    const keys = getAllStorageKeys();
-
-    keys.forEach((key) => {
-      const value = localStorage.getItem(key);
-      if (value !== null) {
-        try {
-          data[key] = JSON.parse(value);
-        } catch {
-          data[key] = value;
-        }
+    // Find all keys with app prefix
+    for (let key in localStorage) {
+      if (key.startsWith(STORAGE_PREFIX)) {
+        keysToRemove.push(key);
       }
-    });
-
-    return {
-      success: true,
-      data,
-      exportedAt: Date.now(),
-      version: CURRENT_STORAGE_VERSION,
-    };
-  } catch (error) {
-    console.error('Failed to export storage:', error);
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
-};
-
-/**
- * Import app storage data
- * @param {Object} importData - Data to import
- * @returns {Object} Result with success status
- */
-export const importAppStorage = (importData) => {
-  try {
-    if (!importData || !importData.data) {
-      throw new Error('Invalid import data');
     }
 
-    Object.keys(importData.data).forEach((key) => {
-      if (isAppStorageKey(key)) {
-        const value =
-          typeof importData.data[key] === 'string'
-            ? importData.data[key]
-            : JSON.stringify(importData.data[key]);
+    // Remove them
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
 
-        localStorage.setItem(key, value);
-      }
-    });
-
-    console.log('✅ Storage data imported');
-
-    return {
-      success: true,
-      importedKeys: Object.keys(importData.data).length,
-    };
+    console.log(`🗑️ Cleared ${keysToRemove.length} app storage keys`);
+    return true;
   } catch (error) {
-    console.error('Failed to import storage:', error);
-    return {
-      success: false,
-      error: error.message,
-    };
+    console.error('Failed to clear app storage:', error);
+    return false;
   }
 };

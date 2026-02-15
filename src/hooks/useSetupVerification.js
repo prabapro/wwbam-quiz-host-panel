@@ -1,36 +1,33 @@
 // src/hooks/useSetupVerification.js
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
 import { useGameStore } from '@stores/useGameStore';
-import { localStorageService } from '@services/localStorage.service';
+import { databaseService } from '@services/database.service';
+import { GAME_STATUS } from '@constants/gameStates';
 import {
   validateCompleteSetup,
   validateRequiredQuestionSets,
 } from '@utils/setupValidation';
-import { GAME_STATUS } from '@constants/gameStates';
 
-// Stable default values (created once, reused)
+// Stable empty defaults to prevent unnecessary re-renders
 const EMPTY_TEAMS = {};
 const EMPTY_PRIZE_STRUCTURE = [];
 const EMPTY_ASSIGNMENTS = {};
 
 /**
- * Custom hook for setup verification
- * Monitors teams, question sets, and prize structure stores and provides real-time validation status
+ * Setup Verification Hook
+ * Validates complete setup (teams, questions, prizes)
+ * Returns validation status and detailed checks
  *
- * Compatible with updated validation logic that properly handles:
- * - Empty teams/question sets (no false positives)
- * - Grouped check structure (teams, questions, prizes)
- * - Info status for 0/0 sufficient sets check
- * - Missing required question sets detection (for multi-browser edge case)
- *
- * @param {number} refreshKey - Optional key to force re-validation (increment to refresh)
+ * @param {number} refreshKey - Optional key to trigger re-validation (e.g., after uploads)
  */
 export const useSetupVerification = (refreshKey = 0) => {
   // Get teams from store with stable default
-  const teamsObject = useTeamsStore((state) => state.teams ?? EMPTY_TEAMS);
+  const teamsObject = useTeamsStore((state) =>
+    state.teams ? state.teams : EMPTY_TEAMS,
+  );
 
   // Get prize structure from store with stable default
   const prizeStructure = usePrizeStore(
@@ -45,18 +42,27 @@ export const useSetupVerification = (refreshKey = 0) => {
     (state) => state.questionSetAssignments ?? EMPTY_ASSIGNMENTS,
   );
 
-  // Get question sets metadata from localStorage
+  // Question sets metadata state
+  const [questionSetsMetadata, setQuestionSetsMetadata] = useState([]);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(true);
+
+  // Load question sets metadata from Firebase
   // refreshKey dependency is intentional - forces re-read when incremented
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const questionSetsMetadata = useMemo(() => {
-    try {
-      const metadata = localStorageService.getQuestionSetsMetadata();
-      return metadata.sets || [];
-    } catch (error) {
-      console.error('Failed to get question sets metadata:', error);
-      return [];
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const loadMetadata = async () => {
+      setIsLoadingMetadata(true);
+      try {
+        const metadata = await databaseService.getQuestionSetsMetadata();
+        setQuestionSetsMetadata(metadata.sets || []);
+      } catch (error) {
+        console.error('Failed to get question sets metadata:', error);
+        setQuestionSetsMetadata([]);
+      } finally {
+        setIsLoadingMetadata(false);
+      }
+    };
+
+    loadMetadata();
   }, [refreshKey]); // ← Intentional: triggers re-read when refreshKey changes
 
   // Check if game is initialized
@@ -76,7 +82,7 @@ export const useSetupVerification = (refreshKey = 0) => {
       };
     }
 
-    // Validate that all required question sets are in localStorage
+    // Validate that all required question sets are in Firebase
     return validateRequiredQuestionSets(
       questionSetAssignments,
       questionSetsMetadata,
@@ -101,10 +107,13 @@ export const useSetupVerification = (refreshKey = 0) => {
     ...validation,
 
     // Quick accessors
-    isReady: validation.isReady,
+    isReady: validation.isReady && !isLoadingMetadata,
     hasWarnings: validation.hasWarnings,
     checks: validation.checks,
     summary: validation.summary,
+
+    // Loading state
+    isLoadingMetadata,
 
     // NEW: Missing required question sets detection
     isMissingRequiredQuestionSets,

@@ -1,7 +1,7 @@
 // src/components/questions/QuestionSetViewer.jsx
 
 import { useState, useEffect } from 'react';
-import { localStorageService } from '@services/localStorage.service';
+import { databaseService } from '@services/database.service';
 import {
   Dialog,
   DialogContent,
@@ -12,12 +12,14 @@ import {
 import { Button } from '@components/ui/button';
 import { Badge } from '@components/ui/badge';
 import { ScrollArea } from '@components/ui/scroll-area';
+import LoadingSpinner from '@components/common/LoadingSpinner';
 import { ChevronLeft, ChevronRight, CheckCircle2, Award } from 'lucide-react';
 
 export default function QuestionSetViewer({ setId, open, onOpenChange }) {
   const [questionSet, setQuestionSet] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (open && setId) {
@@ -25,16 +27,25 @@ export default function QuestionSetViewer({ setId, open, onOpenChange }) {
     }
   }, [open, setId]);
 
-  const loadQuestionSet = () => {
+  const loadQuestionSet = async () => {
     setIsLoading(true);
-    const set = localStorageService.getQuestionSet(setId);
+    setError(null);
 
-    if (set) {
-      setQuestionSet(set);
-      setCurrentIndex(0);
+    try {
+      const set = await databaseService.getQuestionSet(setId);
+
+      if (set) {
+        setQuestionSet(set);
+        setCurrentIndex(0);
+      } else {
+        setError('Question set not found');
+      }
+    } catch (err) {
+      console.error('Failed to load question set:', err);
+      setError('Failed to load question set from Firebase');
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const handlePrevious = () => {
@@ -60,7 +71,8 @@ export default function QuestionSetViewer({ setId, open, onOpenChange }) {
           <DialogHeader>
             <DialogTitle>Question Set Not Found</DialogTitle>
             <DialogDescription>
-              Unable to load the question set. It may have been deleted.
+              {error ||
+                'Unable to load the question set. It may have been deleted.'}
             </DialogDescription>
           </DialogHeader>
         </DialogContent>
@@ -76,153 +88,131 @@ export default function QuestionSetViewer({ setId, open, onOpenChange }) {
         <DialogHeader>
           <DialogTitle>{questionSet?.setName}</DialogTitle>
           <DialogDescription>
-            Viewing {questionSet?.totalQuestions} questions • Set ID:{' '}
-            {questionSet?.setId}
+            Viewing{' '}
+            {questionSet?.totalQuestions || questionSet?.questions?.length}{' '}
+            questions • Set ID: {questionSet?.setId}
           </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">Loading questions...</p>
+            <LoadingSpinner text="Loading question set from Firebase..." />
           </div>
         ) : (
           <>
-            {/* Question Navigator - Grid Layout (10 per row) */}
-            <div className="border-b pb-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  Question Navigator
-                </h3>
-                <span className="text-sm text-muted-foreground">
-                  {currentIndex + 1} / {questionSet.questions.length}
-                </span>
+            {/* Question Navigator */}
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="text-sm text-muted-foreground">
+                Question {currentIndex + 1} of {questionSet.questions.length}
               </div>
-
-              {/* Grid: 10 buttons per row */}
-              <div className="grid grid-cols-10 gap-2">
-                {questionSet.questions.map((q, idx) => (
-                  <Button
-                    key={q.id}
-                    variant={idx === currentIndex ? 'default' : 'outline'}
-                    size="sm"
-                    className="w-full"
-                    onClick={() => handleQuestionSelect(idx)}>
-                    {idx + 1}
-                  </Button>
-                ))}
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePrevious}
+                  disabled={currentIndex === 0}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleNext}
+                  disabled={currentIndex === questionSet.questions.length - 1}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
               </div>
             </div>
 
-            {/* Question Display */}
-            {currentQuestion && (
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-6">
-                  {/* Question Header */}
+            {/* Current Question Display */}
+            <ScrollArea className="flex-1 pr-4">
+              <div className="space-y-4">
+                {/* Question Header */}
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline">
-                        Question {currentQuestion.number}
-                      </Badge>
-                      {currentQuestion.difficulty && (
-                        <Badge variant="secondary">
-                          {currentQuestion.difficulty}
-                        </Badge>
-                      )}
-                      {currentQuestion.category && (
-                        <Badge variant="secondary">
-                          {currentQuestion.category}
-                        </Badge>
-                      )}
-                    </div>
-
-                    <h3 className="text-lg font-semibold leading-relaxed">
-                      {currentQuestion.text}
+                    <h3 className="text-lg font-semibold">
+                      {currentQuestion?.text}
                     </h3>
                   </div>
-
-                  {/* Options */}
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Options:
-                    </p>
-
-                    {['A', 'B', 'C', 'D'].map((option) => {
-                      const isCorrect =
-                        currentQuestion.correctAnswer === option;
-
-                      return (
-                        <div
-                          key={option}
-                          className={`
-                            p-4 rounded-lg border-2 transition-colors
-                            ${
-                              isCorrect
-                                ? 'border-green-500 bg-green-50 dark:bg-green-950'
-                                : 'border-border bg-muted/30'
-                            }
-                          `}>
-                          <div className="flex items-start gap-3">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`
-                                font-bold text-lg
-                                ${isCorrect ? 'text-green-600 dark:text-green-400' : ''}
-                              `}>
-                                {option}:
-                              </span>
-
-                              {isCorrect && (
-                                <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                              )}
-                            </div>
-
-                            <span
-                              className={`
-                              flex-1
-                              ${isCorrect ? 'text-green-900 dark:text-green-100 font-medium' : ''}
-                            `}>
-                              {currentQuestion.options[option]}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Correct Answer Indicator - Purple/Violet */}
-                  <div className="p-4 bg-violet-50 dark:bg-violet-950 border-2 border-violet-500 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Award className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                      <span className="font-semibold text-violet-900 dark:text-violet-100">
-                        Correct Answer: {currentQuestion.correctAnswer}
-                      </span>
-                    </div>
+                  <div className="flex gap-2 shrink-0">
+                    {currentQuestion?.difficulty && (
+                      <Badge variant="secondary">
+                        {currentQuestion.difficulty}
+                      </Badge>
+                    )}
+                    {currentQuestion?.category && (
+                      <Badge variant="outline">
+                        {currentQuestion.category}
+                      </Badge>
+                    )}
                   </div>
                 </div>
-              </ScrollArea>
-            )}
 
-            {/* Navigation Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t">
-              <Button
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentIndex === 0}>
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Previous
-              </Button>
+                {/* Options */}
+                <div className="space-y-2">
+                  {['A', 'B', 'C', 'D'].map((option) => {
+                    const isCorrect = currentQuestion?.correctAnswer === option;
 
-              <span className="text-sm text-muted-foreground">
-                Question {currentIndex + 1} of {questionSet.questions.length}
-              </span>
+                    return (
+                      <div
+                        key={option}
+                        className={`
+                          p-3 rounded-lg border-2 transition-colors
+                          ${
+                            isCorrect
+                              ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                              : 'border-border bg-muted/30'
+                          }
+                        `}>
+                        <div className="flex items-start gap-3">
+                          <span className="font-bold text-sm shrink-0">
+                            {option}.
+                          </span>
+                          <span className="flex-1">
+                            {currentQuestion?.options?.[option]}
+                          </span>
+                          {isCorrect && (
+                            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
-              <Button
-                variant="outline"
-                onClick={handleNext}
-                disabled={currentIndex === questionSet.questions.length - 1}>
-                Next
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </Button>
+                {/* Correct Answer Indicator */}
+                <div className="p-4 bg-green-50 dark:bg-green-950 border-2 border-green-500 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                    <Award className="w-5 h-5" />
+                    <span className="font-semibold">
+                      Correct Answer: {currentQuestion?.correctAnswer} -{' '}
+                      {
+                        currentQuestion?.options?.[
+                          currentQuestion?.correctAnswer
+                        ]
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+
+            {/* Question Grid Navigator */}
+            <div className="border-t pt-3">
+              <div className="text-xs text-muted-foreground mb-2">
+                Jump to question:
+              </div>
+              <div className="grid grid-cols-10 gap-2">
+                {questionSet.questions.map((_, index) => (
+                  <Button
+                    key={index}
+                    size="sm"
+                    variant={index === currentIndex ? 'default' : 'outline'}
+                    onClick={() => handleQuestionSelect(index)}
+                    className="text-xs">
+                    {index + 1}
+                  </Button>
+                ))}
+              </div>
             </div>
           </>
         )}
