@@ -1,9 +1,13 @@
 // src/constants/teamStates.js
 
 /**
- * Team Status Constants
- * Defines all possible team statuses, UI mappings, and transition rules
+ * Team Status & Lifeline Constants
+ * Defines all possible team statuses, UI mappings, transition rules, and lifeline types
  */
+
+// ============================================================================
+// TEAM STATUS CONFIGURATION
+// ============================================================================
 
 /**
  * Team status enumeration
@@ -130,18 +134,118 @@ export const isValidTeamStatus = (status) => {
  */
 export const DEFAULT_TEAM_STATUS = TEAM_STATUS.WAITING;
 
+// ============================================================================
+// LIFELINE CONFIGURATION
+// ============================================================================
+
 /**
- * Lifeline types
+ * Lifeline type enumeration (camelCase for JavaScript)
+ * Used in team objects and JavaScript code
+ * @readonly
+ * @enum {string}
  */
 export const LIFELINE_TYPE = {
   PHONE_A_FRIEND: 'phoneAFriend',
   FIFTY_FIFTY: 'fiftyFifty',
+  AUDIENCE_POLL: 'audiencePoll', // Future feature
 };
 
 /**
- * Default lifeline state (all available)
+ * Lifeline type enumeration (kebab-case for Firebase/API)
+ * Used when communicating with Firebase
+ * @readonly
+ * @enum {string}
+ */
+export const LIFELINE_TYPE_KEBAB = {
+  PHONE_A_FRIEND: 'phone-a-friend',
+  FIFTY_FIFTY: 'fifty-fifty',
+  AUDIENCE_POLL: 'audience-poll',
+};
+
+/**
+ * Convert camelCase lifeline type to kebab-case
+ * @param {string} camelType - camelCase lifeline type
+ * @returns {string} kebab-case lifeline type
+ */
+export const lifelineToKebab = (camelType) => {
+  const mapping = {
+    [LIFELINE_TYPE.PHONE_A_FRIEND]: LIFELINE_TYPE_KEBAB.PHONE_A_FRIEND,
+    [LIFELINE_TYPE.FIFTY_FIFTY]: LIFELINE_TYPE_KEBAB.FIFTY_FIFTY,
+    [LIFELINE_TYPE.AUDIENCE_POLL]: LIFELINE_TYPE_KEBAB.AUDIENCE_POLL,
+  };
+  return mapping[camelType] || camelType;
+};
+
+/**
+ * Convert kebab-case lifeline type to camelCase
+ * @param {string} kebabType - kebab-case lifeline type
+ * @returns {string} camelCase lifeline type
+ */
+export const lifelineToCamel = (kebabType) => {
+  const mapping = {
+    [LIFELINE_TYPE_KEBAB.PHONE_A_FRIEND]: LIFELINE_TYPE.PHONE_A_FRIEND,
+    [LIFELINE_TYPE_KEBAB.FIFTY_FIFTY]: LIFELINE_TYPE.FIFTY_FIFTY,
+    [LIFELINE_TYPE_KEBAB.AUDIENCE_POLL]: LIFELINE_TYPE.AUDIENCE_POLL,
+  };
+  return mapping[kebabType] || kebabType;
+};
+
+/**
+ * Default lifeline state for new teams (all available)
  */
 export const DEFAULT_LIFELINES = {
   [LIFELINE_TYPE.PHONE_A_FRIEND]: true,
   [LIFELINE_TYPE.FIFTY_FIFTY]: true,
+  // AUDIENCE_POLL not included by default (future feature)
+};
+
+/**
+ * Default lifelines enabled in game config
+ */
+export const DEFAULT_LIFELINES_ENABLED = {
+  phoneAFriend: true,
+  fiftyFifty: true,
+  audiencePoll: false, // Future feature, disabled by default
+};
+
+/**
+ * Lifeline metadata for UI display
+ */
+export const LIFELINE_META = {
+  [LIFELINE_TYPE.PHONE_A_FRIEND]: {
+    label: 'Phone a Friend',
+    description: 'Call someone for help',
+    icon: '📞',
+    color: 'blue',
+  },
+  [LIFELINE_TYPE.FIFTY_FIFTY]: {
+    label: '50/50',
+    description: 'Remove two incorrect answers',
+    icon: '✂️',
+    color: 'yellow',
+  },
+  [LIFELINE_TYPE.AUDIENCE_POLL]: {
+    label: 'Audience Poll',
+    description: 'Ask the audience',
+    icon: '👥',
+    color: 'purple',
+  },
+};
+
+/**
+ * Get lifeline metadata
+ * @param {string} lifelineType - Lifeline type (camelCase)
+ * @returns {Object} Lifeline metadata
+ */
+export const getLifelineMeta = (lifelineType) => {
+  return LIFELINE_META[lifelineType] || null;
+};
+
+/**
+ * Check if a lifeline type is valid
+ * @param {string} lifelineType - Lifeline type to validate
+ * @returns {boolean} True if valid
+ */
+export const isValidLifelineType = (lifelineType) => {
+  return Object.values(LIFELINE_TYPE).includes(lifelineType);
 };

@@ -12,9 +12,12 @@ import { DEFAULT_PRIZE_STRUCTURE } from '@constants/prizeStructure';
 import {
   MAX_TEAMS,
   QUESTIONS_PER_SET,
-  PHONE_A_FRIEND_DURATION_MINUTES,
+  DEFAULT_TIMER_ENABLED,
+  DEFAULT_TIMER_DURATION_SECONDS,
+  getDefaultDisplaySettings,
 } from '@constants/config';
 import { DEFAULT_GAME_STATE as GAME_STATUS_DEFAULT } from '@constants/gameStates';
+import { DEFAULT_LIFELINES_ENABLED } from '@constants/teamStates';
 
 /**
  * Default game state structure
@@ -44,23 +47,23 @@ export { DEFAULT_PRIZE_STRUCTURE };
 
 /**
  * Default configuration
- * Uses values from config.js constants
  */
 export const DEFAULT_CONFIG = {
+  // Team configuration
   maxTeams: MAX_TEAMS,
+
+  // Question configuration
   questionsPerTeam: QUESTIONS_PER_SET,
-  lifelinesEnabled: {
-    phoneAFriend: true,
-    fiftyFifty: true,
-    audiencePoll: false,
-  },
-  displaySettings: {
-    showPrizeLadder: true,
-    showTeamList: true,
-    animationDuration: 500,
-  },
-  timerEnabled: false,
-  timerDuration: PHONE_A_FRIEND_DURATION_MINUTES * 60, // Convert minutes to seconds
+
+  // Lifeline configuration (from teamStates.js)
+  lifelinesEnabled: DEFAULT_LIFELINES_ENABLED,
+
+  // Display settings (from config.js)
+  displaySettings: getDefaultDisplaySettings(),
+
+  // Timer configuration (from config.js)
+  timerEnabled: DEFAULT_TIMER_ENABLED,
+  timerDuration: DEFAULT_TIMER_DURATION_SECONDS,
 };
 
 /**
