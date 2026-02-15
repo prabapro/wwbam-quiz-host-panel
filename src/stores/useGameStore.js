@@ -259,32 +259,61 @@ export const useGameStore = create()(
 
         /**
          * Move to next team in play queue
+         * Updates current team and resets question-related state
+         *
+         * CRITICAL FIX: Does NOT modify previous team's status
+         * The previous team's status should already be set correctly by:
+         * - completeTeam() → status: "completed"
+         * - eliminateTeam() → status: "eliminated"
+         * - (no action) → status remains "active" (team didn't finish)
+         *
+         * Only updates the NEXT team's status to "active"
+         *
+         * @returns {Promise<Object>} { success: boolean, error?: string, nextTeamId?: string }
          */
         nextTeam: async () => {
           try {
             const { playQueue, currentTeamId } = get();
 
+            if (!playQueue || playQueue.length === 0) {
+              return {
+                success: false,
+                error: 'No teams in play queue',
+              };
+            }
+
             const currentIndex = playQueue.indexOf(currentTeamId);
             const nextIndex = currentIndex + 1;
 
             if (nextIndex >= playQueue.length) {
-              console.warn('No more teams in queue');
-              return { success: false, error: 'No more teams in queue' };
+              // No more teams - game is complete
+              await get().completeGame();
+              return {
+                success: true,
+                nextTeamId: null,
+                message: 'All teams completed',
+              };
             }
 
             const nextTeamId = playQueue[nextIndex];
+            const timestamp = Date.now();
 
-            // Update current team to waiting
-            await useTeamsStore.getState().updateTeam(currentTeamId, {
-              status: 'waiting',
-            });
+            // ============================================================
+            // UPDATE NEXT TEAM TO ACTIVE
+            // ============================================================
 
-            // Update next team to active
+            // Set next team to active status
             await useTeamsStore.getState().updateTeam(nextTeamId, {
               status: 'active',
             });
 
-            // Update game state
+            console.log(`➡️ Next team ${nextTeamId} set to active`);
+
+            // ============================================================
+            // UPDATE GAME STATE
+            // ============================================================
+
+            // Reset question state for new team
             set({
               currentTeamId: nextTeamId,
               currentQuestionNumber: 0,
@@ -293,7 +322,7 @@ export const useGameStore = create()(
               optionsVisible: false,
               answerRevealed: false,
               correctOption: null,
-              lastUpdated: Date.now(),
+              lastUpdated: timestamp,
             });
 
             // Sync to Firebase
@@ -307,8 +336,25 @@ export const useGameStore = create()(
               correctOption: null,
             });
 
-            console.log(`➡️ Moved to next team: ${nextTeamId}`);
-            return { success: true, nextTeamId };
+            // ============================================================
+            // PREVIOUS TEAM STATUS - DO NOTHING
+            // ============================================================
+
+            // IMPORTANT: We do NOT modify the previous team's status here!
+            // Their status should already be correct:
+            // - "completed" (if they finished all questions)
+            // - "eliminated" (if they got eliminated)
+            // - "active" (if host manually skipped them without completing/eliminating)
+            //
+            // Modifying the status here creates race conditions with Firebase updates
+
+            console.log(`✅ Moved to next team: ${nextTeamId}`);
+
+            return {
+              success: true,
+              nextTeamId,
+              previousTeamId: currentTeamId,
+            };
           } catch (error) {
             console.error('Failed to move to next team:', error);
             return { success: false, error: error.message };
