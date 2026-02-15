@@ -129,17 +129,39 @@ export const useGameStore = create()(
 
         /**
          * Initialize game
+         * Creates play queue and assigns question sets to teams
+         * Syncs to Firebase and updates local state
+         * @param {Array} playQueue - Array of team IDs in play order
+         * @param {Object} questionSetAssignments - { teamId: questionSetId }
+         * @returns {Promise<Object>} { success: boolean, error?: string }
          */
-        initializeGame: (playQueue, questionSetAssignments) => {
-          set({
-            gameStatus: GAME_STATUS.INITIALIZED,
-            playQueue,
-            questionSetAssignments,
-            initializedAt: Date.now(),
-            lastUpdated: Date.now(),
-          });
+        initializeGame: async (playQueue, questionSetAssignments) => {
+          try {
+            const timestamp = Date.now();
 
-          console.log('🎮 Game initialized');
+            // Update local state first
+            set({
+              gameStatus: GAME_STATUS.INITIALIZED,
+              playQueue,
+              questionSetAssignments,
+              initializedAt: timestamp,
+              lastUpdated: timestamp,
+            });
+
+            // Sync to Firebase
+            await databaseService.updateGameState({
+              gameStatus: GAME_STATUS.INITIALIZED,
+              playQueue,
+              questionSetAssignments,
+              initializedAt: timestamp,
+            });
+
+            console.log('🎮 Game initialized and synced to Firebase');
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to initialize game:', error);
+            return { success: false, error: error.message };
+          }
         },
 
         /**

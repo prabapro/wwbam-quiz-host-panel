@@ -86,6 +86,8 @@ export default function InitializeGameModal({ open, onOpenChange }) {
       await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate shuffling
       const result = generatePlayQueue(teams, questionSetsMetadata);
 
+      console.log('Generated play queue result:', result);
+
       if (!result.success) {
         throw new Error(result.errors.join(', '));
       }
