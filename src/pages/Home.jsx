@@ -8,7 +8,6 @@ import { useGameStore } from '@stores/useGameStore';
 import SetupVerification from '@components/setup/SetupVerification';
 import GameControlPanel from '@components/game/GameControlPanel';
 import InitializeGameModal from '@components/game/InitializeGameModal';
-import MissingQuestionSetsAlert from '@components/game/MissingQuestionSetsAlert';
 import LoadingSpinner from '@components/common/LoadingSpinner';
 import { useSetupVerification } from '@hooks/useSetupVerification';
 import { Button } from '@components/ui/button';
@@ -28,12 +27,8 @@ export default function Home() {
   const prizesLoading = usePrizeStore((state) => state.isLoading);
   const gameStatus = useGameStore((state) => state.gameStatus);
 
-  // Get setup verification with refreshKey (includes missing required question sets detection)
-  const {
-    isReady,
-    isMissingRequiredQuestionSets,
-    requiredQuestionSetsValidation,
-  } = useSetupVerification(refreshKey);
+  // Get setup verification with refreshKey
+  const { isReady } = useSetupVerification(refreshKey);
 
   // Track if initial data load is happening
   const isLoadingInitialData = teamsLoading || prizesLoading;
@@ -41,7 +36,7 @@ export default function Home() {
   // Check if game is initialized
   const isGameInitialized = gameStatus !== DEFAULT_GAME_STATE;
 
-  // ✅ FIX: Auto-redirect to /play if game is active or paused
+  // Auto-redirect to /play if game is active or paused
   useEffect(() => {
     const isGameInProgress =
       gameStatus === GAME_STATUS.ACTIVE || gameStatus === GAME_STATUS.PAUSED;
@@ -66,17 +61,6 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
   }, [teamsLoading, prizesLoading, initialLoadComplete]);
-
-  /**
-   * Handle continue from missing question sets alert
-   * This is called when all required question sets are found
-   */
-  const handleContinueFromMissingSets = () => {
-    // Just let the component re-render
-    // The isMissingRequiredQuestionSets flag will be false now
-    // and GameControlPanel will be shown
-    console.log('✅ All required question sets found - continuing to game');
-  };
 
   /**
    * Callback to increment refresh key (called by SetupVerification after sample data load)
@@ -105,20 +89,10 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* SCENARIO 1: Game initialized but missing required question sets (NEW) */}
-        {isGameInitialized && isMissingRequiredQuestionSets && (
-          <MissingQuestionSetsAlert
-            requiredQuestionSetsValidation={requiredQuestionSetsValidation}
-            onContinue={handleContinueFromMissingSets}
-          />
-        )}
+        {/* Game initialized - Show Game Control Panel */}
+        {isGameInitialized && <GameControlPanel />}
 
-        {/* SCENARIO 2: Game initialized and all sets available - Show Game Control Panel */}
-        {isGameInitialized && !isMissingRequiredQuestionSets && (
-          <GameControlPanel />
-        )}
-
-        {/* SCENARIO 3: Game NOT initialized - Show Setup Verification */}
+        {/* Game NOT initialized - Show Setup Verification */}
         {!isGameInitialized && (
           <>
             <SetupVerification

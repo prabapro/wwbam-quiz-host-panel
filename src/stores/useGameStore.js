@@ -516,11 +516,11 @@ export const useGameStore = create()(
           if (state) {
             console.log('🎮 Game store rehydrated from localStorage');
 
-            // Check if this is Browser B (no localStorage, needs to sync from Firebase)
+            // Check if localStorage is empty and needs to sync from Firebase
             const hasLocalStorageData = state.gameStatus !== DEFAULT_GAME_STATE;
 
             if (!hasLocalStorageData) {
-              // Browser B: Auto-load from Firebase
+              // Auto-load from Firebase if no local data
               console.log(
                 '🔄 No local data found. Auto-loading from Firebase...',
               );
