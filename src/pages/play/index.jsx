@@ -12,10 +12,15 @@ import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
 import { databaseService } from '@services/database.service';
 import { GAME_STATUS } from '@constants/gameStates';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import {
+  ArrowLeft,
+  AlertTriangle,
+  CheckCircle2,
+  Trophy,
+  RotateCcw,
+  Download,
+} from 'lucide-react';
 import { cn } from '@lib/utils';
-
-// Import Phase 4 Components
 import GameStatusBar from './components/GameStatusBar';
 import QuestionPanel from './components/QuestionPanel';
 import AnswerPad from './components/AnswerPad';
@@ -65,7 +70,7 @@ export default function Play() {
   const isWaitingForVisibility = !!hostQuestion && !questionVisible;
   const isAnswerPadActive = questionVisible && !answerRevealed;
 
-  // ✅ FIX: Listen to Firebase game state changes
+  // Listen to Firebase game state changes
   useEffect(() => {
     console.log('🔄 Starting Firebase game state listener...');
 
@@ -95,22 +100,104 @@ export default function Play() {
     };
   }, []);
 
-  // ✅ FIX: Redirect only if game is not in a playable state
-  // Allow both ACTIVE and PAUSED states to stay on this page
+  // Redirect only if game is not in a playable state
   useEffect(() => {
-    const isPlayableState =
-      gameStatus === GAME_STATUS.ACTIVE || gameStatus === GAME_STATUS.PAUSED;
+    const isValidPlayPageState =
+      gameStatus === GAME_STATUS.ACTIVE ||
+      gameStatus === GAME_STATUS.PAUSED ||
+      gameStatus === GAME_STATUS.COMPLETED;
 
-    if (!isPlayableState) {
+    if (!isValidPlayPageState) {
       console.warn(
-        `Game is not in playable state (${gameStatus}), redirecting to home`,
+        `Game is not in valid play page state (${gameStatus}), redirecting to home`,
       );
       navigate('/');
     }
   }, [gameStatus, navigate]);
 
-  // Early return if no current team (shouldn't happen if redirects work)
+  // ✅ Early return handling - distinguish between error state and completed state
   if (!currentTeam) {
+    // If game is completed, show post-game placeholder
+    if (gameStatus === GAME_STATUS.COMPLETED) {
+      return (
+        <main className="container mx-auto py-8 px-4 max-w-7xl">
+          {/* Page Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold">Game Completed! 🏆</h1>
+              <p className="text-muted-foreground">
+                All teams have finished playing
+              </p>
+            </div>
+            <Button onClick={() => navigate('/')} variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
+
+          {/* Game Completed Info */}
+          <Alert className="mb-6 bg-green-50 dark:bg-green-950/20 border-green-500">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <AlertTitle>Event Concluded</AlertTitle>
+            <AlertDescription>
+              The quiz competition has ended. All teams have completed their
+              rounds.
+            </AlertDescription>
+          </Alert>
+
+          {/* Post-Game Content Placeholder */}
+          <Card className="border-dashed border-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-muted-foreground">
+                <Trophy className="w-5 h-5" />
+                Post-Game Content (Coming Soon)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Placeholder Items */}
+              <div className="grid gap-4">
+                <div className="p-4 bg-muted/30 rounded-lg border-dashed border">
+                  <h3 className="font-semibold mb-2">🏆 Winner Rankings</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Display final rankings with team names, prizes won, and
+                    questions answered
+                  </p>
+                </div>
+
+                <div className="p-4 bg-muted/30 rounded-lg border-dashed border">
+                  <h3 className="font-semibold mb-2">📊 Game Statistics</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Show total teams, questions asked, prize distribution, and
+                    game duration
+                  </p>
+                </div>
+
+                <div className="p-4 bg-muted/30 rounded-lg border-dashed border">
+                  <h3 className="font-semibold mb-2">💾 Export Summary</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Push final results to Firebase for public display panel
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => navigate('/')}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Return to Dashboard
+                </Button>
+                <Button variant="outline" disabled>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Results (Coming Soon)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      );
+    }
+
+    // Otherwise, show error (game is not completed but no team exists - shouldn't happen)
     return (
       <main className="container mx-auto py-8 px-4 max-w-7xl">
         <Alert variant="destructive">

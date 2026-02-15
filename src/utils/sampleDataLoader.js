@@ -37,7 +37,6 @@ const SAMPLE_FILES = {
     '/sample-data/sample-question-set-01.json',
     '/sample-data/sample-question-set-02.json',
     '/sample-data/sample-question-set-03.json',
-    '/sample-data/sample-question-set-04.json',
   ],
 };
 

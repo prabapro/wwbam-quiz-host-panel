@@ -5,6 +5,7 @@ import { databaseService } from '@services/database.service';
 import { devtools, persist } from 'zustand/middleware';
 import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
 import { useQuestionsStore } from './useQuestionsStore';
+import { useTeamsStore } from './useTeamsStore';
 
 const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
 
@@ -166,7 +167,7 @@ export const useGameStore = create()(
         /**
          * Uninitialize game
          * Resets game to NOT_STARTED state and clears play queue
-         * Keeps teams, prizes, and question sets intact
+         * Also resets all teams to their initial state
          * Syncs to Firebase and updates local state
          * @returns {Promise<Object>} { success: boolean, error?: string }
          */
@@ -174,7 +175,20 @@ export const useGameStore = create()(
           try {
             const timestamp = Date.now();
 
-            // Update local state first - reset to NOT_STARTED
+            // ✅ STEP 1: Reset all teams to initial state FIRST
+            // This must happen before updating game state
+            const resetTeamsResult = await useTeamsStore
+              .getState()
+              .resetAllTeamsProgress();
+
+            if (!resetTeamsResult || resetTeamsResult.error) {
+              console.warn(
+                '⚠️ Failed to reset teams, continuing anyway:',
+                resetTeamsResult?.error,
+              );
+            }
+
+            // ✅ STEP 2: Update local game state - reset to NOT_STARTED
             set({
               gameStatus: GAME_STATUS.NOT_STARTED,
               currentTeamId: null,
@@ -191,7 +205,7 @@ export const useGameStore = create()(
               lastUpdated: timestamp,
             });
 
-            // Sync to Firebase
+            // ✅ STEP 3: Sync game state to Firebase
             await databaseService.updateGameState({
               gameStatus: GAME_STATUS.NOT_STARTED,
               currentTeamId: null,
@@ -208,6 +222,7 @@ export const useGameStore = create()(
             });
 
             console.log('🔄 Game uninitialized and synced to Firebase');
+            console.log('👥 All teams reset to initial state');
             return { success: true };
           } catch (error) {
             console.error('Failed to uninitialize game:', error);
@@ -310,7 +325,7 @@ export const useGameStore = create()(
 
         /**
          * Complete game
-         * Sets game status to COMPLETED
+         * Sets game status to COMPLETED and clears current question state
          * Syncs to Firebase and updates local state
          * @returns {Promise<Object>} { success: boolean, error?: string }
          */
@@ -318,13 +333,27 @@ export const useGameStore = create()(
           try {
             const timestamp = Date.now();
 
+            // ✅ Update local state - set to COMPLETED and clear question state
             set({
               gameStatus: GAME_STATUS.COMPLETED,
+              currentTeamId: null, // ← Clear current team
+              currentQuestion: null, // ← Clear question
+              questionVisible: false, // ← Hide question
+              optionsVisible: false, // ← Hide options
+              answerRevealed: false, // ← Reset reveal state
+              correctOption: null, // ← Clear correct option
               lastUpdated: timestamp,
             });
 
+            // ✅ Sync to Firebase - update all fields
             await databaseService.updateGameState({
               gameStatus: GAME_STATUS.COMPLETED,
+              currentTeamId: null,
+              currentQuestion: null,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
             });
 
             console.log('🏁 Game completed and synced to Firebase');
@@ -391,12 +420,34 @@ export const useGameStore = create()(
               correctOption: null,
             });
 
-            // Update team statuses
+            // ✅ FIX: Don't change status of teams in terminal states (completed/eliminated)
+            // Only teams that are 'active' should be set to 'waiting'
+            // This preserves the completed/eliminated status when moving to next team
             if (currentTeamId) {
-              await databaseService.updateTeam(currentTeamId, {
-                status: 'waiting',
-              });
+              // Get current team from Teams store to check their status
+              const currentTeamState =
+                useTeamsStore.getState().teams[currentTeamId];
+              const currentStatus = currentTeamState?.status;
+
+              // Terminal states that should NOT be changed
+              const isTerminalState =
+                currentStatus === 'completed' || currentStatus === 'eliminated';
+
+              if (!isTerminalState && currentStatus === 'active') {
+                // Team was active but didn't complete/eliminate - set to waiting
+                await databaseService.updateTeam(currentTeamId, {
+                  status: 'waiting',
+                });
+                console.log(`👥 Previous team ${currentTeamId} set to waiting`);
+              } else if (isTerminalState) {
+                // Terminal state - preserve it
+                console.log(
+                  `👥 Previous team ${currentTeamId} status preserved: ${currentStatus}`,
+                );
+              }
             }
+
+            // Set next team to active
             await databaseService.updateTeam(nextTeamId, {
               status: 'active',
             });
@@ -516,11 +567,11 @@ export const useGameStore = create()(
           if (state) {
             console.log('🎮 Game store rehydrated from localStorage');
 
-            // Check if this is Browser B (no localStorage, needs to sync from Firebase)
+            // Check if localStorage is empty and needs to sync from Firebase
             const hasLocalStorageData = state.gameStatus !== DEFAULT_GAME_STATE;
 
             if (!hasLocalStorageData) {
-              // Browser B: Auto-load from Firebase
+              // Auto-load from Firebase if no local data
               console.log(
                 '🔄 No local data found. Auto-loading from Firebase...',
               );

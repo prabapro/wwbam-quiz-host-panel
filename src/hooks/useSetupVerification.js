@@ -6,15 +6,11 @@ import { usePrizeStore } from '@stores/usePrizeStore';
 import { useGameStore } from '@stores/useGameStore';
 import { databaseService } from '@services/database.service';
 import { GAME_STATUS } from '@constants/gameStates';
-import {
-  validateCompleteSetup,
-  validateRequiredQuestionSets,
-} from '@utils/setupValidation';
+import { validateCompleteSetup } from '@utils/setupValidation';
 
 // Stable empty defaults to prevent unnecessary re-renders
 const EMPTY_TEAMS = {};
 const EMPTY_PRIZE_STRUCTURE = [];
-const EMPTY_ASSIGNMENTS = {};
 
 /**
  * Setup Verification Hook
@@ -36,11 +32,6 @@ export const useSetupVerification = (refreshKey = 0) => {
 
   // Get game state to check if initialized
   const gameStatus = useGameStore((state) => state.gameStatus);
-
-  // Get question set assignments with stable default
-  const questionSetAssignments = useGameStore(
-    (state) => state.questionSetAssignments ?? EMPTY_ASSIGNMENTS,
-  );
 
   // Question sets metadata state
   const [questionSetsMetadata, setQuestionSetsMetadata] = useState([]);
@@ -68,27 +59,6 @@ export const useSetupVerification = (refreshKey = 0) => {
   // Check if game is initialized
   const isGameInitialized = gameStatus !== GAME_STATUS.NOT_STARTED;
 
-  // NEW: Validate required question sets (for initialized games on new browsers)
-  const requiredQuestionSetsValidation = useMemo(() => {
-    // Only run this validation if game is initialized
-    if (!isGameInitialized) {
-      return {
-        allFound: true,
-        requiredSetIds: [],
-        missingSetIds: [],
-        foundSetIds: [],
-        missingCount: 0,
-        foundCount: 0,
-      };
-    }
-
-    // Validate that all required question sets are in Firebase
-    return validateRequiredQuestionSets(
-      questionSetAssignments,
-      questionSetsMetadata,
-    );
-  }, [isGameInitialized, questionSetAssignments, questionSetsMetadata]);
-
   // Perform standard validation
   const validation = useMemo(() => {
     return validateCompleteSetup(
@@ -97,10 +67,6 @@ export const useSetupVerification = (refreshKey = 0) => {
       prizeStructure,
     );
   }, [teamsObject, questionSetsMetadata, prizeStructure]);
-
-  // Determine if we're in the "missing required question sets" scenario
-  const isMissingRequiredQuestionSets =
-    isGameInitialized && !requiredQuestionSetsValidation.allFound;
 
   return {
     // Standard validation result
@@ -115,9 +81,7 @@ export const useSetupVerification = (refreshKey = 0) => {
     // Loading state
     isLoadingMetadata,
 
-    // NEW: Missing required question sets detection
-    isMissingRequiredQuestionSets,
-    requiredQuestionSetsValidation,
+    // Game state
     isGameInitialized,
 
     // Raw data for additional UI needs
