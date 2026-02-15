@@ -24,6 +24,19 @@ import { QUESTIONS_PER_SET } from '@constants/config';
  * 7. If incorrect: Check lifelines → offer or eliminate
  * 8. Sync result to Firebase (reveal answer, update team)
  */
+
+/**
+ * Check if current team is the last team in play queue
+ * @param {string} currentTeamId - Current team ID
+ * @param {Array} playQueue - Play queue array
+ * @returns {boolean} True if this is the last team
+ */
+const isLastTeamInQueue = (currentTeamId, playQueue) => {
+  if (!playQueue || playQueue.length === 0) return false;
+  const currentIndex = playQueue.indexOf(currentTeamId);
+  return currentIndex === playQueue.length - 1;
+};
+
 export function useAnswerSelection() {
   // Local state for answer locking process
   const [isLocking, setIsLocking] = useState(false);
@@ -122,11 +135,10 @@ export function useAnswerSelection() {
             `🏆 Team completed all ${QUESTIONS_PER_SET} questions! Final prize: Rs.${newPrize}`,
           );
 
-          // Pass the current question number as the 3rd parameter
           const completeResult = await completeTeam(
             currentTeamId,
             newPrize,
-            currentQuestionNumber,
+            currentQuestionNumber, // ← Make sure this parameter is there from previous fix
           );
 
           if (!completeResult.success) {
@@ -134,6 +146,17 @@ export function useAnswerSelection() {
           }
 
           console.log(`✅ Team marked as completed with prize Rs.${newPrize}`);
+
+          // Check if this was the last team - if so, complete the game automatically
+          const playQueue = useGameStore.getState().playQueue;
+          if (isLastTeamInQueue(currentTeamId, playQueue)) {
+            console.log(
+              '🏁 Last team completed - ending game automatically...',
+            );
+            const completeGameAction = useGameStore.getState().completeGame;
+            await completeGameAction();
+            console.log('✅ Game completed automatically');
+          }
         } else {
           // Team progresses to next question
           const updateResult = await moveToNextQuestion(
