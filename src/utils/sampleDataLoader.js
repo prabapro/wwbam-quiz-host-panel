@@ -8,7 +8,8 @@
  *
  * Features:
  * - Loads sample teams JSON
- * - Loads sample question set ZIPs
+ * - Loads sample question set JSONs
+ * - Trims questions to QUESTIONS_PER_SET from config
  * - Clears existing data first (atomic operation)
  * - Progress callbacks for UI feedback
  * - Comprehensive error handling
@@ -25,6 +26,7 @@
 
 import { databaseService } from '@services/database.service';
 import { useTeamsStore } from '@stores/useTeamsStore';
+import { QUESTIONS_PER_SET } from '@constants/config';
 
 /**
  * Sample data file paths
@@ -165,8 +167,27 @@ const loadSampleQuestionSets = async (onProgress) => {
       // Fetch question set JSON
       const questionSet = await fetchJSON(filePath);
 
+      // ✅ TRIM QUESTIONS TO QUESTIONS_PER_SET (same as QuestionUploader)
+      const trimmedQuestions = questionSet.questions.slice(
+        0,
+        QUESTIONS_PER_SET,
+      );
+
+      const trimmedQuestionSet = {
+        ...questionSet,
+        questions: trimmedQuestions,
+        totalQuestions: trimmedQuestions.length,
+      };
+
+      // Log if questions were trimmed
+      if (questionSet.questions.length > QUESTIONS_PER_SET) {
+        console.log(
+          `✂️ Trimmed question set '${questionSet.setId}' from ${questionSet.questions.length} to ${QUESTIONS_PER_SET} questions`,
+        );
+      }
+
       // Save to Firebase (includes validation)
-      const result = await databaseService.saveQuestionSet(questionSet);
+      const result = await databaseService.saveQuestionSet(trimmedQuestionSet);
 
       if (!result.success) {
         throw new Error(
