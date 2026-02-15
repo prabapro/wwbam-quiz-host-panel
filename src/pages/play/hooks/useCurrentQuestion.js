@@ -11,11 +11,22 @@ import { databaseService } from '@services/database.service';
  * Purpose: Manage current question state and visibility logic
  *
  * Responsibilities:
- * - Load question from Firebase (with correct answer)
- * - Push question to Firebase (without correct answer)
+ * - Load question from question-sets (with correct answer for host ONLY)
+ * - Push question to game-state Firebase (without correct answer when displaying)
  * - Manage question visibility flags (questionVisible, optionsVisible)
  * - Handle question state transitions
  * - Track question loading and error states
+ *
+ * Flow:
+ * 1. loadQuestion() - Loads from question-sets WITH answer, stores LOCALLY only (host view)
+ * 2. showQuestion() - Pushes to game-state WITHOUT answer, sets visibility=true (public can see)
+ * 3. revealAnswer() - Pushes correct answer to game-state (public can see answer)
+ *
+ * Security Model:
+ * - question-sets node: Contains answers, only readable by authenticated hosts
+ * - game-state node: Public readable, but answers only added when explicitly revealed
+ * - Host always sees answer locally from question-sets
+ * - Public only sees answer after revealAnswer() is called
  *
  * Returns:
  * {
@@ -26,17 +37,11 @@ import { databaseService } from '@services/database.service';
  *   isVisible: boolean,                // Is question visible to public
  *
  *   // Actions
- *   loadQuestion: (questionNumber) => Promise<void>,  // Load from Firebase
- *   showQuestion: () => Promise<void>,                // Push to Firebase
+ *   loadQuestion: (questionNumber) => Promise<void>,  // Load from question-sets (LOCAL ONLY)
+ *   showQuestion: () => Promise<void>,                // Push to game-state & set visible
  *   hideQuestion: () => Promise<void>,                // Hide from public
  *   clearQuestion: () => void,                        // Clear current question
  * }
- *
- * Usage in Component:
- * const { question, loadQuestion, showQuestion } = useCurrentQuestion();
- *
- * await loadQuestion(5);  // Loads Q5 from Firebase
- * await showQuestion();   // Pushes to Firebase (no correct answer)
  */
 export function useCurrentQuestion() {
   // Local loading/error state
@@ -46,6 +51,7 @@ export function useCurrentQuestion() {
   // Questions Store (Firebase operations)
   const hostQuestion = useQuestionsStore((state) => state.hostQuestion);
   const loadHostQuestion = useQuestionsStore((state) => state.loadHostQuestion);
+  // eslint-disable-next-line no-unused-vars
   const getPublicQuestion = useQuestionsStore(
     (state) => state.getPublicQuestion,
   );
@@ -64,9 +70,10 @@ export function useCurrentQuestion() {
   const setQuestionNumber = useGameStore((state) => state.setQuestionNumber);
 
   /**
-   * Load question from Firebase for host view
+   * Load question from question-sets for host view
    * Includes correct answer for host validation
-   * Clears previous question state and syncs question number to Firebase
+   * ONLY loads into local state - does NOT push to Firebase yet
+   * Host must click "Push to Display" to push to Firebase game-state
    */
   const loadQuestion = async (questionNumber) => {
     setIsLoading(true);
@@ -110,21 +117,11 @@ export function useCurrentQuestion() {
         throw new Error(result.error || 'Failed to load question');
       }
 
-      // Update current question number in local game state
+      // Update current question number in local game state only
       setQuestionNumber(questionNumber);
 
-      // ✅ Clear previous question state and sync new question number to Firebase
-      await databaseService.updateGameState({
-        currentQuestionNumber: questionNumber,
-        currentQuestion: null, // Clear previous question
-        questionVisible: false, // Reset visibility
-        optionsVisible: false, // Reset options visibility
-        answerRevealed: false, // Reset answer reveal
-        correctOption: null, // Clear previous correct answer
-      });
-
       console.log(
-        `✅ Question ${questionNumber} loaded from Firebase and synced (previous state cleared)`,
+        `✅ Question ${questionNumber} loaded locally for HOST (with answer). Not pushed to Firebase yet - click "Push to Display" to make visible.`,
       );
 
       setIsLoading(false);
@@ -137,8 +134,8 @@ export function useCurrentQuestion() {
   };
 
   /**
-   * Push to Display to public (push to Firebase)
-   * Removes correct answer before syncing
+   * Push to Display - Push question to Firebase game-state (without answer) and make visible
+   * This is when the question becomes available on the public display
    */
   const showQuestion = async () => {
     setIsLoading(true);
@@ -149,24 +146,17 @@ export function useCurrentQuestion() {
         throw new Error('No question loaded. Load a question first.');
       }
 
-      // Get public question (without correct answer)
-      const publicQuestion = getPublicQuestion();
-
-      if (!publicQuestion) {
-        throw new Error('Failed to get public question');
-      }
-
       // Get current question number from game store
       const { currentQuestionNumber } = useGameStore.getState();
 
-      // Push to Firebase (setCurrentQuestion already removes correct answer)
+      // Push to Firebase game-state (setCurrentQuestion removes answer and sets visibility=true)
       await databaseService.setCurrentQuestion(
         hostQuestion,
         currentQuestionNumber,
       );
 
       console.log(
-        `👁️ Question ${currentQuestionNumber} pushed to public display (no correct answer)`,
+        `👁️ Question ${currentQuestionNumber} pushed to Firebase game-state (WITHOUT answer, visibility=true)`,
       );
 
       setIsLoading(false);
