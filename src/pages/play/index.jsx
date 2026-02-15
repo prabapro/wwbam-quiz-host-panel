@@ -14,8 +14,6 @@ import { databaseService } from '@services/database.service';
 import { GAME_STATUS } from '@constants/gameStates';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { cn } from '@lib/utils';
-
-// Import Phase 4 Components
 import GameStatusBar from './components/GameStatusBar';
 import QuestionPanel from './components/QuestionPanel';
 import AnswerPad from './components/AnswerPad';
@@ -65,7 +63,7 @@ export default function Play() {
   const isWaitingForVisibility = !!hostQuestion && !questionVisible;
   const isAnswerPadActive = questionVisible && !answerRevealed;
 
-  // ✅ FIX: Listen to Firebase game state changes
+  // Listen to Firebase game state changes
   useEffect(() => {
     console.log('🔄 Starting Firebase game state listener...');
 
@@ -95,15 +93,16 @@ export default function Play() {
     };
   }, []);
 
-  // ✅ FIX: Redirect only if game is not in a playable state
-  // Allow both ACTIVE and PAUSED states to stay on this page
+  // Redirect only if game is not in a playable state
   useEffect(() => {
-    const isPlayableState =
-      gameStatus === GAME_STATUS.ACTIVE || gameStatus === GAME_STATUS.PAUSED;
+    const isValidPlayPageState =
+      gameStatus === GAME_STATUS.ACTIVE ||
+      gameStatus === GAME_STATUS.PAUSED ||
+      gameStatus === GAME_STATUS.COMPLETED;
 
-    if (!isPlayableState) {
+    if (!isValidPlayPageState) {
       console.warn(
-        `Game is not in playable state (${gameStatus}), redirecting to home`,
+        `Game is not in valid play page state (${gameStatus}), redirecting to home`,
       );
       navigate('/');
     }
