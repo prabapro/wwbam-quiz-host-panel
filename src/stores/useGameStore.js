@@ -311,7 +311,7 @@ export const useGameStore = create()(
 
         /**
          * Complete game
-         * Sets game status to COMPLETED
+         * Sets game status to COMPLETED and clears current question state
          * Syncs to Firebase and updates local state
          * @returns {Promise<Object>} { success: boolean, error?: string }
          */
@@ -319,13 +319,27 @@ export const useGameStore = create()(
           try {
             const timestamp = Date.now();
 
+            // ✅ Update local state - set to COMPLETED and clear question state
             set({
               gameStatus: GAME_STATUS.COMPLETED,
+              currentTeamId: null, // ← Clear current team
+              currentQuestion: null, // ← Clear question
+              questionVisible: false, // ← Hide question
+              optionsVisible: false, // ← Hide options
+              answerRevealed: false, // ← Reset reveal state
+              correctOption: null, // ← Clear correct option
               lastUpdated: timestamp,
             });
 
+            // ✅ Sync to Firebase - update all fields
             await databaseService.updateGameState({
               gameStatus: GAME_STATUS.COMPLETED,
+              currentTeamId: null,
+              currentQuestion: null,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
             });
 
             console.log('🏁 Game completed and synced to Firebase');
