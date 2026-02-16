@@ -113,7 +113,11 @@ export function useAnswerSelection() {
       const { isCorrect, correctAnswer } = result;
 
       // Reveal answer in Firebase
-      await databaseService.revealAnswer(correctAnswer);
+      await databaseService.revealAnswer(
+        correctAnswer,
+        result.selectedAnswer,
+        result.isCorrect,
+      );
 
       if (isCorrect) {
         // CORRECT ANSWER FLOW

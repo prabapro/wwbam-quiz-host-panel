@@ -16,7 +16,7 @@ import {
   DEFAULT_TIMER_DURATION_SECONDS,
   getDefaultDisplaySettings,
 } from '@constants/config';
-import { DEFAULT_GAME_STATE as GAME_STATUS_DEFAULT } from '@constants/gameStates';
+import { DEFAULT_GAME_STATUS as GAME_STATUS_DEFAULT } from '@constants/gameStates';
 import { DEFAULT_LIFELINES_ENABLED } from '@constants/teamStates';
 
 /**
@@ -37,6 +37,8 @@ export const DEFAULT_GAME_STATE = {
   initializedAt: null,
   startedAt: null,
   lastUpdated: 0,
+  selectedOption: null,
+  optionWasCorrect: null,
 };
 
 /**

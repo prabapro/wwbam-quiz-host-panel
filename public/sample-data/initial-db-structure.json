@@ -7,6 +7,8 @@
     "options-visible": false,
     "answer-revealed": false,
     "correct-option": null,
+    "selected-option": null,
+    "option-was-correct": null,
     "game-status": "not-started",
     "last-updated": 0
   },

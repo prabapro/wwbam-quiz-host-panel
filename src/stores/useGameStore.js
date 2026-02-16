@@ -3,7 +3,8 @@
 import { create } from 'zustand';
 import { databaseService } from '@services/database.service';
 import { devtools, persist } from 'zustand/middleware';
-import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
+import { GAME_STATUS } from '@constants/gameStates';
+import { DEFAULT_GAME_STATE } from '@constants/defaultDatabase';
 import { useQuestionsStore } from './useQuestionsStore';
 import { useTeamsStore } from './useTeamsStore';
 
@@ -26,32 +27,7 @@ export const useGameStore = create()(
         // ============================================================
 
         // Game status
-        gameStatus: DEFAULT_GAME_STATE,
-
-        // Current team playing
-        currentTeamId: null,
-
-        // Current question number (1-20)
-        currentQuestionNumber: 0,
-
-        // Play queue (array of team IDs in order)
-        playQueue: [],
-
-        // Question set assignments: { teamId: questionSetId }
-        questionSetAssignments: {},
-
-        // Current question data (synced to Firebase for public display)
-        // NOTE: This is the PUBLIC question WITHOUT correct answer
-        currentQuestion: null,
-        questionVisible: false,
-        optionsVisible: false,
-        answerRevealed: false,
-        correctOption: null,
-
-        // Timestamps
-        initializedAt: null,
-        startedAt: null,
-        lastUpdated: null,
+        ...DEFAULT_GAME_STATE,
 
         // ============================================================
         // ACTIONS
@@ -97,16 +73,19 @@ export const useGameStore = create()(
         /**
          * Reveal answer to public
          */
-        revealAnswer: (correctOption) => {
+        revealAnswer: (correctOption, selectedOption, isCorrect) => {
           set({
             answerRevealed: true,
             correctOption,
+            selectedOption,
+            optionWasCorrect: isCorrect,
             lastUpdated: Date.now(),
           });
 
-          console.log(`✅ Answer revealed: ${correctOption}`);
+          console.log(
+            `✅ Answer revealed: ${correctOption} (Selected: ${selectedOption}, Correct: ${isCorrect})`,
+          );
         },
-
         /**
          * Initialize game
          * Sets up play queue and question set assignments
@@ -236,6 +215,8 @@ export const useGameStore = create()(
               optionsVisible: false,
               answerRevealed: false,
               correctOption: null,
+              selectedOption: null,
+              optionWasCorrect: null,
               lastUpdated: timestamp,
             });
 
@@ -247,6 +228,8 @@ export const useGameStore = create()(
               optionsVisible: false,
               answerRevealed: false,
               correctOption: null,
+              selectedOption: null,
+              optionWasCorrect: null,
             });
 
             console.log('🏁 Game completed and synced to Firebase');
@@ -322,6 +305,8 @@ export const useGameStore = create()(
               optionsVisible: false,
               answerRevealed: false,
               correctOption: null,
+              selectedOption: null,
+              optionWasCorrect: null,
               lastUpdated: timestamp,
             });
 
@@ -334,6 +319,8 @@ export const useGameStore = create()(
               optionsVisible: false,
               answerRevealed: false,
               correctOption: null,
+              selectedOption: null,
+              optionWasCorrect: null,
             });
 
             // ============================================================
@@ -382,36 +369,12 @@ export const useGameStore = create()(
 
             // Reset local state
             set({
-              gameStatus: GAME_STATUS.NOT_STARTED,
-              currentTeamId: null,
-              currentQuestionNumber: 0,
-              playQueue: [],
-              questionSetAssignments: {},
-              currentQuestion: null,
-              questionVisible: false,
-              optionsVisible: false,
-              answerRevealed: false,
-              correctOption: null,
-              initializedAt: null,
-              startedAt: null,
+              ...DEFAULT_GAME_STATE,
               lastUpdated: timestamp,
             });
 
             // Sync to Firebase
-            await databaseService.updateGameState({
-              gameStatus: GAME_STATUS.NOT_STARTED,
-              currentTeamId: null,
-              currentQuestionNumber: 0,
-              playQueue: [],
-              questionSetAssignments: {},
-              currentQuestion: null,
-              questionVisible: false,
-              optionsVisible: false,
-              answerRevealed: false,
-              correctOption: null,
-              initializedAt: null,
-              startedAt: null,
-            });
+            await databaseService.updateGameState(DEFAULT_GAME_STATE);
 
             console.log('🔄 Game uninitialized and synced to Firebase');
             return { success: true };
@@ -436,16 +399,18 @@ export const useGameStore = create()(
 
             // Update local state with Firebase data
             set({
-              gameStatus: gameState.gameStatus || DEFAULT_GAME_STATE,
+              gameStatus: gameState.gameStatus ?? DEFAULT_GAME_STATE.gameStatus,
               currentTeamId: gameState.currentTeamId || null,
               currentQuestionNumber: gameState.currentQuestionNumber || 0,
               playQueue: gameState.playQueue || [],
               questionSetAssignments: gameState.questionSetAssignments || {},
               currentQuestion: gameState.currentQuestion || null,
-              questionVisible: gameState.questionVisible || false,
-              optionsVisible: gameState.optionsVisible || false,
-              answerRevealed: gameState.answerRevealed || false,
-              correctOption: gameState.correctOption || null,
+              questionVisible: gameState.questionVisible ?? false,
+              optionsVisible: gameState.optionsVisible ?? false,
+              answerRevealed: gameState.answerRevealed ?? false,
+              correctOption: gameState.correctOption ?? null,
+              selectedOption: gameState.selectedOption ?? null,
+              optionWasCorrect: gameState.optionWasCorrect ?? null,
               initializedAt: gameState.initializedAt || null,
               startedAt: gameState.startedAt || null,
               lastUpdated: Date.now(),
@@ -465,18 +430,7 @@ export const useGameStore = create()(
          */
         resetGame: () => {
           set({
-            gameStatus: DEFAULT_GAME_STATE,
-            currentTeamId: null,
-            currentQuestionNumber: 0,
-            playQueue: [],
-            questionSetAssignments: {},
-            currentQuestion: null,
-            questionVisible: false,
-            optionsVisible: false,
-            answerRevealed: false,
-            correctOption: null,
-            initializedAt: null,
-            startedAt: null,
+            ...DEFAULT_GAME_STATE,
             lastUpdated: Date.now(),
           });
 
@@ -545,6 +499,8 @@ export const useGameStore = create()(
                   optionsVisible: firebaseGameState.optionsVisible,
                   answerRevealed: firebaseGameState.answerRevealed,
                   correctOption: firebaseGameState.correctOption,
+                  selectedOption: firebaseGameState.selectedOption,
+                  optionWasCorrect: firebaseGameState.optionWasCorrect,
                   initializedAt: firebaseGameState.initializedAt,
                   startedAt: firebaseGameState.startedAt,
                   lastUpdated: Date.now(),
