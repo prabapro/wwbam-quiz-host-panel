@@ -14,6 +14,11 @@ import { useCurrentQuestion } from './useCurrentQuestion';
  *
  * Purpose: Smart button state management for game control buttons
  *
+ * UPDATED: Added pre-flight checks for data readiness
+ * - Checks isDataReady before allowing question load
+ * - Ensures question set assignments are available
+ * - Better error handling and user feedback
+ *
  * Responsibilities:
  * - Calculate enabled/disabled state for each control button
  * - Provide handlers for each control action
@@ -38,6 +43,12 @@ export function useGameControls() {
   const questionVisible = useGameStore((state) => state.questionVisible);
   const answerRevealed = useGameStore((state) => state.answerRevealed);
   const playQueue = useGameStore((state) => state.playQueue);
+  const questionSetAssignments = useGameStore(
+    (state) => state.questionSetAssignments,
+  );
+  const isDataReady = useGameStore((state) => state.isDataReady);
+  const isSyncingData = useGameStore((state) => state.isSyncingData);
+  const ensureDataReady = useGameStore((state) => state.ensureDataReady);
   const pauseGame = useGameStore((state) => state.pauseGame);
   const resumeGame = useGameStore((state) => state.resumeGame);
   const nextTeam = useGameStore((state) => state.nextTeam);
@@ -70,15 +81,32 @@ export function useGameControls() {
   /**
    * Can Load Question?
    * Enabled when:
+   * - Game data is ready (critical check!)
    * - No question loaded yet (start of game or ready for first question)
    * - OR answer has been validated (ready for next question)
    * - AND current question number < QUESTIONS_PER_SET (not at max)
    * - AND game is active
+   * - AND current team has a question set assigned
    */
   const canLoadQuestion = useMemo(() => {
     if (gameStatus !== GAME_STATUS.ACTIVE) return false;
     if (!currentTeam) return false;
-    if (currentQuestionNumber >= QUESTIONS_PER_SET) return false; // ✅ FIX: Use constant instead of hardcoded 20
+    if (currentQuestionNumber >= QUESTIONS_PER_SET) return false;
+
+    // CRITICAL: Check if data is ready before allowing load
+    if (!isDataReady) {
+      console.log('⏳ Game data not ready yet - cannot load question');
+      return false;
+    }
+
+    // Check if current team has a question set assigned
+    const hasQuestionSet = questionSetAssignments?.[currentTeamId];
+    if (!hasQuestionSet) {
+      console.log(
+        `⚠️ No question set assigned to current team: ${currentTeamId}`,
+      );
+      return false;
+    }
 
     // Can load if:
     // 1. No question loaded yet (start of game)
@@ -90,6 +118,9 @@ export function useGameControls() {
     currentQuestionNumber,
     hostQuestion,
     validationResult,
+    isDataReady,
+    questionSetAssignments,
+    currentTeamId,
   ]);
 
   /**
@@ -175,18 +206,54 @@ export function useGameControls() {
   /**
    * Load next question from localStorage
    * Clears previous question state first
+   *
+   * UPDATED: Now includes pre-flight check for data readiness
    */
   const handleLoadQuestion = async () => {
     try {
+      // Pre-flight check: Ensure data is ready
+      if (!isDataReady) {
+        console.log('⏳ Data not ready - attempting to sync from Firebase...');
+        const syncResult = await ensureDataReady();
+
+        if (!syncResult.success) {
+          throw new Error(
+            syncResult.error ||
+              'Failed to sync game data. Please refresh the page.',
+          );
+        }
+
+        console.log('✅ Data synced successfully');
+      }
+
+      // Verify question set assignment exists
+      const questionSetId = questionSetAssignments?.[currentTeamId];
+      if (!questionSetId) {
+        throw new Error(
+          `No question set assigned to team. Please reinitialize the game or check Firebase data.`,
+        );
+      }
+
+      console.log(
+        `📖 Loading question ${nextQuestionNumber} for team ${currentTeamId}`,
+      );
+      console.log(`📚 Question set: ${questionSetId}`);
+
       // Clear previous question state
       clearQuestion();
       clearHostQuestion();
 
-      // Load next question
+      // Load next question (with defensive fetching)
       await loadQuestion(nextQuestionNumber);
+
+      console.log('✅ Question loaded successfully');
     } catch (err) {
       console.error('Failed to load question:', err);
-      throw err;
+
+      // Provide user-friendly error message
+      const userMessage =
+        err.message || 'Failed to load question. Please try again.';
+      throw new Error(userMessage);
     }
   };
 
@@ -270,8 +337,12 @@ export function useGameControls() {
     nextQuestionNumber, // For dynamic button label
 
     // Loading States
-    isLoading: questionLoading,
+    isLoading: questionLoading || isSyncingData,
     error: questionError,
+
+    // Data Ready State (for UI feedback)
+    isDataReady,
+    isSyncingData,
 
     // Handlers
     handleLoadQuestion,

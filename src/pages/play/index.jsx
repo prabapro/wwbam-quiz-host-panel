@@ -1,6 +1,6 @@
 // src/pages/play/index.jsx
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { Button } from '@components/ui/button';
@@ -11,7 +11,7 @@ import { useTeamsStore } from '@stores/useTeamsStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { usePrizeStore } from '@stores/usePrizeStore';
 import { GAME_STATUS } from '@constants/gameStates';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@lib/utils';
 import GameStatusBar from './components/GameStatusBar';
 import QuestionPanel from './components/QuestionPanel';
@@ -24,8 +24,11 @@ import GameControls from './components/GameControls';
  * Play Page - Main Gameplay Interface
  * Orchestrates all gameplay components and pulls state from stores
  *
- * UPDATED: Now uses store-level Firebase listener instead of component-level
- * This ensures consistent real-time sync across navigation and page refreshes
+ * UPDATED: Added data ready guard and better loading states
+ * - Ensures critical game data is synced before allowing interactions
+ * - Shows loading state while syncing from Firebase
+ * - Provides retry mechanism if data sync fails
+ * - Uses store-level Firebase listener for real-time sync
  *
  * Layout:
  * - Top: Game Status Bar (full width)
@@ -37,6 +40,10 @@ import GameControls from './components/GameControls';
 export default function Play() {
   const navigate = useNavigate();
 
+  // Local state for data ready check
+  const [isCheckingData, setIsCheckingData] = useState(true);
+  const [dataCheckError, setDataCheckError] = useState(null);
+
   // Game Store State
   const gameStatus = useGameStore((state) => state.gameStatus);
   const currentTeamId = useGameStore((state) => state.currentTeamId);
@@ -46,6 +53,9 @@ export default function Play() {
   const playQueue = useGameStore((state) => state.playQueue);
   const questionVisible = useGameStore((state) => state.questionVisible);
   const answerRevealed = useGameStore((state) => state.answerRevealed);
+  const isDataReady = useGameStore((state) => state.isDataReady);
+  const isSyncingData = useGameStore((state) => state.isSyncingData);
+  const ensureDataReady = useGameStore((state) => state.ensureDataReady);
   const startGameListener = useGameStore((state) => state.startGameListener);
 
   // Teams Store State
@@ -61,16 +71,50 @@ export default function Play() {
   const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
 
   // Answer Pad States for Card-level styling
-  const isWaitingForVisibility = !hostQuestion && !questionVisible;
+  const isWaitingForVisibility = !!hostQuestion && !questionVisible;
   const isAnswerPadActive = questionVisible && !answerRevealed;
 
   // ============================================================
-  // REAL-TIME FIREBASE SYNC - MOVED TO STORE LEVEL
+  // DATA READY CHECK ON MOUNT
+  // ============================================================
+
+  /**
+   * Ensure critical game data is ready before allowing interactions
+   * This prevents the "No question set assigned" error
+   */
+  useEffect(() => {
+    const checkDataReady = async () => {
+      console.log('🎮 Play Page: Checking if data is ready...');
+      setIsCheckingData(true);
+      setDataCheckError(null);
+
+      try {
+        const result = await ensureDataReady();
+
+        if (!result.success) {
+          console.warn('⚠️ Failed to ensure data ready:', result.error);
+          setDataCheckError(result.error);
+        } else {
+          console.log('✅ Data is ready for gameplay');
+        }
+      } catch (error) {
+        console.error('Failed to check data readiness:', error);
+        setDataCheckError(error.message);
+      } finally {
+        setIsCheckingData(false);
+      }
+    };
+
+    checkDataReady();
+  }, [ensureDataReady]);
+
+  // ============================================================
+  // REAL-TIME FIREBASE SYNC
   // ============================================================
 
   /**
    * Start Firebase game state listener on mount
-   * The listener is now managed by the store for consistency
+   * The listener is managed by the store for consistency
    */
   useEffect(() => {
     console.log('🎮 Play Page: Starting game state listener...');
@@ -107,6 +151,83 @@ export default function Play() {
       navigate('/');
     }
   }, [gameStatus, navigate]);
+
+  // ============================================================
+  // LOADING STATE - DATA NOT READY
+  // ============================================================
+
+  if (isCheckingData || (isSyncingData && !isDataReady)) {
+    return (
+      <main className="container mx-auto py-8 px-4 max-w-7xl">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Loading Game Data...
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Syncing game state from Firebase. This should only take a
+                    moment.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
+  // ============================================================
+  // ERROR STATE - DATA CHECK FAILED
+  // ============================================================
+
+  if (dataCheckError && !isDataReady) {
+    return (
+      <main className="container mx-auto py-8 px-4 max-w-7xl">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Card className="w-full max-w-md border-destructive">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <AlertTriangle className="w-12 h-12 text-destructive" />
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Failed to Load Game Data
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {dataCheckError}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        setDataCheckError(null);
+                        setIsCheckingData(true);
+                        ensureDataReady().then((result) => {
+                          if (!result.success) {
+                            setDataCheckError(result.error);
+                          }
+                          setIsCheckingData(false);
+                        });
+                      }}
+                      variant="default">
+                      Retry
+                    </Button>
+                    <Button onClick={() => navigate('/')} variant="outline">
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to Home
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
 
   // ============================================================
   // GAME COMPLETED STATE
@@ -150,6 +271,23 @@ export default function Play() {
 
   return (
     <main className="container mx-auto py-8 px-4 max-w-7xl space-y-6">
+      {/* Data Ready Indicator (only shown if not ready) */}
+      {!isDataReady && (
+        <Alert
+          variant="default"
+          className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-500">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">
+                Syncing game data from Firebase...
+              </span>
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Top Bar - Game Status */}
       <GameStatusBar />
 
@@ -256,6 +394,12 @@ export default function Play() {
                   Status:{' '}
                   <span className="text-foreground font-semibold">
                     {gameStatus}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  Data Ready:{' '}
+                  <span className="text-foreground font-semibold">
+                    {isDataReady ? '✅' : '❌'}
                   </span>
                 </p>
                 <p className="text-muted-foreground">
