@@ -37,6 +37,8 @@ export const DEFAULT_GAME_STATE = {
   initializedAt: null,
   startedAt: null,
   lastUpdated: 0,
+  selectedOption: null,
+  optionWasCorrect: null,
 };
 
 /**
