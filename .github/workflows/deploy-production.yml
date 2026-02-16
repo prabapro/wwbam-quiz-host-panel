@@ -1,6 +1,6 @@
 # .github/workflows/deploy-production.yml
 # Deploy to Firebase Hosting on merge to main branch
-name: Deploy to Firebase Hosting on merge (Production)
+name: Firebase Deploy - Production
 
 on:
   push:

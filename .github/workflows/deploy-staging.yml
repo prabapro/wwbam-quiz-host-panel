@@ -1,6 +1,6 @@
 # .github/workflows/deploy-staging.yml
 # Deploy to Firebase Hosting on Pull Request to main branch (creates preview URLs)
-name: Deploy to Firebase Hosting on Pull Request (Staging)
+name: Firebase Deploy - Staging
 
 on:
   pull_request:
