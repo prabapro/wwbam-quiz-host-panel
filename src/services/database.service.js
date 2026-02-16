@@ -727,7 +727,7 @@ export const activateFiftyFiftyLifeline = async (
     updates['game-state/last-updated'] = serverTimestamp();
 
     // 2. Update team lifeline status (mark as used)
-    updates[`${DB_PATHS.TEAMS}/${teamId}/lifelines-available/fiftyFifty`] =
+    updates[`${DB_PATHS.TEAMS}/${teamId}/lifelines-available/fifty-fifty`] =
       false;
     updates[`${DB_PATHS.TEAMS}/${teamId}/last-updated`] = serverTimestamp();
 
@@ -763,7 +763,7 @@ export const activatePhoneAFriendLifeline = async (teamId) => {
     updates['game-state/last-updated'] = serverTimestamp();
 
     // 2. Update team lifeline status (mark as used)
-    updates[`${DB_PATHS.TEAMS}/${teamId}/lifelines-available/phoneAFriend`] =
+    updates[`${DB_PATHS.TEAMS}/${teamId}/lifelines-available/phone-a-friend`] =
       false;
     updates[`${DB_PATHS.TEAMS}/${teamId}/last-updated`] = serverTimestamp();
 
