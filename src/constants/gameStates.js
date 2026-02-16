@@ -111,4 +111,4 @@ export const getValidNextStates = (currentState) => {
 /**
  * Default game state
  */
-export const DEFAULT_GAME_STATE = GAME_STATUS.NOT_STARTED;
+export const DEFAULT_GAME_STATUS = GAME_STATUS.NOT_STARTED;

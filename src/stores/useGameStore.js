@@ -3,7 +3,8 @@
 import { create } from 'zustand';
 import { databaseService } from '@services/database.service';
 import { devtools, persist } from 'zustand/middleware';
-import { GAME_STATUS, DEFAULT_GAME_STATE } from '@constants/gameStates';
+import { GAME_STATUS, DEFAULT_GAME_STATUS } from '@constants/gameStates';
+import { DEFAULT_GAME_STATE } from '@constants/defaultDatabase';
 import { useQuestionsStore } from './useQuestionsStore';
 import { useTeamsStore } from './useTeamsStore';
 
@@ -26,7 +27,7 @@ export const useGameStore = create()(
         // ============================================================
 
         // Game status
-        gameStatus: DEFAULT_GAME_STATE,
+        ...DEFAULT_GAME_STATE,
 
         // Current team playing
         currentTeamId: null,
@@ -387,36 +388,12 @@ export const useGameStore = create()(
 
             // Reset local state
             set({
-              gameStatus: GAME_STATUS.NOT_STARTED,
-              currentTeamId: null,
-              currentQuestionNumber: 0,
-              playQueue: [],
-              questionSetAssignments: {},
-              currentQuestion: null,
-              questionVisible: false,
-              optionsVisible: false,
-              answerRevealed: false,
-              correctOption: null,
-              initializedAt: null,
-              startedAt: null,
+              ...DEFAULT_GAME_STATE,
               lastUpdated: timestamp,
             });
 
             // Sync to Firebase
-            await databaseService.updateGameState({
-              gameStatus: GAME_STATUS.NOT_STARTED,
-              currentTeamId: null,
-              currentQuestionNumber: 0,
-              playQueue: [],
-              questionSetAssignments: {},
-              currentQuestion: null,
-              questionVisible: false,
-              optionsVisible: false,
-              answerRevealed: false,
-              correctOption: null,
-              initializedAt: null,
-              startedAt: null,
-            });
+            await databaseService.updateGameState(DEFAULT_GAME_STATE);
 
             console.log('🔄 Game uninitialized and synced to Firebase');
             return { success: true };
@@ -470,18 +447,7 @@ export const useGameStore = create()(
          */
         resetGame: () => {
           set({
-            gameStatus: DEFAULT_GAME_STATE,
-            currentTeamId: null,
-            currentQuestionNumber: 0,
-            playQueue: [],
-            questionSetAssignments: {},
-            currentQuestion: null,
-            questionVisible: false,
-            optionsVisible: false,
-            answerRevealed: false,
-            correctOption: null,
-            initializedAt: null,
-            startedAt: null,
+            ...DEFAULT_GAME_STATE,
             lastUpdated: Date.now(),
           });
 
