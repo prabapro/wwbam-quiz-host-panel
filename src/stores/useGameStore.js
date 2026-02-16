@@ -29,6 +29,9 @@ export const useGameStore = create()(
         // Game status
         ...DEFAULT_GAME_STATE,
 
+        // 'phone-a-friend' | 'fifty-fifty' | null
+        activeLifeline: null,
+
         // ============================================================
         // ACTIONS
         // ============================================================
@@ -503,6 +506,7 @@ export const useGameStore = create()(
                   optionWasCorrect: firebaseGameState.optionWasCorrect,
                   initializedAt: firebaseGameState.initializedAt,
                   startedAt: firebaseGameState.startedAt,
+                  activeLifeline: firebaseGameState.activeLifeline || null,
                   lastUpdated: Date.now(),
                 });
               }

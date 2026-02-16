@@ -247,36 +247,6 @@ export const useTeamsStore = create()(
         },
 
         /**
-         * Use lifeline
-         */
-        useLifeline: (teamId, lifelineType) => {
-          const { teams } = get();
-          const team = teams[teamId];
-
-          if (!team) {
-            console.warn(`Team ${teamId} not found`);
-            return { success: false, error: 'Team not found' };
-          }
-
-          if (!team.lifelinesAvailable[lifelineType]) {
-            console.warn(
-              `Lifeline ${lifelineType} not available for ${teamId}`,
-            );
-            return {
-              success: false,
-              error: 'Lifeline not available',
-            };
-          }
-
-          return get().updateTeam(teamId, {
-            lifelinesAvailable: {
-              ...team.lifelinesAvailable,
-              [lifelineType]: false,
-            },
-          });
-        },
-
-        /**
          * Move to next question
          */
         moveToNextQuestion: async (teamId, prizeWon) => {
@@ -292,6 +262,7 @@ export const useTeamsStore = create()(
             currentQuestionIndex: team.currentQuestionIndex + 1,
             questionsAnswered: team.questionsAnswered + 1,
             currentPrize: prizeWon,
+            activeLifeline: null,
           });
         },
 

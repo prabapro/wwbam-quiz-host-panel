@@ -47,9 +47,6 @@ import {
  * // }
  */
 export function applyFiftyFifty(allOptions, correctAnswer) {
-  // TODO: Implement 50/50 filtering logic
-  console.log('🚧 applyFiftyFifty not implemented:', allOptions, correctAnswer);
-
   // Get incorrect options
   const incorrectOptions = allOptions.filter(
     (option) => option !== correctAnswer,

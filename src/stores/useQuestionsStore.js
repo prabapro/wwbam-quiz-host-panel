@@ -43,6 +43,9 @@ export const useQuestionsStore = create()(
       // Error state
       error: null,
 
+      // Filtered options for 50/50 lifeline (if implemented)
+      filteredOptions: null, // Array of remaining options after 50/50 (e.g., ['A', 'C'])
+
       // ============================================================
       // ACTIONS
       // ============================================================
@@ -135,6 +138,7 @@ export const useQuestionsStore = create()(
        * @returns {Object} { success: boolean, error?: string, question?: Object }
        */
       loadHostQuestion: (setId, questionIndex) => {
+        set({ filteredOptions: null }); // Clear 50/50 state for new question
         const { loadedSets } = get();
         const questionSet = loadedSets[setId];
 
@@ -321,6 +325,23 @@ export const useQuestionsStore = create()(
           ageSeconds,
           isStale,
         };
+      },
+
+      /**
+       * Set filtered options after 50/50 lifeline
+       * @param {Array<string>} options - Remaining options (e.g., ['A', 'C'])
+       */
+      setFilteredOptions: (options) => {
+        set({ filteredOptions: options });
+        console.log('✅ Filtered options set:', options);
+      },
+
+      /**
+       * Clear filtered options (called when loading new question)
+       */
+      clearFilteredOptions: () => {
+        set({ filteredOptions: null });
+        console.log('🔄 Filtered options cleared');
       },
 
       /**
