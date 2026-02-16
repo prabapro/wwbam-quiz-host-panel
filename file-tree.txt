@@ -114,7 +114,8 @@
 │   │   │   ├── hooks
 │   │   │   │   ├── useAnswerSelection.js
 │   │   │   │   ├── useCurrentQuestion.js
-│   │   │   │   └── useGameControls.js
+│   │   │   │   ├── useGameControls.js
+│   │   │   │   └── useLifelineManagement.js
 │   │   │   └── index.jsx
 │   │   ├── Home.jsx
 │   │   ├── Login.jsx
