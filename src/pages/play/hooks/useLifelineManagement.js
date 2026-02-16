@@ -25,6 +25,19 @@ import { ANSWER_OPTIONS } from '@constants/config';
  * - Database operations delegated to database.service.js
  * - Follows separation of concerns principle
  *
+ * CRITICAL - LIFELINE PERSISTENCE:
+ * Team lifeline availability (lifelinesAvailable) is stored in Firebase under:
+ *   teams/{teamId}/lifelines-available/phoneAFriend: boolean
+ *   teams/{teamId}/lifelines-available/fiftyFifty: boolean
+ *
+ * Once a lifeline is used (set to false), it PERSISTS across all questions for that team.
+ * The database service atomically updates:
+ *   1. game-state/active-lifeline (temporary, cleared after use)
+ *   2. teams/{teamId}/lifelines-available/{lifelineType} = false (permanent for this game)
+ *
+ * Per-question state (lifelineUsedThisQuestion) resets with each new question,
+ * but the team's actual availability in Firebase never reverts to true.
+ *
  * @returns {Object} Lifeline management state and actions
  */
 export function useLifelineManagement() {
@@ -64,6 +77,9 @@ export function useLifelineManagement() {
   // ============================================================
 
   useEffect(() => {
+    // Reset per-question state
+    // IMPORTANT: Team's lifelinesAvailable in Firebase is NOT reset
+    // Once false, it stays false for the entire game
     setLifelineUsedThisQuestion(false);
     setActivationError(null);
   }, [currentQuestionNumber]);
@@ -72,6 +88,10 @@ export function useLifelineManagement() {
   // AVAILABILITY CHECKS
   // ============================================================
 
+  /**
+   * Check if Phone-a-Friend is available for the current team
+   * Reads from team's Firebase data: teams/{teamId}/lifelines-available/phoneAFriend
+   */
   const isPhoneAvailable = useCallback(() => {
     if (!currentTeam?.lifelinesAvailable) return false;
     return (
@@ -79,11 +99,19 @@ export function useLifelineManagement() {
     );
   }, [currentTeam]);
 
+  /**
+   * Check if 50/50 is available for the current team
+   * Reads from team's Firebase data: teams/{teamId}/lifelines-available/fiftyFifty
+   */
   const isFiftyFiftyAvailable = useCallback(() => {
     if (!currentTeam?.lifelinesAvailable) return false;
     return currentTeam.lifelinesAvailable[LIFELINE_TYPE.FIFTY_FIFTY] === true;
   }, [currentTeam]);
 
+  /**
+   * Check if a lifeline can be used right now
+   * Validates all WWBAM rules before allowing activation
+   */
   const canUseLifeline = useCallback(
     (lifelineType) => {
       // Question must be visible to public
@@ -95,10 +123,10 @@ export function useLifelineManagement() {
       // Must have host question loaded
       if (!hostQuestion) return false;
 
-      // Cannot use if already used a lifeline this question
+      // Cannot use if already used a lifeline this question (WWBAM rule: 1 per question)
       if (lifelineUsedThisQuestion) return false;
 
-      // Check if specific lifeline is available for team
+      // Check if specific lifeline is available for team (reads from Firebase)
       if (lifelineType === LIFELINE_TYPE.PHONE_A_FRIEND) {
         return isPhoneAvailable();
       } else if (lifelineType === LIFELINE_TYPE.FIFTY_FIFTY) {
@@ -136,7 +164,6 @@ export function useLifelineManagement() {
         ANSWER_OPTIONS,
         hostQuestion.correctAnswer,
       );
-
       console.log('🔪 50/50 Applied:', result);
 
       // Create filtered options object for Firebase
@@ -148,6 +175,13 @@ export function useLifelineManagement() {
       // ============================================================
       // DATABASE OPERATION (delegated to service layer)
       // ============================================================
+      // This performs atomic updates to Firebase:
+      //   1. game-state/active-lifeline = 'fifty-fifty' (temporary)
+      //   2. game-state/current-question/options = filteredOptionsObj
+      //   3. teams/{teamId}/lifelines-available/fiftyFifty = false (PERMANENT)
+      //
+      // CRITICAL: Step 3 permanently marks this lifeline as used.
+      // It will NEVER revert to true for this team in this game.
 
       await databaseService.activateFiftyFiftyLifeline(
         currentTeamId,
@@ -161,7 +195,7 @@ export function useLifelineManagement() {
       // Update questions store with filtered options
       setFilteredOptions(result.remainingOptions);
 
-      // Mark lifeline as used this question
+      // Mark lifeline as used this question (prevents using another lifeline this question)
       setLifelineUsedThisQuestion(true);
 
       // Clear active lifeline after brief delay (50/50 is instant)
@@ -170,6 +204,9 @@ export function useLifelineManagement() {
       }, 1000);
 
       console.log('✅ 50/50 activated successfully');
+      console.log(
+        '🔒 Team lifeline availability permanently updated in Firebase',
+      );
       setIsActivating(false);
 
       return {
@@ -205,6 +242,12 @@ export function useLifelineManagement() {
       // ============================================================
       // DATABASE OPERATION (delegated to service layer)
       // ============================================================
+      // This performs atomic updates to Firebase:
+      //   1. game-state/active-lifeline = 'phone-a-friend' (temporary)
+      //   2. teams/{teamId}/lifelines-available/phoneAFriend = false (PERMANENT)
+      //
+      // CRITICAL: Step 2 permanently marks this lifeline as used.
+      // It will NEVER revert to true for this team in this game.
 
       await databaseService.activatePhoneAFriendLifeline(currentTeamId);
 
@@ -212,10 +255,13 @@ export function useLifelineManagement() {
       // UPDATE LOCAL STATE
       // ============================================================
 
-      // Mark lifeline as used this question
+      // Mark lifeline as used this question (prevents using another lifeline this question)
       setLifelineUsedThisQuestion(true);
 
       console.log('📞 Phone-a-Friend activated successfully');
+      console.log(
+        '🔒 Team lifeline availability permanently updated in Firebase',
+      );
       setIsActivating(false);
 
       return { success: true };
@@ -233,6 +279,8 @@ export function useLifelineManagement() {
 
   const resumeFromPhoneAFriend = useCallback(async () => {
     try {
+      // Clear active lifeline from game-state (temporary state only)
+      // Does NOT affect team's lifeline availability (already permanently false)
       await databaseService.clearActiveLifeline();
       console.log('✅ Resumed from Phone-a-Friend');
       return { success: true };
@@ -252,7 +300,8 @@ export function useLifelineManagement() {
     activationError,
     lifelineUsedThisQuestion,
 
-    // Availability
+    // Availability (reads from team's Firebase lifeline status)
+    // Once false, these stay false for the entire game
     isPhoneAvailable: isPhoneAvailable(),
     isFiftyFiftyAvailable: isFiftyFiftyAvailable(),
     canUsePhone: canUseLifeline(LIFELINE_TYPE.PHONE_A_FRIEND),

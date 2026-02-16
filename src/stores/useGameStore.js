@@ -14,6 +14,7 @@ const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
  * Game State Store
  * Manages game flow, team rotation, question navigation
  *
+ * UPDATED: Added setActiveLifeline and clearActiveLifeline actions for proper lifeline state management
  * UPDATED: Added real-time Firebase listener for game state sync
  * Reduced localStorage persistence - only critical game config is persisted
  * All gameplay state is fetched fresh from Firebase
@@ -46,6 +47,31 @@ export const useGameStore = create()(
           });
 
           console.log(`📝 Question number set: ${questionNumber}`);
+        },
+
+        /**
+         * Set active lifeline
+         * @param {string|null} lifeline - 'phone-a-friend' | 'fifty-fifty' | null
+         */
+        setActiveLifeline: (lifeline) => {
+          set({
+            activeLifeline: lifeline,
+            lastUpdated: Date.now(),
+          });
+
+          console.log(`🎯 Active lifeline set: ${lifeline || 'none'}`);
+        },
+
+        /**
+         * Clear active lifeline (convenience method)
+         */
+        clearActiveLifeline: () => {
+          set({
+            activeLifeline: null,
+            lastUpdated: Date.now(),
+          });
+
+          console.log('🧹 Active lifeline cleared locally');
         },
 
         /**
@@ -485,6 +511,7 @@ export const useGameStore = create()(
                   correctOption: firebaseGameState.correctOption,
                   currentQuestionNumber:
                     firebaseGameState.currentQuestionNumber,
+                  activeLifeline: firebaseGameState.activeLifeline,
                 });
 
                 // Update local state with Firebase data
@@ -519,7 +546,7 @@ export const useGameStore = create()(
       }),
       {
         name: `${appName}-game`,
-        version: 2, // Incremented version for new sync strategy
+        version: 3, // ← Incremented version for lifeline state management
 
         // ⚠️ REDUCED PERSISTENCE: Only persist essential game configuration
         // Gameplay state is always fetched fresh from Firebase via listener
@@ -529,7 +556,7 @@ export const useGameStore = create()(
           questionSetAssignments: state.questionSetAssignments,
           initializedAt: state.initializedAt,
           startedAt: state.startedAt,
-          // NOT persisting: currentQuestion, questionVisible, answerRevealed, etc.
+          // NOT persisting: currentQuestion, questionVisible, answerRevealed, activeLifeline, etc.
           // These are always fetched fresh from Firebase
         }),
 
