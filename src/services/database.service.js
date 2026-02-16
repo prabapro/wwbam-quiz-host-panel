@@ -406,14 +406,22 @@ export const setCurrentQuestion = async (question, questionNumber) => {
  * @param {string} correctOption - Correct answer (A/B/C/D)
  * @returns {Promise<void>}
  */
-export const revealAnswer = async (correctOption) => {
+export const revealAnswer = async (
+  correctOption,
+  selectedOption,
+  isCorrect,
+) => {
   try {
     await updateGameState({
       answerRevealed: true,
       correctOption,
+      selectedOption,
+      optionWasCorrect: isCorrect,
     });
 
-    console.log(`✅ Answer revealed: ${correctOption}`);
+    console.log(
+      `✅ Answer revealed: ${correctOption} (Selected: ${selectedOption}, Correct: ${isCorrect})`,
+    );
   } catch (error) {
     console.error('Error revealing answer:', error);
     throw error;

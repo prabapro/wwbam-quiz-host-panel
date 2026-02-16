@@ -47,6 +47,8 @@ export const useGameStore = create()(
         optionsVisible: false,
         answerRevealed: false,
         correctOption: null,
+        selectedOption: null,
+        optionWasCorrect: null,
 
         // Timestamps
         initializedAt: null,
@@ -97,16 +99,19 @@ export const useGameStore = create()(
         /**
          * Reveal answer to public
          */
-        revealAnswer: (correctOption) => {
+        revealAnswer: (correctOption, selectedOption, isCorrect) => {
           set({
             answerRevealed: true,
             correctOption,
+            selectedOption,
+            optionWasCorrect: isCorrect,
             lastUpdated: Date.now(),
           });
 
-          console.log(`✅ Answer revealed: ${correctOption}`);
+          console.log(
+            `✅ Answer revealed: ${correctOption} (Selected: ${selectedOption}, Correct: ${isCorrect})`,
+          );
         },
-
         /**
          * Initialize game
          * Sets up play queue and question set assignments

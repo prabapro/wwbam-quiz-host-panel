@@ -176,6 +176,8 @@ export function useCurrentQuestion() {
         optionsVisible: false, // Reset options visibility
         answerRevealed: false, // Reset answer reveal
         correctOption: null, // Clear previous correct answer
+        selectedOption: null, // Reset selected option
+        optionWasCorrect: null, // Reset correctness flag
       });
 
       console.log(
