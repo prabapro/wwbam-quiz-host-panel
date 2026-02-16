@@ -63,7 +63,7 @@ export const useTeamsStore = create()(
               questionSetId: null,
               currentQuestionIndex: 0,
               questionsAnswered: 0,
-              lifelines: {
+              lifelinesAvailable: {
                 [LIFELINE_TYPE.PHONE_A_FRIEND]: true,
                 [LIFELINE_TYPE.FIFTY_FIFTY]: true,
               },
@@ -247,36 +247,6 @@ export const useTeamsStore = create()(
         },
 
         /**
-         * Use lifeline
-         */
-        useLifeline: (teamId, lifelineType) => {
-          const { teams } = get();
-          const team = teams[teamId];
-
-          if (!team) {
-            console.warn(`Team ${teamId} not found`);
-            return { success: false, error: 'Team not found' };
-          }
-
-          if (!team.lifelines[lifelineType]) {
-            console.warn(
-              `Lifeline ${lifelineType} not available for ${teamId}`,
-            );
-            return {
-              success: false,
-              error: 'Lifeline not available',
-            };
-          }
-
-          return get().updateTeam(teamId, {
-            lifelines: {
-              ...team.lifelines,
-              [lifelineType]: false,
-            },
-          });
-        },
-
-        /**
          * Move to next question
          */
         moveToNextQuestion: async (teamId, prizeWon) => {
@@ -292,6 +262,7 @@ export const useTeamsStore = create()(
             currentQuestionIndex: team.currentQuestionIndex + 1,
             questionsAnswered: team.questionsAnswered + 1,
             currentPrize: prizeWon,
+            activeLifeline: null,
           });
         },
 
@@ -402,7 +373,7 @@ export const useTeamsStore = create()(
          */
         hasLifeline: (teamId, lifelineType) => {
           const team = get().getTeam(teamId);
-          return team?.lifelines[lifelineType] || false;
+          return team?.lifelinesAvailable[lifelineType] || false;
         },
 
         /**
@@ -413,7 +384,7 @@ export const useTeamsStore = create()(
 
           if (!team) return [];
 
-          return Object.entries(team.lifelines)
+          return Object.entries(team.lifelinesAvailable)
             .filter(([, available]) => available)
             .map(([type]) => type);
         },
@@ -428,7 +399,7 @@ export const useTeamsStore = create()(
             currentQuestionIndex: 0,
             questionsAnswered: 0,
             questionSetId: null,
-            lifelines: {
+            lifelinesAvailable: {
               [LIFELINE_TYPE.PHONE_A_FRIEND]: true,
               [LIFELINE_TYPE.FIFTY_FIFTY]: true,
             },
@@ -488,7 +459,12 @@ export const useTeamsStore = create()(
       }),
       {
         name: `${appName}-teams`,
-        version: 1,
+        version: 2,
+
+        partialize: () => ({
+          // Don't persist teams data - always load fresh from Firebase
+          teams: {},
+        }),
 
         onRehydrateStorage: () => (state, error) => {
           if (error) {
@@ -502,27 +478,17 @@ export const useTeamsStore = create()(
           if (state) {
             console.log('👥 Teams: Hydrated from localStorage');
 
-            // AUTO-LOAD: Check if teams are empty (cleared localStorage or first load)
-            const hasTeams = state.teams && Object.keys(state.teams).length > 0;
+            // ALWAYS auto-load from Firebase since we don't persist teams
+            console.log('👥 Teams: Auto-loading fresh data from Firebase...');
 
-            if (!hasTeams) {
-              console.log(
-                '👥 Teams: Empty state detected - auto-loading from Firebase...',
-              );
-
-              // Trigger async load - don't await to avoid blocking rehydration
-              state.syncTeamsFromFirebase().then((result) => {
-                if (result.success) {
-                  console.log('👥 Teams: Auto-load complete ✅');
-                } else {
-                  console.warn('👥 Teams: Auto-load failed ⚠️', result.error);
-                }
-              });
-            } else {
-              console.log(
-                `👥 Teams: ${Object.keys(state.teams).length} team(s) loaded from localStorage`,
-              );
-            }
+            // Trigger async load - don't await to avoid blocking rehydration
+            state.syncTeamsFromFirebase().then((result) => {
+              if (result.success) {
+                console.log('👥 Teams: Auto-load complete ✅');
+              } else {
+                console.warn('👥 Teams: Auto-load failed ⚠️', result.error);
+              }
+            });
           }
         },
       },

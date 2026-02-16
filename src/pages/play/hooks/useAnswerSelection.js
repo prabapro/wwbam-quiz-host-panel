@@ -178,23 +178,10 @@ export function useAnswerSelection() {
         }
       } else {
         // INCORRECT ANSWER FLOW
-        console.log('❌ Incorrect answer! Checking lifelines...');
+        console.log('❌ Incorrect answer! Direct elimination (WWBAM rules)');
 
-        // Check if team has available lifelines
-        const hasLifelines =
-          currentTeam?.lifelines?.phoneAFriend ||
-          currentTeam?.lifelines?.fiftyFifty;
-
-        if (hasLifelines) {
-          console.log(
-            '💡 Team has lifelines available - host can offer or eliminate',
-          );
-          // Host will manually choose to offer lifeline or eliminate
-          // This is a manual decision, not automatic
-        } else {
-          console.log('❌ No lifelines available - team will be eliminated');
-          // Auto-elimination will be handled by host clicking "Eliminate Team"
-        }
+        // No lifeline checking - wrong answer after lock = direct elimination
+        // Lifelines must be used BEFORE locking answer, not as a safety net
       }
 
       setIsLocking(false);

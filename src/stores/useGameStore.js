@@ -14,7 +14,12 @@ const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
  * Game State Store
  * Manages game flow, team rotation, question navigation
  *
- * UPDATED: Added real-time Firebase listener for game state sync
+ * UPDATED: Added data ready state and improved initialization sequence
+ * - Added isDataReady flag to indicate when critical game data is synced
+ * - Added ensureDataReady() method to force sync if needed
+ * - Improved rehydration flow to prevent premature access
+ * - Better handling of question set assignments sync
+ *
  * Reduced localStorage persistence - only critical game config is persisted
  * All gameplay state is fetched fresh from Firebase
  */
@@ -28,6 +33,72 @@ export const useGameStore = create()(
 
         // Game status
         ...DEFAULT_GAME_STATE,
+
+        // 'phone-a-friend' | 'fifty-fifty' | null
+        activeLifeline: null,
+
+        // Data ready flag - true when critical game data is synced from Firebase
+        isDataReady: false,
+
+        // Loading state for data sync operations
+        isSyncingData: false,
+
+        // ============================================================
+        // DATA READY MANAGEMENT
+        // ============================================================
+
+        /**
+         * Mark data as ready after successful Firebase sync
+         * @private
+         */
+        _setDataReady: (ready) => {
+          set({ isDataReady: ready });
+          if (ready) {
+            console.log('✅ Game data ready for use');
+          }
+        },
+
+        /**
+         * Ensure critical game data is loaded and ready
+         * If not ready, triggers fresh sync from Firebase
+         *
+         * @returns {Promise<{ success: boolean, error?: string }>}
+         */
+        ensureDataReady: async () => {
+          const { isDataReady, gameStatus } = get();
+
+          // If data already ready and game is initialized or active, we're good
+          if (
+            isDataReady &&
+            (gameStatus === GAME_STATUS.INITIALIZED ||
+              gameStatus === GAME_STATUS.ACTIVE ||
+              gameStatus === GAME_STATUS.PAUSED)
+          ) {
+            console.log('✅ Game data already ready');
+            return { success: true };
+          }
+
+          // Need to sync from Firebase
+          console.log('🔄 Ensuring game data is ready...');
+          set({ isSyncingData: true });
+
+          try {
+            const result = await get().loadFromFirebase();
+
+            if (result.success) {
+              set({ isDataReady: true, isSyncingData: false });
+              console.log('✅ Game data synced and ready');
+              return { success: true };
+            } else {
+              set({ isSyncingData: false });
+              return { success: false, error: result.error };
+            }
+          } catch (error) {
+            console.error('Failed to ensure data ready:', error);
+            set({ isSyncingData: false });
+            return { success: false, error: error.message };
+          }
+        },
 
         // ============================================================
         // ACTIONS
@@ -43,6 +114,31 @@ export const useGameStore = create()(
           });
 
           console.log(`📝 Question number set: ${questionNumber}`);
+        },
+
+        /**
+         * Set active lifeline
+         * @param {string|null} lifeline - 'phone-a-friend' | 'fifty-fifty' | null
+         */
+        setActiveLifeline: (lifeline) => {
+          set({
+            activeLifeline: lifeline,
+            lastUpdated: Date.now(),
+          });
+
+          console.log(`🎯 Active lifeline set: ${lifeline || 'none'}`);
+        },
+
+        /**
+         * Clear active lifeline (convenience method)
+         */
+        clearActiveLifeline: () => {
+          set({
+            activeLifeline: null,
+            lastUpdated: Date.now(),
+          });
+
+          console.log('🧹 Active lifeline cleared locally');
         },
 
         /**
@@ -102,6 +198,7 @@ export const useGameStore = create()(
               questionSetAssignments,
               initializedAt: timestamp,
               lastUpdated: timestamp,
+              isDataReady: true, // Mark data as ready after initialization
             });
 
             // Sync to Firebase
@@ -113,6 +210,7 @@ export const useGameStore = create()(
             });
 
             console.log('🎲 Game initialized and synced to Firebase');
+            console.log('✅ Data marked as ready');
             return { success: true };
           } catch (error) {
             console.error('Failed to initialize game:', error);
@@ -370,6 +468,7 @@ export const useGameStore = create()(
             // Reset local state
             set({
               ...DEFAULT_GAME_STATE,
+              isDataReady: false, // Mark as not ready after uninit
               lastUpdated: timestamp,
             });
 
@@ -394,6 +493,7 @@ export const useGameStore = create()(
 
             if (!gameState) {
               console.warn('No game state found in Firebase');
+              set({ isDataReady: false });
               return { success: false, error: 'No game state found' };
             }
 
@@ -413,13 +513,16 @@ export const useGameStore = create()(
               optionWasCorrect: gameState.optionWasCorrect ?? null,
               initializedAt: gameState.initializedAt || null,
               startedAt: gameState.startedAt || null,
+              activeLifeline: gameState.activeLifeline || null,
               lastUpdated: Date.now(),
+              isDataReady: true, // Mark as ready after successful load
             });
 
             console.log('✅ Game state loaded from Firebase:', gameState);
             return { success: true, gameState };
           } catch (error) {
             console.error('Failed to load game state from Firebase:', error);
+            set({ isDataReady: false });
             return { success: false, error: error.message };
           }
         },
@@ -431,6 +534,7 @@ export const useGameStore = create()(
         resetGame: () => {
           set({
             ...DEFAULT_GAME_STATE,
+            isDataReady: false,
             lastUpdated: Date.now(),
           });
 
@@ -482,6 +586,11 @@ export const useGameStore = create()(
                   correctOption: firebaseGameState.correctOption,
                   currentQuestionNumber:
                     firebaseGameState.currentQuestionNumber,
+                  activeLifeline: firebaseGameState.activeLifeline,
+                  questionSetAssignments:
+                    firebaseGameState.questionSetAssignments
+                      ? 'present'
+                      : 'missing',
                 });
 
                 // Update local state with Firebase data
@@ -503,6 +612,8 @@ export const useGameStore = create()(
                   optionWasCorrect: firebaseGameState.optionWasCorrect,
                   initializedAt: firebaseGameState.initializedAt,
                   startedAt: firebaseGameState.startedAt,
+                  activeLifeline: firebaseGameState.activeLifeline || null,
+                  isDataReady: true, // Mark as ready when receiving Firebase updates
                   lastUpdated: Date.now(),
                 });
               }
@@ -515,7 +626,7 @@ export const useGameStore = create()(
       }),
       {
         name: `${appName}-game`,
-        version: 2, // Incremented version for new sync strategy
+        version: 4, // ← Incremented version for data ready state management
 
         // ⚠️ REDUCED PERSISTENCE: Only persist essential game configuration
         // Gameplay state is always fetched fresh from Firebase via listener
@@ -525,16 +636,19 @@ export const useGameStore = create()(
           questionSetAssignments: state.questionSetAssignments,
           initializedAt: state.initializedAt,
           startedAt: state.startedAt,
-          // NOT persisting: currentQuestion, questionVisible, answerRevealed, etc.
-          // These are always fetched fresh from Firebase
+          // NOT persisting: isDataReady (always start as false), currentQuestion, questionVisible, etc.
         }),
 
         onRehydrateStorage: () => (state) => {
           if (state) {
             console.log('🎮 Game store rehydrated from localStorage');
 
+            // Always mark as NOT ready on rehydration - must sync from Firebase
+            state.isDataReady = false;
+
             // Check if localStorage has game config data
-            const hasGameConfig = state.gameStatus !== DEFAULT_GAME_STATE;
+            const hasGameConfig =
+              state.gameStatus !== DEFAULT_GAME_STATE.gameStatus;
 
             if (!hasGameConfig) {
               // No local data, auto-load from Firebase
@@ -587,6 +701,19 @@ export const useGameStore = create()(
               console.log(
                 `🎮 Game state loaded from localStorage: ${state.gameStatus}`,
               );
+
+              // Even with local data, sync from Firebase to ensure freshness
+              console.log('🔄 Syncing fresh data from Firebase...');
+              state.loadFromFirebase().then((result) => {
+                if (result.success) {
+                  console.log('✅ Fresh data synced from Firebase');
+                } else {
+                  console.warn(
+                    '⚠️ Failed to sync from Firebase:',
+                    result.error,
+                  );
+                }
+              });
             }
           }
         },

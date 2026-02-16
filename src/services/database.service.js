@@ -525,7 +525,7 @@ export const createTeam = async (teamData) => {
       'current-prize': 0,
       'question-set-id': teamData.questionSetId || null,
       'current-question-index': 0,
-      lifelines: {
+      'lifelines-available': {
         'phone-a-friend': true,
         'fifty-fifty': true,
       },
@@ -594,24 +594,6 @@ export const deleteAllTeams = async () => {
     console.log('✅ All teams deleted from Firebase');
   } catch (error) {
     console.error('Error deleting all teams:', error);
-    throw error;
-  }
-};
-
-/**
- * Use lifeline
- * @param {string} teamId - Team ID
- * @param {string} lifelineType - 'phone-a-friend' or 'fifty-fifty'
- * @returns {Promise<void>}
- */
-export const useLifeline = async (teamId, lifelineType) => {
-  try {
-    await update(ref(database, `${DB_PATHS.TEAMS}/${teamId}/lifelines`), {
-      [lifelineType]: false,
-    });
-    console.log('✅ Lifeline used:', lifelineType);
-  } catch (error) {
-    console.error('Error using lifeline:', error);
     throw error;
   }
 };
@@ -714,6 +696,107 @@ export const onPrizeStructureChange = (callback) => {
   });
 
   return () => off(prizeRef);
+};
+
+// ============================================================================
+// LIFELINE OPERATIONS
+// ============================================================================
+
+/**
+ * Activate 50/50 lifeline (WWBAM Style)
+ *
+ * Atomic update that:
+ * 1. Updates game-state with filtered options
+ * 2. Sets active-lifeline to 'fifty-fifty'
+ * 3. Marks lifeline as used for team
+ *
+ * @param {string} teamId - Team ID
+ * @param {Object} filteredOptionsObj - Filtered options object (e.g., { A: "London", B: "Paris" })
+ * @returns {Promise<void>}
+ */
+export const activateFiftyFiftyLifeline = async (
+  teamId,
+  filteredOptionsObj,
+) => {
+  try {
+    const updates = {};
+
+    // 1. Update game-state with filtered options
+    updates['game-state/current-question/options'] = filteredOptionsObj;
+    updates['game-state/active-lifeline'] = 'fifty-fifty';
+    updates['game-state/last-updated'] = serverTimestamp();
+
+    // 2. Update team lifeline status (mark as used)
+    updates[`${DB_PATHS.TEAMS}/${teamId}/lifelines-available/fifty-fifty`] =
+      false;
+    updates[`${DB_PATHS.TEAMS}/${teamId}/last-updated`] = serverTimestamp();
+
+    // 3. Atomic update
+    await update(ref(database), updates);
+
+    console.log('✅ 50/50 lifeline activated:', {
+      teamId,
+      filteredOptions: filteredOptionsObj,
+    });
+  } catch (error) {
+    console.error('Error activating 50/50 lifeline:', error);
+    throw error;
+  }
+};
+
+/**
+ * Activate Phone-a-Friend lifeline (WWBAM Style)
+ *
+ * Atomic update that:
+ * 1. Sets active-lifeline in game-state to 'phone-a-friend'
+ * 2. Marks lifeline as used for team
+ *
+ * @param {string} teamId - Team ID
+ * @returns {Promise<void>}
+ */
+export const activatePhoneAFriendLifeline = async (teamId) => {
+  try {
+    const updates = {};
+
+    // 1. Set active lifeline in game-state
+    updates['game-state/active-lifeline'] = 'phone-a-friend';
+    updates['game-state/last-updated'] = serverTimestamp();
+
+    // 2. Update team lifeline status (mark as used)
+    updates[`${DB_PATHS.TEAMS}/${teamId}/lifelines-available/phone-a-friend`] =
+      false;
+    updates[`${DB_PATHS.TEAMS}/${teamId}/last-updated`] = serverTimestamp();
+
+    // 3. Atomic update
+    await update(ref(database), updates);
+
+    console.log('✅ Phone-a-Friend lifeline activated:', teamId);
+  } catch (error) {
+    console.error('Error activating Phone-a-Friend lifeline:', error);
+    throw error;
+  }
+};
+
+/**
+ * Clear active lifeline from game-state
+ *
+ * Called after:
+ * - 50/50 completes (options filtered)
+ * - Phone-a-Friend call ends (host resumes)
+ * - Moving to next question
+ *
+ * @returns {Promise<void>}
+ */
+export const clearActiveLifeline = async () => {
+  try {
+    await updateGameState({
+      activeLifeline: null,
+    });
+    console.log('✅ Active lifeline cleared');
+  } catch (error) {
+    console.error('Error clearing active lifeline:', error);
+    throw error;
+  }
 };
 
 // ============================================================================
@@ -852,7 +935,6 @@ export const databaseService = {
   updateTeam,
   deleteTeam,
   deleteAllTeams,
-  useLifeline,
   eliminateTeam,
   onTeamsChange,
 
@@ -864,6 +946,11 @@ export const databaseService = {
   // Config
   getConfig,
   updateConfig,
+
+  // Lifeline Operations
+  activateFiftyFiftyLifeline,
+  activatePhoneAFriendLifeline,
+  clearActiveLifeline,
 
   // Factory Reset
   resetDatabaseToDefaults,

@@ -10,13 +10,16 @@ import { databaseService } from '@services/database.service';
  *
  * Purpose: Manage current question state and visibility logic
  *
- * UPDATED: Added freshness validation to ensure questions are always fetched
- * fresh from Firebase during gameplay, preventing stale data issues
+ * UPDATED: Fixed closure issues and added defensive data fetching
+ * - Now reads fresh state on each execution instead of capturing at init
+ * - Implements on-demand fetching if question set assignments are missing
+ * - Added retry mechanism with fresh Firebase data
+ * - Better error handling and recovery
  *
  * Responsibilities:
  * - Load question from question-sets (with correct answer for host ONLY)
  * - Validate question set freshness before loading questions
- * - Clear previous question from game-state when loading new question
+ * - Clear previous question AND lifeline state from game-state when loading new question
  * - Push question to game-state Firebase (without correct answer when displaying)
  * - Manage question visibility flags (questionVisible, optionsVisible)
  * - Handle question state transitions
@@ -24,7 +27,7 @@ import { databaseService } from '@services/database.service';
  *
  * Flow:
  * 1. loadQuestion() - Validates freshness, loads from question-sets WITH answer,
- *                     stores LOCALLY only, CLEARS game-state
+ *                     stores LOCALLY only, CLEARS game-state + lifeline state
  * 2. showQuestion() - Pushes to game-state WITHOUT answer, sets visibility=true (public can see)
  * 3. revealAnswer() - Pushes correct answer to game-state (public can see answer)
  *
@@ -55,32 +58,100 @@ export function useCurrentQuestion() {
   const getQuestionSetCacheInfo = useQuestionsStore(
     (state) => state.getQuestionSetCacheInfo,
   );
+  const clearFilteredOptions = useQuestionsStore(
+    (state) => state.clearFilteredOptions,
+  );
   const loadedSets = useQuestionsStore((state) => state.loadedSets);
 
-  // Game Store
-  const currentTeamId = useGameStore((state) => state.currentTeamId);
-  const questionSetAssignments = useGameStore(
-    (state) => state.questionSetAssignments,
-  );
+  // Game Store - NOTE: We'll read fresh state each time, not capture in closure
   const questionVisible = useGameStore((state) => state.questionVisible);
   const setQuestionNumber = useGameStore((state) => state.setQuestionNumber);
+
+  /**
+   * Get fresh question set assignment for current team
+   * Reads from store and falls back to Firebase if not found
+   *
+   * @returns {Promise<{ success: boolean, questionSetId?: string, error?: string }>}
+   */
+  const getFreshQuestionSetAssignment = async () => {
+    try {
+      // Read fresh state from store (not from closure)
+      const currentTeamId = useGameStore.getState().currentTeamId;
+      const questionSetAssignments =
+        useGameStore.getState().questionSetAssignments;
+
+      if (!currentTeamId) {
+        return { success: false, error: 'No current team ID' };
+      }
+
+      // Check if we have assignment in local state
+      let questionSetId = questionSetAssignments?.[currentTeamId];
+
+      if (questionSetId) {
+        console.log(
+          `📚 Found question set assignment in local state: ${questionSetId}`,
+        );
+        return { success: true, questionSetId };
+      }
+
+      // Assignment not in local state - fetch fresh from Firebase
+      console.log(
+        '🔄 Question set assignment missing - fetching from Firebase...',
+      );
+
+      const firebaseGameState = await databaseService.getGameState();
+
+      if (!firebaseGameState) {
+        return {
+          success: false,
+          error: 'Failed to fetch game state from Firebase',
+        };
+      }
+
+      questionSetId = firebaseGameState.questionSetAssignments?.[currentTeamId];
+
+      if (!questionSetId) {
+        return {
+          success: false,
+          error: `No question set assigned to team ${currentTeamId} in Firebase`,
+        };
+      }
+
+      // Update local store with fresh assignment
+      console.log(
+        `✅ Fetched question set assignment from Firebase: ${questionSetId}`,
+      );
+
+      // Update game store with fresh assignments
+      useGameStore.setState({
+        questionSetAssignments: firebaseGameState.questionSetAssignments,
+      });
+
+      return { success: true, questionSetId };
+    } catch (error) {
+      console.error('Failed to get question set assignment:', error);
+      return { success: false, error: error.message };
+    }
+  };
 
   /**
    * Load question from question-sets for host view
    * Includes correct answer for host validation
    *
-   * UPDATED: Now validates question set freshness and forces refresh if stale
+   * UPDATED: Now reads fresh state and implements defensive fetching
    *
    * Flow:
-   * 1. Validate question set is fresh (< 5 min old)
-   * 2. If stale or not loaded, fetch fresh from Firebase
-   * 3. Load question into host view (with correct answer)
-   * 4. Update question number in local game state
-   * 5. Clear previous question from Firebase game-state
+   * 1. Get fresh question set assignment (from store or Firebase)
+   * 2. Validate question set is fresh (< 5 min old)
+   * 3. If stale or not loaded, fetch fresh from Firebase
+   * 4. Load question into host view (with correct answer)
+   * 5. Clear filtered options (50/50 state)
+   * 6. Update question number in local game state
+   * 7. Clear previous question + lifeline state from Firebase game-state
    *
    * ONLY loads into local state - does NOT push to Firebase yet
    * Host must click "Push to Display" to push to Firebase game-state
-   * Clears previous question state from Firebase game-state
+   * Clears previous question state AND lifeline state from Firebase game-state
    *
    * @param {number} questionNumber - Question number (1-20)
    * @returns {Promise<void>}
@@ -97,14 +168,23 @@ export function useCurrentQuestion() {
         );
       }
 
-      // Get current team's assigned question set
-      const questionSetId = questionSetAssignments[currentTeamId];
+      // ============================================================
+      // GET FRESH QUESTION SET ASSIGNMENT
+      // ============================================================
 
-      if (!questionSetId) {
+      const assignmentResult = await getFreshQuestionSetAssignment();
+
+      if (!assignmentResult.success) {
         throw new Error(
-          `No question set assigned to current team: ${currentTeamId}`,
+          assignmentResult.error || 'Failed to get question set assignment',
         );
       }
+
+      const questionSetId = assignmentResult.questionSetId;
+
+      console.log(
+        `📖 Loading question ${questionNumber} from set: ${questionSetId}`,
+      );
 
       // ============================================================
       // FRESHNESS VALIDATION
@@ -160,14 +240,23 @@ export function useCurrentQuestion() {
         throw new Error(result.error || 'Failed to load question');
       }
 
+      // ============================================================
+      // CLEAR LIFELINE STATE
+      // ============================================================
+
+      // Clear 50/50 filtered options from questions store
+      clearFilteredOptions();
+      console.log('🧹 Filtered options cleared for new question');
+
       // Update current question number in local game state
       setQuestionNumber(questionNumber);
 
       // ============================================================
-      // CLEAR PREVIOUS QUESTION FROM FIREBASE GAME-STATE
+      // CLEAR PREVIOUS QUESTION + LIFELINE STATE FROM FIREBASE GAME-STATE
       // ============================================================
 
-      // This resets visibility, answer flags, and removes previous question
+      // This resets visibility, answer flags, removes previous question,
+      // AND clears active lifeline state
       // SECURITY: No correct answer is sent to Firebase at this stage
       await databaseService.updateGameState({
         currentQuestionNumber: questionNumber,
@@ -178,12 +267,15 @@ export function useCurrentQuestion() {
         correctOption: null, // Clear previous correct answer
         selectedOption: null, // Reset selected option
         optionWasCorrect: null, // Reset correctness flag
+        activeLifeline: null, // Clear active lifeline when moving to next question
       });
 
       console.log(
         `✅ Question ${questionNumber} loaded locally for HOST (with answer)`,
       );
-      console.log('🧹 Previous question cleared from Firebase game-state');
+      console.log(
+        '🧹 Previous question + lifeline state cleared from Firebase game-state',
+      );
       console.log(
         `🔒 Correct answer (${result.question.correctAnswer}) is HOST-ONLY (not in Firebase)`,
       );
@@ -193,6 +285,7 @@ export function useCurrentQuestion() {
       console.error('Failed to load question:', err);
       setError(err.message);
       setIsLoading(false);
+      throw err; // Re-throw so caller can handle
     }
   };
 
@@ -231,6 +324,7 @@ export function useCurrentQuestion() {
     } catch (err) {
       console.error('Failed to show question:', err);
       setError(err.message);
+      throw err;
     }
   };
 
@@ -250,6 +344,7 @@ export function useCurrentQuestion() {
     } catch (err) {
       console.error('Failed to hide question:', err);
       setError(err.message);
+      throw err;
     }
   };
 

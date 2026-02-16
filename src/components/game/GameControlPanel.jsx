@@ -53,6 +53,11 @@ import {
  * Game Control Panel Component
  * Shown on homepage after game initialization
  * Contains: Status, Play Queue (always visible), Play Game button, Uninitialize button, Factory Reset option
+ *
+ * UPDATED: Added data sync verification before starting game
+ * - Ensures question set assignments are synced to Firebase
+ * - Verifies data integrity before allowing game start
+ * - Better error handling and user feedback
  */
 export default function GameControlPanel() {
   const navigate = useNavigate();
@@ -77,6 +82,7 @@ export default function GameControlPanel() {
   );
   const currentTeamId = useGameStore((state) => state.currentTeamId);
   const startGame = useGameStore((state) => state.startGame);
+  const ensureDataReady = useGameStore((state) => state.ensureDataReady);
 
   const teamsObject = useTeamsStore((state) => state.teams);
 
@@ -126,14 +132,47 @@ export default function GameControlPanel() {
 
   /**
    * Handle start game confirmation
+   *
+   * UPDATED: Now verifies data is synced before starting
    */
   const handleStartGame = async () => {
     setIsStarting(true);
     setStartError(null);
 
     try {
-      // 1. Load first team's question set from Firebase into memory
-      const loadResult = await loadQuestionSet(firstTeamQuestionSetId);
+      // ============================================================
+      // PRE-FLIGHT CHECK: Ensure data is synced
+      // ============================================================
+
+      console.log('🔍 Verifying game data before start...');
+
+      const dataReadyResult = await ensureDataReady();
+
+      if (!dataReadyResult.success) {
+        throw new Error(
+          dataReadyResult.error ||
+            'Failed to verify game data. Please try again.',
+        );
+      }
+
+      // Verify first team has question set assigned
+      if (!firstTeamQuestionSetId) {
+        throw new Error(
+          `First team "${firstTeam?.name}" does not have a question set assigned. Please reinitialize the game.`,
+        );
+      }
+
+      console.log('✅ Game data verified successfully');
+
+      // ============================================================
+      // LOAD QUESTION SET
+      // ============================================================
+
+      console.log(`📚 Loading question set: ${firstTeamQuestionSetId}`);
+
+      const loadResult = await loadQuestionSet(firstTeamQuestionSetId, {
+        forceFresh: true, // Always fetch fresh from Firebase when starting
+      });
 
       if (!loadResult.success) {
         throw new Error(
@@ -141,14 +180,24 @@ export default function GameControlPanel() {
         );
       }
 
-      // 2. Start game (updates game state + Firebase)
+      console.log('✅ Question set loaded successfully');
+
+      // ============================================================
+      // START GAME
+      // ============================================================
+
+      console.log(`🎮 Starting game with first team: ${firstTeamId}`);
+
       const startResult = await startGame(firstTeamId);
 
       if (!startResult.success) {
         throw new Error(startResult.error || 'Failed to start game');
       }
 
-      // 3. Success! Show toast and navigate
+      // ============================================================
+      // SUCCESS
+      // ============================================================
+
       toast.success('Game Started!', {
         description: `${firstTeam.name} is now on the hot seat. Good luck!`,
       });

@@ -39,6 +39,7 @@ export const DEFAULT_GAME_STATE = {
   lastUpdated: 0,
   selectedOption: null,
   optionWasCorrect: null,
+  activeLifeline: null,
 };
 
 /**

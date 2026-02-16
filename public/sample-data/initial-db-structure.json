@@ -10,6 +10,7 @@
     "selected-option": null,
     "option-was-correct": null,
     "game-status": "not-started",
+    "active-lifeline": null,
     "last-updated": 0
   },
   "teams": {},
