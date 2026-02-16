@@ -242,7 +242,7 @@ not-started → initialized → active ⇄ paused → completed
 | `question-set-id`        | string\|null | Assigned question set ID (from question-sets node)                     |
 | `current-question-index` | number       | 0-based index of current question (0-19)                               |
 | `questions-answered`     | number       | Count of successfully answered questions                               |
-| `lifelines`              | object       | Available lifelines: `{ "phone-a-friend": bool, "fifty-fifty": bool }` |
+| `lifelines-available`    | object       | Available lifelines: `{ "phone-a-friend": bool, "fifty-fifty": bool }` |
 | `created-at`             | number       | Timestamp when team was created                                        |
 | `eliminated-at`          | number\|null | Timestamp when eliminated (if applicable)                              |
 | `completed-at`           | number\|null | Timestamp when completed all questions                                 |
@@ -270,7 +270,7 @@ waiting → active → eliminated (terminal)
       "question-set-id": "set-1",
       "current-question-index": 0,
       "questions-answered": 0,
-      "lifelines": {
+      "lifelines-available": {
         "phone-a-friend": true,
         "fifty-fifty": true
       },

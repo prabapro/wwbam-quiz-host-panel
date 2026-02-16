@@ -110,7 +110,7 @@ export function formatTimerDisplay(seconds) {
  */
 export function isLifelineAvailable(team, lifelineType) {
   // TODO: Implement lifeline availability check
-  if (!team || !team.lifelines) {
+  if (!team || !team.lifelinesAvailable) {
     return false;
   }
 
@@ -119,7 +119,7 @@ export function isLifelineAvailable(team, lifelineType) {
     g[1].toUpperCase(),
   );
 
-  return team.lifelines[camelCaseType] === true;
+  return team.lifelinesAvailable[camelCaseType] === true;
 }
 
 /**
@@ -133,11 +133,11 @@ export function isLifelineAvailable(team, lifelineType) {
  */
 export function getAvailableLifelines(team) {
   // TODO: Implement available lifelines getter
-  if (!team || !team.lifelines) {
+  if (!team || !team.lifelinesAvailable) {
     return [];
   }
 
-  return Object.entries(team.lifelines)
+  return Object.entries(team.lifelinesAvailable)
     .filter(([, available]) => available === true)
     .map(([type]) => type);
 }

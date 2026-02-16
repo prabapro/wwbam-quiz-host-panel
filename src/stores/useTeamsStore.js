@@ -63,7 +63,7 @@ export const useTeamsStore = create()(
               questionSetId: null,
               currentQuestionIndex: 0,
               questionsAnswered: 0,
-              lifelines: {
+              lifelinesAvailable: {
                 [LIFELINE_TYPE.PHONE_A_FRIEND]: true,
                 [LIFELINE_TYPE.FIFTY_FIFTY]: true,
               },
@@ -258,7 +258,7 @@ export const useTeamsStore = create()(
             return { success: false, error: 'Team not found' };
           }
 
-          if (!team.lifelines[lifelineType]) {
+          if (!team.lifelinesAvailable[lifelineType]) {
             console.warn(
               `Lifeline ${lifelineType} not available for ${teamId}`,
             );
@@ -269,8 +269,8 @@ export const useTeamsStore = create()(
           }
 
           return get().updateTeam(teamId, {
-            lifelines: {
-              ...team.lifelines,
+            lifelinesAvailable: {
+              ...team.lifelinesAvailable,
               [lifelineType]: false,
             },
           });
@@ -402,7 +402,7 @@ export const useTeamsStore = create()(
          */
         hasLifeline: (teamId, lifelineType) => {
           const team = get().getTeam(teamId);
-          return team?.lifelines[lifelineType] || false;
+          return team?.lifelinesAvailable[lifelineType] || false;
         },
 
         /**
@@ -413,7 +413,7 @@ export const useTeamsStore = create()(
 
           if (!team) return [];
 
-          return Object.entries(team.lifelines)
+          return Object.entries(team.lifelinesAvailable)
             .filter(([, available]) => available)
             .map(([type]) => type);
         },
@@ -428,7 +428,7 @@ export const useTeamsStore = create()(
             currentQuestionIndex: 0,
             questionsAnswered: 0,
             questionSetId: null,
-            lifelines: {
+            lifelinesAvailable: {
               [LIFELINE_TYPE.PHONE_A_FRIEND]: true,
               [LIFELINE_TYPE.FIFTY_FIFTY]: true,
             },

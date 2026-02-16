@@ -466,7 +466,7 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
 ```javascript
 // Firebase update (kebab-case keys)
 {
-  "teams/team-3/lifelines/phone-a-friend": false,
+  "teams/team-3/lifelines-available/phone-a-friend": false,
   "teams/team-3/last-updated": serverTimestamp()
 }
 ```
@@ -489,7 +489,7 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
 // Firebase updates (kebab-case keys)
 {
   "game-state/options-visible": false,  // Temporarily hide
-  "teams/team-3/lifelines/fifty-fifty": false,
+  "teams/team-3/lifelines-available/fifty-fifty": false,
   "teams/team-3/last-updated": serverTimestamp()
 }
 ```
@@ -838,7 +838,7 @@ Answer Locked & Validated:
   This will:
   - Clear all game state
   - Reset team statuses to "waiting"
-  - Clear team progress/prizes/lifelines
+  - Clear team progress/prizes/lifelines-available
   - Keep team configurations (can be edited)
   - Require re-initialization
 
@@ -872,7 +872,7 @@ Answer Locked & Validated:
   "teams/team-1/current-question-index": 0,
   "teams/team-1/questions-answered": 0,
   "teams/team-1/question-set-id": null,
-  "teams/team-1/lifelines": {
+  "teams/team-1/lifelines-available": {
     "phone-a-friend": true,
     "fifty-fifty": true
   },

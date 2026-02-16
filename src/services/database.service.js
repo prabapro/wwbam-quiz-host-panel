@@ -525,7 +525,7 @@ export const createTeam = async (teamData) => {
       'current-prize': 0,
       'question-set-id': teamData.questionSetId || null,
       'current-question-index': 0,
-      lifelines: {
+      'lifelines-available': {
         'phone-a-friend': true,
         'fifty-fifty': true,
       },
@@ -606,9 +606,12 @@ export const deleteAllTeams = async () => {
  */
 export const useLifeline = async (teamId, lifelineType) => {
   try {
-    await update(ref(database, `${DB_PATHS.TEAMS}/${teamId}/lifelines`), {
-      [lifelineType]: false,
-    });
+    await update(
+      ref(database, `${DB_PATHS.TEAMS}/${teamId}/lifelines-available`),
+      {
+        [lifelineType]: false,
+      },
+    );
     console.log('✅ Lifeline used:', lifelineType);
   } catch (error) {
     console.error('Error using lifeline:', error);

@@ -182,8 +182,8 @@ export function useAnswerSelection() {
 
         // Check if team has available lifelines
         const hasLifelines =
-          currentTeam?.lifelines?.phoneAFriend ||
-          currentTeam?.lifelines?.fiftyFifty;
+          currentTeam?.lifelinesAvailable?.phoneAFriend ||
+          currentTeam?.lifelinesAvailable?.fiftyFifty;
 
         if (hasLifelines) {
           console.log(
