@@ -1,0 +1,84 @@
+# .github/workflows/check-deployment.yml
+# Manual workflow to check and display current Firebase Hosting deployment URLs
+name: Check Deployment URLs
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to check'
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+          - all
+
+jobs:
+  check-urls:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Display Configuration
+        run: |
+          echo "### 📋 Firebase Hosting Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Project: wwbam-quiz" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Hosting Sites" >> $GITHUB_STEP_SUMMARY
+          echo "| Target | Site Name | Purpose |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-----------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| host-panel | wwbam-quiz | Host Panel (Production) |" >> $GITHUB_STEP_SUMMARY
+          echo "| public-display | wwbam-quiz-display | Public Display |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Database Instances" >> $GITHUB_STEP_SUMMARY
+          echo "| Target | Instance Name | Purpose |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|---------------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| production | wwbam-quiz-default-rtdb | Production Database |" >> $GITHUB_STEP_SUMMARY
+          echo "| staging | wwbam-quiz-staging | Staging Database |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Display Production URLs
+        if: ${{ github.event.inputs.environment == 'production' || github.event.inputs.environment == 'all' }}
+        run: |
+          echo "### 🚀 Production URLs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Host Panel (wwbam-quiz)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 Primary: https://wwbam-quiz.web.app" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 Alternative: https://wwbam-quiz.firebaseapp.com" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 Console: https://console.firebase.google.com/project/wwbam-quiz/hosting/sites/wwbam-quiz" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Public Display (wwbam-quiz-display)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 Primary: https://wwbam-quiz-display.web.app" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 Alternative: https://wwbam-quiz-display.firebaseapp.com" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 Console: https://console.firebase.google.com/project/wwbam-quiz/hosting/sites/wwbam-quiz-display" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Display Staging Info
+        if: ${{ github.event.inputs.environment == 'staging' || github.event.inputs.environment == 'all' }}
+        run: |
+          echo "### 🔍 Staging/Preview Channels" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Preview channels follow this format:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`https://wwbam-quiz--staging-{PR_NUMBER}-{HASH}.web.app\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Active Channels:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Preview channels are created per Pull Request" >> $GITHUB_STEP_SUMMARY
+          echo "- Expire after 7 days" >> $GITHUB_STEP_SUMMARY
+          echo "- View all channels: https://console.firebase.google.com/project/wwbam-quiz/hosting/sites/wwbam-quiz" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Display Quick Links
+        run: |
+          echo "### 🔗 Quick Links" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- 🏠 [Firebase Console](https://console.firebase.google.com/project/wwbam-quiz)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 [Hosting Dashboard](https://console.firebase.google.com/project/wwbam-quiz/hosting)" >> $GITHUB_STEP_SUMMARY
+          echo "- 💾 [Database Dashboard](https://console.firebase.google.com/project/wwbam-quiz/database)" >> $GITHUB_STEP_SUMMARY
+          echo "- ⚙️ [Project Settings](https://console.firebase.google.com/project/wwbam-quiz/settings/general)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "<sub>Generated at: $(date -u +'%Y-%m-%d %H:%M:%S UTC')</sub>" >> $GITHUB_STEP_SUMMARY

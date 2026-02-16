@@ -33,7 +33,6 @@ jobs:
     # Reference the Staging environment
     environment:
       name: Staging
-      url: https://wwbam-quiz--staging-${{ github.event.pull_request.number }}.web.app
 
     steps:
       # Checkout code
@@ -63,6 +62,7 @@ jobs:
 
       # Deploy to preview channel with custom channelId
       - name: Deploy to Firebase Hosting preview channel
+        id: firebase-deploy
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
@@ -70,3 +70,90 @@ jobs:
           projectId: wwbam-quiz
           target: host-panel
           channelId: staging-${{ github.event.pull_request.number }}
+
+      # Output deployment information with proper site name
+      - name: Display Preview URLs
+        run: |
+          echo "### 🔍 Staging Preview Deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**PR #${{ github.event.pull_request.number }}:** ${{ github.event.pull_request.title }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Site:** wwbam-quiz" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** host-panel" >> $GITHUB_STEP_SUMMARY
+          echo "**Channel:** staging-${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Staging" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 **Preview URL:** ${{ steps.firebase-deploy.outputs.details_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ **Note:** The preview URL format is: \`https://wwbam-quiz--staging-${{ github.event.pull_request.number }}-XXXXXXXX.web.app\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⏱️ **Preview expires:** 7 days from deployment" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Firebase Console:** https://console.firebase.google.com/project/wwbam-quiz/hosting/sites/wwbam-quiz" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Deployment Time:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "📝 **Commit:** ${{ github.event.pull_request.head.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "👤 **Author:** @${{ github.event.pull_request.user.login }}" >> $GITHUB_STEP_SUMMARY
+
+      # Enhanced PR comment with better URL information
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const previewUrl = '${{ steps.firebase-deploy.outputs.details_url }}';
+            const prNumber = context.payload.pull_request.number;
+
+            const message = `## 🔍 Staging Preview Deployed
+
+            **PR #${prNumber}:** ${{ github.event.pull_request.title }}
+
+            ### Preview URL
+            🌐 **Live Preview:** ${previewUrl}
+
+            ### Deployment Details
+            - **Site:** wwbam-quiz
+            - **Target:** host-panel
+            - **Channel:** staging-${prNumber}
+            - **Environment:** Staging
+            - **Status:** ✅ Success
+
+            ### Information
+            - ⏱️ Preview expires in 7 days
+            - 🔄 Updates automatically on new commits to this PR
+            - 📊 [View in Firebase Console](https://console.firebase.google.com/project/wwbam-quiz/hosting/sites/wwbam-quiz)
+
+            ### Test Instructions
+            1. Click the preview URL above
+            2. Test the changes in this PR
+            3. Report any issues in this PR thread
+
+            ---
+            <sub>Deployed at: ${new Date().toISOString()} | By: @${{ github.event.pull_request.user.login }}</sub>`;
+
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.data.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🔍 Staging Preview Deployed')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: message
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: message
+              });
+            }
