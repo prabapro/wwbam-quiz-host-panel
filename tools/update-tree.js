@@ -36,7 +36,6 @@ const DEFAULT_EXCLUDES = [
   '.idea',
   '*.swp',
   '*.swo',
-  '.github',
   'resources',
   '.editorconfig',
   '.eslintignore',

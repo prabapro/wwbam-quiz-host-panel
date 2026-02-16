@@ -1,4 +1,8 @@
 .
+├── .github
+│   └── workflows
+│       ├── deploy-production.yml
+│       └── deploy-staging.yml
 ├── docs
 │   ├── PRD
 │   │   ├── PHASE_01.md
