@@ -189,6 +189,7 @@ Simple object with Firebase Auth UIDs as keys.
 | `initialized-at`           | number\|null  | Timestamp when game was initialized                                               |
 | `started-at`               | number\|null  | Timestamp when first team started playing                                         |
 | `last-updated`             | number        | Server timestamp of last update                                                   |
+| `active-lifeline`          | string\|null  | Currently active lifeline:`phone-a-friend` \| `fifty-fifty` \| `null`             |
 
 ### Valid Status Transitions
 
@@ -206,6 +207,7 @@ not-started → initialized → active ⇄ paused → completed
     "game-status": "initialized",
     "current-team-id": null,
     "current-question-number": 0,
+    "active-lifeline": null,
     "current-question": null,
     "question-visible": false,
     "options-visible": false,
@@ -434,6 +436,58 @@ await databaseService.setCurrentQuestion(
   }
 }
 ```
+
+### Lifeline Operations
+
+**Key Principles:**
+
+- Lifelines are DECISION TOOLS, not safety nets
+- Must be used BEFORE locking answer
+- ONE lifeline per question maximum
+- Wrong answer after lock = direct elimination (no lifeline rescue)
+
+**Database Operations:**
+
+When lifelines are activated, the system performs atomic updates across multiple nodes:
+
+**50/50 Activation:**
+
+```javascript
+{
+  "game-state/current-question/options": { A: "...", B: "..." }, // Filtered
+  "game-state/active-lifeline": "fifty-fifty",
+  "teams/{teamId}/lifelines-available/fiftyFifty": false
+}
+```
+
+**Phone-a-Friend Activation:**
+
+```javascript
+{
+  "game-state/active-lifeline": "phone-a-friend",
+  "teams/{teamId}/lifelines-available/phoneAFriend": false
+}
+```
+
+**Clearing Active Lifeline:**
+
+Called after 50/50 completes or Phone-a-Friend call ends:
+
+```javascript
+{
+  "game-state/active-lifeline": null
+}
+```
+
+**Service Layer:**
+
+All lifeline operations are handled through `database.service.js`:
+
+- `activateFiftyFiftyLifeline(teamId, filteredOptions)`
+- `activatePhoneAFriendLifeline(teamId)`
+- `clearActiveLifeline()`
+
+These ensure atomic updates and proper coordination between game-state and team data.
 
 ---
 

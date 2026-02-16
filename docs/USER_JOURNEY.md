@@ -405,26 +405,37 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
 
 **System checks lifeline status:**
 
-**Scenario 1: Team has unused lifelines**
+**Scenario 1: Wrong answer after lock = Direct elimination**
 
-- System automatically:
+- System automatically performs atomic Firebase update (NO lifeline checking):
 
-  - Does NOT reveal correct answer yet
-  - Does NOT sync to Firebase yet
-  - Shows host-only dialog:
+```javascript
+// Firebase updates (kebab-case keys)
+{
+  "game-state/answer-revealed": true,
+  "game-state/correct-option": "B",
+  "game-state/active-lifeline": null, // Clear any active lifeline
+  "game-state/last-updated": serverTimestamp(),
+  "teams/team-3/status": "eliminated",
+  "teams/team-3/eliminated-at": serverTimestamp(),
+  "teams/team-3/last-updated": serverTimestamp()
+  // current-prize stays at last correct value
+}
+```
 
-    ```
-    ⚠️ Wrong Answer - Lifelines Available
+- Public display receives update:
+  - Shows X animation
+  - Reveals correct answer (B highlighted in green)
+  - Shows: "The correct answer was B: Paris"
+- Team's final prize frozen at last correct answer amount
+- Host panel shows: "Team Gamma eliminated - Final Prize: Rs.1,000"
+- Team card turns red with "Eliminated" badge
+- **"Next Team"** button appears
 
-    Team has:
-    ✅ Phone-a-Friend
-    ✅ 50/50
+**Note:** Lifelines cannot save a team after answer is locked. They must be used BEFORE selecting an answer (see Step 5).
 
-    [Offer Lifeline]  [Eliminate Team]
-    ```
-
-  - If **"Offer Lifeline"** clicked → Go to Step 5 (Lifeline Flow)
-  - If **"Eliminate Team"** clicked → Continue to Scenario 2 below
+- If **"Offer Lifeline"** clicked → Go to Step 5 (Lifeline Flow)
+- If **"Eliminate Team"** clicked → Continue to Scenario 2 below
 
 **Scenario 2: Team has NO unused lifelines (or host chooses elimination)**
 
@@ -453,65 +464,103 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
 - **"Next Team"** button appears
 - Host clicks "Next Team" → Go to Phase C
 
-#### Step 5: Lifeline Usage (Before Answer Lock)
+#### Step 5: Lifeline Usage (BEFORE Selecting Answer)
 
-**Important:** Team must request lifeline BEFORE selecting their answer
+**RULE:** Lifelines must be used BEFORE selecting an answer. Once answer is locked, wrong answer = elimination (no lifeline rescue).
+
+**Timing:**
+
+- Question displayed to public
+- Team discusses options
+- **[DECISION POINT]** Team can use ONE lifeline now
+- After lifeline use (or skip), team selects answer
+- Host locks answer (validation occurs)
+
+**One Per Question Rule:**
+
+- Team can use either Phone-a-Friend OR 50/50
+- Not both in the same question
+- Once used, both buttons become disabled for this question
+
+---
 
 **Phone-a-Friend Flow:**
 
-- Team says: "We'd like to use Phone-a-Friend"
-- Host clicks **"📞 Phone-a-Friend"** button
-- System performs Firebase update:
-
-```javascript
-// Firebase update (kebab-case keys)
-{
-  "teams/team-3/lifelines-available/phone-a-friend": false,
-  "teams/team-3/last-updated": serverTimestamp()
-}
-```
-
-- Button becomes greyed out (disabled)
-- Team card updates: ❌ Phone-a-Friend
-- Host panel shows: "⏸️ Lifeline in use - Timer paused"
-- Team makes phone call (3 minutes max)
-- After call completes → Returns to Step 3 (Team selects answer)
-
-**50/50 Flow:**
-
-- Team says: "We'd like to use 50/50"
-- Host clicks **"✂️ 50/50"** button
-- System:
-  - Filters options automatically (removes 2 incorrect answers locally)
-  - Performs Firebase update:
+1. Team says: "We'd like to use Phone-a-Friend"
+2. Host clicks **"📞 Phone-a-Friend"** button
+3. System performs atomic Firebase update:
 
 ```javascript
 // Firebase updates (kebab-case keys)
 {
-  "game-state/options-visible": false,  // Temporarily hide
-  "teams/team-3/lifelines-available/fifty-fifty": false,
+  "game-state/active-lifeline": "phone-a-friend",
+  "game-state/last-updated": serverTimestamp(),
+  "teams/team-3/lifelines-available/phoneAFriend": false,
   "teams/team-3/last-updated": serverTimestamp()
 }
 ```
 
-- Then updates with filtered options:
+4. Both lifeline buttons become disabled (one-per-question rule)
+5. Host panel shows: "📞 Phone-a-Friend Active - Timer paused"
+6. Public display shows: "Phone-a-Friend in use"
+7. Team makes phone call (3 minutes max)
+8. Host clicks **"Resume"** button after call completes
+9. System clears active lifeline:
 
 ```javascript
+{
+  "game-state/active-lifeline": null,
+  "game-state/last-updated": serverTimestamp()
+}
+```
+
+10. Returns to Step 3 (Team selects answer from all options)
+
+---
+
+**50/50 Flow:**
+
+1. Team says: "We'd like to use 50/50"
+2. Host clicks **"✂️ 50/50"** button
+3. System automatically:
+   - Applies 50/50 logic (removes 2 incorrect answers)
+   - Performs atomic Firebase update:
+
+```javascript
+// Firebase updates (kebab-case keys)
 {
   "game-state/current-question/options": {
     "A": "London",
     "B": "Paris"
     // C and D removed
   },
-  "game-state/options-visible": true,
-  "game-state/last-updated": serverTimestamp()
+  "game-state/active-lifeline": "fifty-fifty",
+  "game-state/last-updated": serverTimestamp(),
+  "teams/team-3/lifelines-available/fiftyFifty": false,
+  "teams/team-3/last-updated": serverTimestamp()
 }
 ```
 
-- Button becomes greyed out
-- Public display updates to show only 2 options
-- Team card updates: ❌ 50/50
-- Returns to Step 3 (Team selects answer from remaining options)
+4. Both lifeline buttons become disabled (one-per-question rule)
+5. Public display updates to show only 2 options
+6. System auto-clears active lifeline after 1 second:
+
+```javascript
+{
+  "game-state/active-lifeline": null
+}
+```
+
+7. Returns to Step 3 (Team selects answer from 2 remaining options)
+
+---
+
+**Key Points:**
+
+- Lifelines are DECISION TOOLS, not safety nets
+- Use BEFORE selecting answer, not after wrong answer
+- Once answer is locked, no lifeline can save the team
+- One lifeline maximum per question
 
 #### Step 6: Complete Team's Turn
 
