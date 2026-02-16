@@ -21,6 +21,11 @@ on:
       - '.firebaserc'
       - '.github/workflows/**'
 
+# Required permissions for the workflow
+permissions:
+  contents: write # Required for creating commit comments
+  deployments: write # Required for deployment status
+
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
