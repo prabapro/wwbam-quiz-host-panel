@@ -459,7 +459,12 @@ export const useTeamsStore = create()(
       }),
       {
         name: `${appName}-teams`,
-        version: 1,
+        version: 2,
+
+        partialize: () => ({
+          // Don't persist teams data - always load fresh from Firebase
+          teams: {},
+        }),
 
         onRehydrateStorage: () => (state, error) => {
           if (error) {
@@ -473,27 +478,17 @@ export const useTeamsStore = create()(
           if (state) {
             console.log('👥 Teams: Hydrated from localStorage');
 
-            // AUTO-LOAD: Check if teams are empty (cleared localStorage or first load)
-            const hasTeams = state.teams && Object.keys(state.teams).length > 0;
+            // ALWAYS auto-load from Firebase since we don't persist teams
+            console.log('👥 Teams: Auto-loading fresh data from Firebase...');
 
-            if (!hasTeams) {
-              console.log(
-                '👥 Teams: Empty state detected - auto-loading from Firebase...',
-              );
-
-              // Trigger async load - don't await to avoid blocking rehydration
-              state.syncTeamsFromFirebase().then((result) => {
-                if (result.success) {
-                  console.log('👥 Teams: Auto-load complete ✅');
-                } else {
-                  console.warn('👥 Teams: Auto-load failed ⚠️', result.error);
-                }
-              });
-            } else {
-              console.log(
-                `👥 Teams: ${Object.keys(state.teams).length} team(s) loaded from localStorage`,
-              );
-            }
+            // Trigger async load - don't await to avoid blocking rehydration
+            state.syncTeamsFromFirebase().then((result) => {
+              if (result.success) {
+                console.log('👥 Teams: Auto-load complete ✅');
+              } else {
+                console.warn('👥 Teams: Auto-load failed ⚠️', result.error);
+              }
+            });
           }
         },
       },
