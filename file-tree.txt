@@ -103,7 +103,11 @@
 │   │   ├── play
 │   │   │   ├── components
 │   │   │   │   ├── dialogs
-│   │   │   │   │   └── PhoneAFriendDialog.jsx
+│   │   │   │   │   ├── GameCompletedDialog.jsx
+│   │   │   │   │   ├── LifelineConfirmDialog.jsx
+│   │   │   │   │   ├── PhoneAFriendDialog.jsx
+│   │   │   │   │   ├── SkipQuestionDialog.jsx
+│   │   │   │   │   └── TeamStatusDialog.jsx
 │   │   │   │   ├── AnswerPad.jsx
 │   │   │   │   ├── GameControls.jsx
 │   │   │   │   ├── GameStatusBar.jsx
