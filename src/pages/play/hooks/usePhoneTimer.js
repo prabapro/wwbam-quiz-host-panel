@@ -1,10 +1,8 @@
 // src/pages/play/hooks/usePhoneTimer.js
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PHONE_A_FRIEND_DURATION_MINUTES } from '@constants/config';
+import { PHONE_A_FRIEND_DURATION } from '@constants/config';
 import { formatTimerDisplay } from '@utils/gameplay/lifelineLogic';
-
-const TOTAL_SECONDS = PHONE_A_FRIEND_DURATION_MINUTES * 60;
 
 /**
  * usePhoneTimer Hook
@@ -32,7 +30,9 @@ const TOTAL_SECONDS = PHONE_A_FRIEND_DURATION_MINUTES * 60;
  * @returns {Function} returns.reset           - Reset to full duration and stop
  */
 export function usePhoneTimer({ onExpire } = {}) {
-  const [secondsRemaining, setSecondsRemaining] = useState(TOTAL_SECONDS);
+  const [secondsRemaining, setSecondsRemaining] = useState(
+    PHONE_A_FRIEND_DURATION,
+  );
   const [isRunning, setIsRunning] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
 
@@ -72,7 +72,7 @@ export function usePhoneTimer({ onExpire } = {}) {
     if (hasStarted) return;
     setHasStarted(true);
     setIsRunning(true);
-    console.log(`⏱️ Phone-a-Friend timer started: ${TOTAL_SECONDS}s`);
+    console.log(`⏱️ Phone-a-Friend timer started: ${PHONE_A_FRIEND_DURATION}s`);
   }, [hasStarted]);
 
   /**
@@ -81,7 +81,7 @@ export function usePhoneTimer({ onExpire } = {}) {
    */
   const reset = useCallback(() => {
     clearInterval(intervalRef.current);
-    setSecondsRemaining(TOTAL_SECONDS);
+    setSecondsRemaining(PHONE_A_FRIEND_DURATION);
     setIsRunning(false);
     setHasStarted(false);
     console.log('⏱️ Phone-a-Friend timer reset');
@@ -93,8 +93,8 @@ export function usePhoneTimer({ onExpire } = {}) {
     hasStarted,
     hasExpired: hasStarted && secondsRemaining === 0,
     display: formatTimerDisplay(secondsRemaining),
-    totalSeconds: TOTAL_SECONDS,
-    progressPct: Math.round((secondsRemaining / TOTAL_SECONDS) * 100),
+    totalSeconds: PHONE_A_FRIEND_DURATION,
+    progressPct: Math.round((secondsRemaining / PHONE_A_FRIEND_DURATION) * 100),
     start,
     reset,
   };
