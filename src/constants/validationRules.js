@@ -80,17 +80,6 @@ export const PHONE_NUMBER_PATTERN = /^\+?[\d\s\-()]+$/;
  */
 export const SET_ID_PATTERN = /^[a-zA-Z0-9_-]{3,50}$/;
 
-/**
- * Email validation pattern (basic)
- */
-export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/**
- * Team name validation pattern
- * Allows letters, numbers, spaces, basic punctuation
- */
-export const TEAM_NAME_PATTERN = /^[a-zA-Z0-9\s\-_.,()]+$/;
-
 // ============================================================================
 // VALIDATION FUNCTIONS
 // ============================================================================
@@ -101,9 +90,7 @@ export const TEAM_NAME_PATTERN = /^[a-zA-Z0-9\s\-_.,()]+$/;
  * @returns {boolean} True if valid
  */
 export const isValidPhoneNumber = (phone) => {
-  if (!phone || typeof phone !== 'string') {
-    return false;
-  }
+  if (!phone || typeof phone !== 'string') return false;
 
   const cleanedPhone = phone.trim();
   const digitCount = (cleanedPhone.match(/\d/g) || []).length;
@@ -141,41 +128,46 @@ export const normalizeAnswerOption = (option) => {
  * @returns {boolean} True if valid
  */
 export const isValidSetId = (setId) => {
-  if (!setId || typeof setId !== 'string') {
-    return false;
-  }
+  if (!setId || typeof setId !== 'string') return false;
   return SET_ID_PATTERN.test(setId);
 };
 
+// ============================================================================
+// GENERIC HELPERS
+// ============================================================================
+
 /**
- * Validate team name format
- * @param {string} name - Team name to validate
- * @returns {boolean} True if valid
+ * Check if a value is present (not null, undefined, or empty string)
  */
-export const isValidTeamName = (name) => {
-  if (!name || typeof name !== 'string') {
-    return false;
-  }
-
-  const trimmed = name.trim();
-
-  return (
-    trimmed.length >= MIN_TEAM_NAME_LENGTH &&
-    trimmed.length <= MAX_TEAM_NAME_LENGTH &&
-    TEAM_NAME_PATTERN.test(trimmed)
-  );
+export const isRequired = (value) => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
 };
 
 /**
- * Validate email format
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid
+ * Check if a string meets minimum (and optional maximum) length requirements
  */
-export const isValidEmail = (email) => {
-  if (!email || typeof email !== 'string') {
-    return false;
-  }
-  return EMAIL_PATTERN.test(email.trim());
+export const isValidLength = (value, min, max) => {
+  if (!value || typeof value !== 'string') return false;
+  const len = value.trim().length;
+  if (len < min) return false;
+  if (max !== undefined && len > max) return false;
+  return true;
+};
+
+/**
+ * Check if a value is a positive number
+ */
+export const isPositiveNumber = (value) => {
+  return typeof value === 'number' && value > 0;
+};
+
+/**
+ * Validate that a question set has the required number of questions
+ */
+export const isValidQuestionCount = (count) => {
+  return count === QUESTIONS_PER_SET;
 };
 
 // ============================================================================
@@ -197,117 +189,18 @@ export const VALIDATION_ERRORS = {
   PARTICIPANTS_TOO_SHORT: `Participants must be at least ${MIN_PARTICIPANTS_LENGTH} characters`,
 
   CONTACT_REQUIRED: 'Contact number is required',
-  CONTACT_INVALID: 'Please enter a valid phone number',
+  CONTACT_INVALID: 'Contact number is invalid',
 
   // Question validation
   QUESTION_TEXT_REQUIRED: 'Question text is required',
-  QUESTION_TEXT_EMPTY: 'Question text cannot be empty',
-
   OPTION_REQUIRED: 'All options (A, B, C, D) are required',
-  OPTION_EMPTY: 'Option text cannot be empty',
-
   CORRECT_ANSWER_REQUIRED: 'Correct answer is required',
   CORRECT_ANSWER_INVALID: `Correct answer must be one of: ${ANSWER_OPTIONS.join(', ')}`,
 
   // Question set validation
   SET_ID_REQUIRED: 'Set ID is required',
-  SET_ID_INVALID: `Set ID must be ${MIN_SET_ID_LENGTH}-${MAX_SET_ID_LENGTH} alphanumeric characters`,
-  SET_ID_DUPLICATE: 'Set ID already exists',
-
+  SET_ID_INVALID:
+    'Set ID must be 3-50 alphanumeric characters with hyphens/underscores',
   SET_NAME_REQUIRED: 'Set name is required',
-
-  QUESTIONS_ARRAY_REQUIRED: 'Questions must be an array',
-  QUESTIONS_COUNT_INVALID: `Question set must contain exactly ${QUESTIONS_PER_SET} questions`,
-
-  // General validation
-  FIELD_REQUIRED: 'This field is required',
-  INVALID_NUMBER: 'Must be a valid number',
-  INVALID_FORMAT: 'Invalid format',
-  MISSING_DATA: 'Missing required data',
-};
-
-/**
- * Get validation error message
- * @param {string} errorKey - Error key from VALIDATION_ERRORS
- * @param {Object} params - Optional parameters for dynamic messages
- * @returns {string} Error message
- */
-export const getValidationError = (errorKey, params = {}) => {
-  let message = VALIDATION_ERRORS[errorKey] || VALIDATION_ERRORS.INVALID_FORMAT;
-
-  // Replace parameters if provided
-  Object.keys(params).forEach((key) => {
-    message = message.replace(`{${key}}`, params[key]);
-  });
-
-  return message;
-};
-
-// ============================================================================
-// VALIDATION HELPERS
-// ============================================================================
-
-/**
- * Validate string length
- * @param {string} str - String to validate
- * @param {number} min - Minimum length
- * @param {number} max - Maximum length (optional)
- * @returns {boolean} True if valid
- */
-export const isValidLength = (str, min, max = Infinity) => {
-  if (!str || typeof str !== 'string') {
-    return false;
-  }
-  const length = str.trim().length;
-  return length >= min && length <= max;
-};
-
-/**
- * Validate required field
- * @param {any} value - Value to validate
- * @returns {boolean} True if not empty/null/undefined
- */
-export const isRequired = (value) => {
-  if (value === null || value === undefined) {
-    return false;
-  }
-  if (typeof value === 'string') {
-    return value.trim().length > 0;
-  }
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-  return true;
-};
-
-/**
- * Validate number in range
- * @param {number} value - Number to validate
- * @param {number} min - Minimum value (inclusive)
- * @param {number} max - Maximum value (inclusive)
- * @returns {boolean} True if in range
- */
-export const isInRange = (value, min, max) => {
-  if (typeof value !== 'number' || isNaN(value)) {
-    return false;
-  }
-  return value >= min && value <= max;
-};
-
-/**
- * Validate positive number
- * @param {number} value - Number to validate
- * @returns {boolean} True if positive
- */
-export const isPositiveNumber = (value) => {
-  return typeof value === 'number' && !isNaN(value) && value > 0;
-};
-
-/**
- * Validate non-negative number
- * @param {number} value - Number to validate
- * @returns {boolean} True if non-negative
- */
-export const isNonNegativeNumber = (value) => {
-  return typeof value === 'number' && !isNaN(value) && value >= 0;
+  QUESTION_COUNT_INVALID: `Question set must have exactly ${QUESTIONS_PER_SET} questions`,
 };

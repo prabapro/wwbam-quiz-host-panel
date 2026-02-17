@@ -1,5 +1,4 @@
 // src/utils/theme.js
-/* eslint-disable no-unused-vars */
 
 /**
  * Theme utilities
@@ -14,6 +13,7 @@ export const detectSystemTheme = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
       : 'light';
+    // eslint-disable-next-line no-unused-vars
   } catch (error) {
     console.warn(
       '🎨 Theme: Failed to detect system theme, defaulting to light',
@@ -27,13 +27,7 @@ export const applyThemeToDOM = (theme, systemTheme) => {
   if (typeof document === 'undefined') return;
 
   try {
-    let effectiveTheme = theme;
-
-    if (theme === 'system') {
-      effectiveTheme = systemTheme;
-    }
-
-    // Apply theme class to document
+    const effectiveTheme = theme === 'system' ? systemTheme : theme;
     document.documentElement.className = effectiveTheme;
   } catch (error) {
     console.warn('🎨 Theme: Failed to apply theme to DOM:', error);
@@ -47,13 +41,10 @@ export const initializeThemeEarly = () => {
   if (earlyInitDone || typeof window === 'undefined') return;
 
   try {
-    // Detect system theme first
     const systemTheme = detectSystemTheme();
 
-    // Try to get stored theme from localStorage
     let storedTheme = 'system';
     try {
-      // Get app name from Vite environment (injected at build time from package.json)
       const appName = import.meta.env.VITE_APP_NAME;
 
       if (!appName) {
@@ -69,22 +60,15 @@ export const initializeThemeEarly = () => {
           storedTheme = parsed.state.theme;
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore localStorage errors, use default
     }
 
-    // Apply theme immediately
     applyThemeToDOM(storedTheme, systemTheme);
-
     earlyInitDone = true;
   } catch (error) {
     console.warn('🎨 Theme: Early initialization failed:', error);
   }
-};
-
-// Reset early initialization flag (useful for testing)
-export const resetEarlyInit = () => {
-  earlyInitDone = false;
 };
 
 // Get effective theme from theme and system theme values
@@ -100,7 +84,7 @@ export const isDarkTheme = (theme, systemTheme) => {
 // Create system theme change listener
 export const createSystemThemeListener = (callback) => {
   if (typeof window === 'undefined') {
-    return () => {}; // Return empty cleanup function
+    return () => {};
   }
 
   try {
@@ -113,13 +97,12 @@ export const createSystemThemeListener = (callback) => {
 
     mediaQuery.addEventListener('change', handleSystemThemeChange);
 
-    // Return cleanup function
     return () => {
       mediaQuery.removeEventListener('change', handleSystemThemeChange);
     };
   } catch (error) {
     console.warn('🎨 Theme: Failed to create system theme listener:', error);
-    return () => {}; // Return empty cleanup function
+    return () => {};
   }
 };
 

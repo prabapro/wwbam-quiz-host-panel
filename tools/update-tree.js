@@ -1,5 +1,4 @@
 // tools/update-tree.js
-/* eslint-disable */
 
 import fs from 'fs';
 import path from 'path';
@@ -95,18 +94,15 @@ function shouldExclude(itemPath) {
   const basename = path.basename(itemPath);
 
   for (const pattern of config.excludes) {
-    // Handle glob pattern with wildcard at the beginning or end
     if (pattern.startsWith('*') && basename.endsWith(pattern.slice(1))) {
       return true;
     }
     if (pattern.endsWith('*') && basename.startsWith(pattern.slice(0, -1))) {
       return true;
     }
-    // Handle exact match
     if (pattern === basename) {
       return true;
     }
-    // Match any path component
     if (
       itemPath.includes('/' + pattern + '/') ||
       itemPath.includes('\\' + pattern + '\\')
@@ -163,11 +159,8 @@ function main() {
     console.log(`Generating file tree for ${config.rootDir}`);
     console.log(`Excluding: ${config.excludes.join(', ')}`);
 
-    // Generate the file tree
-    const tree = `.
-${generateTree(config.rootDir)}`;
+    const tree = `.\n${generateTree(config.rootDir)}`;
 
-    // Write to file
     fs.writeFileSync(config.outputFile, tree);
 
     console.log(`File tree generated successfully: ${config.outputFile}`);

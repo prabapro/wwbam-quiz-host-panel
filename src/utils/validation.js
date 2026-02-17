@@ -22,18 +22,12 @@ import {
 export { isValidSetId, normalizeAnswerOption as normalizeOption };
 
 /**
- * Valid answer options (exported for backward compatibility)
- */
-const VALID_OPTIONS = ANSWER_OPTIONS;
-
-/**
  * Validate a team's answer against the correct answer
  * @param {string} selectedAnswer - Team's selected answer (A/B/C/D)
  * @param {string} correctAnswer - Correct answer (A/B/C/D)
  * @returns {Object} Validation result
  */
 export const validateAnswer = (selectedAnswer, correctAnswer) => {
-  // Input validation
   if (!selectedAnswer || !correctAnswer) {
     return {
       isValid: false,
@@ -42,11 +36,9 @@ export const validateAnswer = (selectedAnswer, correctAnswer) => {
     };
   }
 
-  // Normalize answers (uppercase, trim)
   const normalizedSelected = normalizeAnswerOption(selectedAnswer);
   const normalizedCorrect = normalizeAnswerOption(correctAnswer);
 
-  // Check if answers are valid options
   if (!normalizedSelected) {
     return {
       isValid: false,
@@ -63,12 +55,9 @@ export const validateAnswer = (selectedAnswer, correctAnswer) => {
     };
   }
 
-  // Compare answers
-  const isCorrect = normalizedSelected === normalizedCorrect;
-
   return {
     isValid: true,
-    isCorrect,
+    isCorrect: normalizedSelected === normalizedCorrect,
     selectedAnswer: normalizedSelected,
     correctAnswer: normalizedCorrect,
     error: null,
@@ -84,60 +73,51 @@ export const validateAnswer = (selectedAnswer, correctAnswer) => {
 export const validateQuestion = (question, expectedNumber) => {
   const errors = [];
 
-  // Check if question exists
   if (!question || typeof question !== 'object') {
-    return {
-      isValid: false,
-      errors: ['Question is missing or not an object'],
-    };
+    return { isValid: false, errors: ['Question is missing or not an object'] };
   }
 
   // Check required fields
   REQUIRED_QUESTION_FIELDS.forEach((field) => {
-    if (!(field in question)) {
+    if (!isRequired(question[field])) {
       errors.push(`Missing required field: ${field}`);
     }
   });
 
   // Validate question number
-  if (expectedNumber && question.number && question.number !== expectedNumber) {
+  if (question.number !== undefined && question.number !== expectedNumber) {
     errors.push(
-      `Question number mismatch: expected ${expectedNumber}, got ${question.number}`,
+      `Question number mismatch: expected ${expectedNumber}, found ${question.number}`,
     );
   }
 
   // Validate question text
-  if (question.text) {
-    if (typeof question.text !== 'string') {
-      errors.push('Question text must be a string');
-    } else if (!isValidLength(question.text, MIN_QUESTION_TEXT_LENGTH)) {
-      errors.push('Question text cannot be empty');
-    }
+  if (
+    question.text &&
+    !isValidLength(question.text, MIN_QUESTION_TEXT_LENGTH)
+  ) {
+    errors.push(
+      `Question text must be at least ${MIN_QUESTION_TEXT_LENGTH} characters`,
+    );
   }
 
   // Validate options
   if (question.options) {
-    if (typeof question.options !== 'object') {
-      errors.push('Options must be an object or array');
+    if (
+      typeof question.options !== 'object' ||
+      Array.isArray(question.options)
+    ) {
+      errors.push('Options must be an object with keys a, b, c, d');
     } else {
-      const optionKeys = Object.keys(question.options);
-      const hasAllOptions = ANSWER_OPTIONS.every((opt) =>
-        optionKeys.includes(opt),
-      );
-
-      if (!hasAllOptions) {
-        errors.push(
-          `Options must include all choices: ${ANSWER_OPTIONS.join(', ')}`,
-        );
-      }
-
-      // Check each option has text
       ANSWER_OPTIONS.forEach((opt) => {
-        if (question.options[opt]) {
+        const key = opt.toLowerCase();
+        if (!(key in question.options)) {
+          errors.push(`Missing option: ${opt}`);
+        } else {
           const optText =
-            typeof question.options[opt] === 'string'
-              ? question.options[opt]
-              : question.options[opt];
+            typeof question.options[key] === 'object'
+              ? question.options[key]?.text
+              : question.options[key];
 
           if (
             !isValidLength(optText?.toString() || '', MIN_OPTION_TEXT_LENGTH)
@@ -168,7 +148,6 @@ export const validateQuestion = (question, expectedNumber) => {
 export const validateQuestionSet = (questionSet) => {
   const errors = [];
 
-  // Check if question set exists
   if (!questionSet || typeof questionSet !== 'object') {
     return {
       isValid: false,
@@ -177,12 +156,11 @@ export const validateQuestionSet = (questionSet) => {
     };
   }
 
-  // Check for required top-level fields
   if (!isRequired(questionSet.setId) || typeof questionSet.setId !== 'string') {
     errors.push('Missing or invalid setId');
   } else if (!isValidSetId(questionSet.setId)) {
     errors.push(
-      `Invalid setId format: must be 3-50 alphanumeric characters with hyphens/underscores`,
+      'Invalid setId format: must be 3-50 alphanumeric characters with hyphens/underscores',
     );
   }
 
@@ -193,7 +171,6 @@ export const validateQuestionSet = (questionSet) => {
     errors.push('Missing or invalid setName');
   }
 
-  // Check questions array
   if (!Array.isArray(questionSet.questions)) {
     return {
       isValid: false,
@@ -202,7 +179,6 @@ export const validateQuestionSet = (questionSet) => {
     };
   }
 
-  // Check questions count - allow >= QUESTIONS_PER_SET instead of exact match
   if (questionSet.questions.length < QUESTIONS_PER_SET) {
     errors.push(
       `Question set must contain at least ${QUESTIONS_PER_SET} questions, found ${questionSet.questions.length}`,
@@ -212,23 +188,19 @@ export const validateQuestionSet = (questionSet) => {
   // Validate only the first QUESTIONS_PER_SET questions
   const questionsToValidate = questionSet.questions.slice(0, QUESTIONS_PER_SET);
 
-  const questionErrors = questionsToValidate.map((question, index) => {
-    const expectedNumber = index + 1;
-    const validation = validateQuestion(question, expectedNumber);
-
-    if (!validation.isValid) {
-      return {
-        questionNumber: expectedNumber,
-        questionId: question?.id || 'unknown',
-        errors: validation.errors,
-      };
-    }
-
-    return null;
-  });
-
-  // Filter out null entries (valid questions)
-  const invalidQuestions = questionErrors.filter((err) => err !== null);
+  const invalidQuestions = questionsToValidate
+    .map((question, index) => {
+      const validation = validateQuestion(question, index + 1);
+      if (!validation.isValid) {
+        return {
+          questionNumber: index + 1,
+          questionId: question?.id || 'unknown',
+          errors: validation.errors,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
 
   return {
     isValid: errors.length === 0 && invalidQuestions.length === 0,
@@ -272,13 +244,4 @@ export const getValidationSummary = (validationResult) => {
   }
 
   return messages.join('\n');
-};
-
-/**
- * Check if answer option is valid
- * @param {string} option - Option to check (A/B/C/D)
- * @returns {boolean} True if valid
- */
-export const isValidOption = (option) => {
-  return isValidAnswerOption(option);
 };

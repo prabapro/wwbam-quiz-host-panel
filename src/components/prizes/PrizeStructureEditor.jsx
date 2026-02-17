@@ -43,9 +43,13 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
   const isSyncing = usePrizeStore((state) => state.isSyncing);
 
   const savePrizeStructure = usePrizeStore((state) => state.savePrizeStructure);
-  const useDefaultStructure = usePrizeStore(
+
+  // Renamed from useDefaultStructure → applyDefaultStructure to avoid
+  // violating React's rules-of-hooks (names starting with "use" are treated as hooks)
+  const applyDefaultStructure = usePrizeStore(
     (state) => state.useDefaultStructure,
   );
+
   const discardChanges = usePrizeStore((state) => state.discardChanges);
   const addPrizeLevel = usePrizeStore((state) => state.addPrizeLevel);
   const removePrizeLevel = usePrizeStore((state) => state.removePrizeLevel);
@@ -83,7 +87,7 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
   };
 
   const handleUseDefault = () => {
-    useDefaultStructure();
+    applyDefaultStructure();
     setShowDefaultConfirm(false);
   };
 
@@ -131,36 +135,20 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              {teamCount > 0 ? 'Total Prize Pool' : 'Max Prize Per Team'}
+              {teamCount > 0
+                ? `Total Prize Pool (${teamCount} teams)`
+                : 'Max Prize Per Team'}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{formatPrize(totalPrizePool)}</p>
-            {teamCount > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatPrize(summary.maxPrizePerTeam)} × {teamCount} teams
-              </p>
-            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Minimum Prize
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {formatPrize(summary.minPrize)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Maximum Prize
+              Top Prize
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -169,106 +157,116 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Starting Prize
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {formatPrize(summary.minPrize)}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Actions Bar */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Actions</CardTitle>
-            {hasUnsavedChanges && (
-              <Badge
-                variant="secondary"
-                className="bg-yellow-100 text-yellow-800">
-                Unsaved Changes
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={!hasUnsavedChanges || !validation.isValid || isSyncing}
-              className="flex-1 sm:flex-none">
-              <Save className="w-4 h-4 mr-2" />
-              {isSyncing ? 'Saving...' : 'Save to Firebase'}
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => setShowDefaultConfirm(true)}
-              disabled={isSyncing}>
-              <Download className="w-4 h-4 mr-2" />
-              Use Default
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => setShowDiscardConfirm(true)}
-              disabled={!hasUnsavedChanges || isSyncing}>
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Discard Changes
-            </Button>
-
-            <div className="flex gap-2 ml-auto">
-              <Button
-                variant="outline"
-                onClick={addPrizeLevel}
-                disabled={isSyncing}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Level
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={removePrizeLevel}
-                disabled={editedPrizeStructure.length <= 1 || isSyncing}>
-                <Minus className="w-4 h-4 mr-2" />
-                Remove Level
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Validation Errors */}
+      {/* Validation Error */}
       {!validation.isValid && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Validation Errors:</strong>
-            <ul className="mt-2 list-disc list-inside">
-              {validation.errors.map((error, index) => (
-                <li key={index}>{error}</li>
+            <ul className="list-disc list-inside space-y-1">
+              {validation.errors.map((error, i) => (
+                <li key={i}>{error}</li>
               ))}
             </ul>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* View Toggle */}
+      {/* Actions Bar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        {/* View Toggle */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={activeView === 'ladder' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveView('ladder')}>
+            Ladder View
+          </Button>
+          <Button
+            variant={activeView === 'table' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveView('table')}>
+            Table View
+          </Button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Add / Remove Level */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => addPrizeLevel(0)}
+            disabled={isGameActive}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add Level
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => removePrizeLevel(editedPrizeStructure.length - 1)}
+            disabled={isGameActive || editedPrizeStructure.length <= 1}>
+            <Minus className="w-4 h-4 mr-1" />
+            Remove Level
+          </Button>
+
+          {/* Use Default */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDefaultConfirm(true)}
+            disabled={isGameActive}>
+            <Download className="w-4 h-4 mr-1" />
+            Use Default
+          </Button>
+
+          {/* Discard */}
+          {hasUnsavedChanges && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDiscardConfirm(true)}>
+              <RotateCcw className="w-4 h-4 mr-1" />
+              Discard
+            </Button>
+          )}
+
+          {/* Save */}
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!hasUnsavedChanges || !validation.isValid || isSyncing}>
+            <Save className="w-4 h-4 mr-1" />
+            {isSyncing ? 'Saving...' : 'Save Changes'}
+          </Button>
+
+          {/* Unsaved indicator */}
+          {hasUnsavedChanges && (
+            <Badge variant="secondary" className="text-xs">
+              Unsaved
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Prize Structure View */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Prize Structure</CardTitle>
-            <div className="flex gap-2">
-              <Button
-                variant={activeView === 'ladder' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('ladder')}>
-                Ladder View
-              </Button>
-              <Button
-                variant={activeView === 'table' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('table')}>
-                Table View
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {activeView === 'ladder' ? (
             <PrizeStructureLadder />
           ) : (
