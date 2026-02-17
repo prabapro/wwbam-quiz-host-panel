@@ -35,9 +35,13 @@ const isLastTeamInQueue = (teamId, queue) => {
  * - Load Question: Enabled when team is active, data is ready, and no pending result
  * - Push to Display: Enabled when question loaded, not visible, not revealed
  * - Hide Question: Enabled when question visible and not revealed
- * - Next Team: Enabled when team is eliminated, completed, OR last question was skipped
+ * - Next Team: Enabled when team is eliminated or completed
  * - Skip Question: Enabled when game is active, question is loaded, and answer not yet validated
  * - Pause/Resume: Based on current game status
+ *
+ * NOTE: Skip confirmation (previously window.confirm) is now handled by
+ * SkipQuestionDialog in GameControls. This hook exposes `executeSkipQuestion`
+ * as the raw action — no confirmation logic here.
  */
 export function useGameControls() {
   // ============================================================
@@ -202,6 +206,14 @@ export function useGameControls() {
   }, [gameStatus, hostQuestion, validationResult, currentTeam]);
 
   /**
+   * Is the currently loaded question the last one for this team?
+   * Used by SkipQuestionDialog to show an extra warning.
+   */
+  const isCurrentQuestionLast = useMemo(() => {
+    return currentQuestionNumber >= QUESTIONS_PER_SET;
+  }, [currentQuestionNumber]);
+
+  /**
    * Can Pause?
    * - Game is active
    */
@@ -302,24 +314,23 @@ export function useGameControls() {
   };
 
   /**
-   * Skip current question — full flow handler
+   * Execute skip — raw action without confirmation.
    *
-   * Handles all edge cases:
+   * Confirmation is handled upstream by SkipQuestionDialog in GameControls.
+   * This function is called only after the host has confirmed.
+   *
+   * Full flow:
    * 1. Hides question from public display if currently visible
-   * 2. Increments question counter in game store (syncs to Firebase)
-   * 3. Increments team's question index (no questionsAnswered credit)
+   * 2. Clears question state in game store (counter stays)
+   * 3. Advances team's question index (no prize credit for skip)
    * 4. If skipped question was the team's LAST question:
    *    → marks team as COMPLETED with their current prize
    *    → if that team was also the LAST in queue → completes the game
    * 5. Clears host-side question state
+   *
+   * @returns {Promise<void>}
    */
-  const handleSkipQuestion = useCallback(async () => {
-    const confirmed = window.confirm(
-      'Are you sure you want to skip this question? This action cannot be undone.',
-    );
-
-    if (!confirmed) return;
-
+  const executeSkipQuestion = useCallback(async () => {
     try {
       // Snapshot current state before any async operations
       const teamIdSnapshot = useGameStore.getState().currentTeamId;
@@ -391,7 +402,6 @@ export function useGameControls() {
       console.log('⏭️ Question skipped successfully');
     } catch (err) {
       console.error('Failed to skip question:', err);
-      // Surface the error so the UI can react if needed
       throw err;
     }
   }, [
@@ -433,6 +443,7 @@ export function useGameControls() {
 
     // Question Number
     nextQuestionNumber,
+    isCurrentQuestionLast,
 
     // Loading States
     isLoading: questionLoading || isSyncingData,
@@ -447,7 +458,7 @@ export function useGameControls() {
     handleShowQuestion,
     handleHideQuestion,
     handleNextTeam,
-    handleSkipQuestion,
+    executeSkipQuestion,
     handlePause,
     handleResume,
   };
