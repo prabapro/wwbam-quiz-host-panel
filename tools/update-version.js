@@ -1,5 +1,4 @@
 // tools/update-version.js
-/* eslint-disable */
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -35,11 +34,7 @@ async function updatePackageVersion(currentVersion) {
   );
 
   let newVersion;
-  const incrementMap = {
-    p: 'patch',
-    n: 'minor',
-    m: 'major',
-  };
+  const incrementMap = { p: 'patch', n: 'minor', m: 'major' };
 
   const normalizedInput =
     incrementMap[input.toLowerCase()] || input.toLowerCase();
@@ -69,15 +64,13 @@ async function updateManifestVersion(newVersion) {
   try {
     const manifestPath = path.join(process.cwd(), 'public', 'manifest.json');
 
-    // Check if manifest exists
     try {
       await fs.access(manifestPath);
-    } catch (error) {
+    } catch {
       spinner.warn('manifest.json does not exist or is not accessible');
       return false;
     }
 
-    // Read, update, and write manifest.json
     const manifestContent = await fs.readFile(manifestPath, 'utf8');
     const manifest = JSON.parse(manifestContent);
 
@@ -105,17 +98,8 @@ async function updateFileComment(filePath) {
 
     switch (fileExtension) {
       case '.js':
-        commentStart = '//';
-        commentEnd = '';
-        break;
       case '.ts':
-        commentStart = '//';
-        commentEnd = '';
-        break;
       case '.jsx':
-        commentStart = '//';
-        commentEnd = '';
-        break;
       case '.tsx':
         commentStart = '//';
         commentEnd = '';
@@ -125,7 +109,6 @@ async function updateFileComment(filePath) {
         commentEnd = '*/';
         break;
       default:
-        console.log(chalk.yellow(`Unsupported file type: ${filePath}`));
         return;
     }
 
@@ -140,58 +123,41 @@ async function updateFileComment(filePath) {
     }
 
     await fs.writeFile(filePath, updatedContent);
-    console.log(chalk.green(`Updated: ${filePath}`));
   } catch (error) {
     console.error(chalk.red(`Error updating file: ${filePath}`), error);
   }
 }
 
-async function processDirectory(directory) {
-  const spinner = ora(`Processing ${directory} directory...`).start();
+async function processDirectory(directory, spinner) {
+  spinner.text = `Processing ${directory}...`;
 
   try {
-    // First check if directory exists
-    try {
-      await fs.access(directory);
-    } catch (error) {
-      spinner.warn(
-        `Directory ${directory} does not exist or is not accessible`,
-      );
-      return;
+    await fs.access(directory);
+  } catch {
+    return;
+  }
+
+  const files = await fs.readdir(directory);
+
+  for (const file of files) {
+    if (
+      file === 'node_modules' ||
+      file === 'package-lock.json' ||
+      file === 'pnpm-lock.json'
+    ) {
+      continue;
     }
 
-    const files = await fs.readdir(directory);
-    const processingPromises = [];
+    const filePath = path.join(directory, file);
+    const stat = await fs.stat(filePath);
 
-    for (const file of files) {
-      // Skip node_modules directory & package-lock.json
-      if (
-        file === 'node_modules' ||
-        file === 'package-lock.json' ||
-        file === 'pnpm-lock.json'
-      ) {
-        continue;
-      }
-
-      const filePath = path.join(directory, file);
-      const stat = await fs.stat(filePath);
-
-      if (stat.isDirectory()) {
-        processingPromises.push(processDirectory(filePath));
-      } else if (
-        ['.js', '.css', '.jsx', '.ts', '.tsx'].includes(path.extname(filePath))
-      ) {
-        processingPromises.push(updateFileComment(filePath));
-      }
+    if (stat.isDirectory()) {
+      await processDirectory(filePath, spinner);
+    } else if (
+      ['.js', '.css', '.jsx', '.ts', '.tsx'].includes(path.extname(filePath))
+    ) {
+      await updateFileComment(filePath);
     }
-
-    // Wait for all processing to complete
-    await Promise.all(processingPromises);
-
-    spinner.succeed(`Finished processing ${directory}`);
-  } catch (error) {
-    spinner.fail(`Error processing ${directory}: ${error.message}`);
-    console.error(error);
   }
 }
 
@@ -212,7 +178,6 @@ async function main() {
       const newVersion = await updatePackageVersion(currentVersion);
 
       if (newVersion) {
-        // Update package.json version
         const packageSpinner = ora('Updating package.json...').start();
         try {
           packageJson.version = newVersion;
@@ -228,19 +193,25 @@ async function main() {
           throw error;
         }
 
-        // Update manifest.json version
         await updateManifestVersion(newVersion);
       }
     } else if (action === '2') {
       console.log(chalk.cyan('\nUpdating file comments...'));
 
-      // Process all directories concurrently
-      const directories = ['src', 'tools'];
-      await Promise.all(directories.map((dir) => processDirectory(dir)));
+      const spinner = ora('Starting...').start();
 
-      console.log(
-        chalk.green('\nFile comments have been updated successfully.'),
-      );
+      try {
+        const directories = ['src', 'tools'];
+
+        for (const dir of directories) {
+          await processDirectory(dir, spinner);
+        }
+
+        spinner.succeed('File comments updated successfully.');
+      } catch (error) {
+        spinner.fail('Failed to update file comments.');
+        console.error(error);
+      }
     } else {
       console.log(
         chalk.red('\nInvalid action selected. Please choose 1 or 2.'),
