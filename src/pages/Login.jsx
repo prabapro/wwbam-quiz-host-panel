@@ -162,7 +162,25 @@ export default function Login() {
           {import.meta.env.DEV && (
             <div className="mt-6 p-3 bg-muted/30 rounded-md">
               <p className="text-xs text-muted-foreground text-center">
-                Development Mode: Create host account in Firebase Console
+                <strong>🧑‍💻 Development Mode:</strong> <br />
+                <br />
+                Create host account in Firebase Emulator{' '}
+                <a
+                  href="http://127.0.0.1:4000/auth"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-400">
+                  Auth UI
+                </a>{' '}
+                & add the UID to the <code>allowed-hosts</code> node in{' '}
+                <a
+                  href="http://127.0.0.1:4000/database/wwbam-quiz-default-rtdb/data/allowed-hosts"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-400">
+                  Firebase Realtime Database
+                </a>{' '}
+                for local development.
               </p>
             </div>
           )}

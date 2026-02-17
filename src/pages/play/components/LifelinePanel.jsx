@@ -4,17 +4,19 @@ import { useState } from 'react';
 import { useLifelineManagement } from '../hooks/useLifelineManagement';
 import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
+import { LIFELINE_TYPE } from '@constants/teamStates';
 import { Button } from '@components/ui/button';
 import { Badge } from '@components/ui/badge';
 import { Alert, AlertDescription } from '@components/ui/alert';
 import { Phone, Scissors, AlertTriangle } from 'lucide-react';
 import { cn } from '@lib/utils';
-import PhoneAFriendModal from './PhoneAFriendModal';
+import PhoneAFriendDialog from './dialogs/PhoneAFriendDialog';
+import LifelineConfirmDialog from './dialogs/LifelineConfirmDialog';
 
 /**
  * Lifeline Panel Component
  *
- * Purpose: Display and manage team's available lifelines
+ * Purpose: Display and manage team's available lifelines.
  *
  * WWBAM Rules:
  * - Lifelines are DECISION TOOLS (not safety nets)
@@ -23,8 +25,8 @@ import PhoneAFriendModal from './PhoneAFriendModal';
  * - Team chooses: Phone-a-Friend OR 50/50 (not both)
  *
  * Lifeline Types:
- * 1. Phone-a-Friend: Game pauses, modal shows contact + countdown timer
- * 2. 50/50: Remove two incorrect answers
+ * 1. Phone-a-Friend: Confirmation → game pauses → PhoneAFriendDialog with timer
+ * 2. 50/50: Confirmation → two incorrect options removed
  *
  * States:
  * - Available: Button enabled, full color
@@ -64,20 +66,35 @@ export default function LifelinePanel() {
   const isPhoneActive = activeLifeline === 'phone-a-friend';
 
   // ============================================================
-  // EVENT HANDLERS
+  // CONFIRMATION DIALOG STATE
   // ============================================================
 
-  const handleFiftyFiftyClick = async () => {
-    const result = await activateFiftyFifty();
-    if (result.success) {
-      console.log('50/50 activated:', result);
-    }
-  };
+  const [pendingLifeline, setPendingLifeline] = useState(null); // LIFELINE_TYPE | null
 
-  const handlePhoneClick = async () => {
-    const result = await activatePhoneAFriend();
-    if (result.success) {
-      console.log('📞 Phone-a-Friend activated');
+  const handlePhoneClick = () =>
+    setPendingLifeline(LIFELINE_TYPE.PHONE_A_FRIEND);
+  const handleFiftyFiftyClick = () =>
+    setPendingLifeline(LIFELINE_TYPE.FIFTY_FIFTY);
+  const handleConfirmCancel = () => setPendingLifeline(null);
+
+  // ============================================================
+  // ACTIVATION HANDLERS (called after confirmation)
+  // ============================================================
+
+  const handleConfirmActivation = async () => {
+    const lifeline = pendingLifeline;
+    setPendingLifeline(null); // Close confirm dialog first
+
+    if (lifeline === LIFELINE_TYPE.PHONE_A_FRIEND) {
+      const result = await activatePhoneAFriend();
+      if (result.success) {
+        console.log('📞 Phone-a-Friend activated');
+      }
+    } else if (lifeline === LIFELINE_TYPE.FIFTY_FIFTY) {
+      const result = await activateFiftyFifty();
+      if (result.success) {
+        console.log('✂️ 50/50 activated:', result);
+      }
     }
   };
 
@@ -235,8 +252,19 @@ export default function LifelinePanel() {
         )}
       </div>
 
-      {/* Phone-a-Friend Modal — rendered outside the panel div to avoid stacking issues */}
-      <PhoneAFriendModal
+      {/* ── Dialogs ──────────────────────────────────────────────── */}
+
+      {/* Lifeline Confirmation — shown before activating either lifeline */}
+      <LifelineConfirmDialog
+        open={!!pendingLifeline}
+        onOpenChange={handleConfirmCancel}
+        onConfirm={handleConfirmActivation}
+        lifelineType={pendingLifeline}
+        isLoading={isActivating}
+      />
+
+      {/* Phone-a-Friend Active Dialog — rendered outside panel to avoid stacking */}
+      <PhoneAFriendDialog
         open={isPhoneActive}
         contactNumber={currentTeam?.contact}
         phoneTimer={phoneTimer}

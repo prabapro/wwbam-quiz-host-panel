@@ -1,4 +1,4 @@
-// src/pages/play/components/PhoneAFriendModal.jsx
+// src/pages/play/components/dialogs/PhoneAFriendDialog.jsx
 
 import {
   Dialog,
@@ -12,9 +12,9 @@ import { Phone, Timer, CheckCircle2 } from 'lucide-react';
 import { cn } from '@lib/utils';
 
 /**
- * PhoneAFriendModal Component
+ * PhoneAFriendDialog Component
  *
- * Purpose: Host-facing modal shown while Phone-a-Friend lifeline is active.
+ * Purpose: Host-facing dialog shown while Phone-a-Friend lifeline is active.
  *
  * Layout:
  * ┌─────────────────────────────────────┐
@@ -38,13 +38,13 @@ import { cn } from '@lib/utils';
  * - "Resume Game" is always available (host may end call early)
  * - Timer expiry auto-calls onResume (handled by usePhoneTimer in parent)
  *
- * @param {boolean}  props.open            - Whether modal is visible
+ * @param {boolean}  props.open            - Whether dialog is visible
  * @param {string}   props.contactNumber   - Team's contact phone number
  * @param {Object}   props.phoneTimer      - Timer state from usePhoneTimer
  * @param {Function} props.onResume        - Called when host clicks "Resume Game"
  * @param {boolean}  props.isResuming      - Disable button while resuming
  */
-export default function PhoneAFriendModal({
+export default function PhoneAFriendDialog({
   open,
   contactNumber,
   phoneTimer,
@@ -59,7 +59,7 @@ export default function PhoneAFriendModal({
       // Prevent accidental dismiss — host must use "Resume Game"
       onOpenChange={() => {}}>
       <DialogContent
-        // Disable the default close button
+        showCloseButton={false}
         className="max-w-sm"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}>

@@ -314,7 +314,7 @@ export function useLifelineManagement() {
     canUsePhone: canUseLifeline(LIFELINE_TYPE.PHONE_A_FRIEND),
     canUseFiftyFifty: canUseLifeline(LIFELINE_TYPE.FIFTY_FIFTY),
 
-    // Phone timer (exposed for PhoneAFriendModal)
+    // Phone timer (exposed for PhoneAFriendDialog)
     phoneTimer,
 
     // Actions

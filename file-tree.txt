@@ -102,11 +102,16 @@
 │   ├── pages
 │   │   ├── play
 │   │   │   ├── components
+│   │   │   │   ├── dialogs
+│   │   │   │   │   ├── GameCompletedDialog.jsx
+│   │   │   │   │   ├── LifelineConfirmDialog.jsx
+│   │   │   │   │   ├── PhoneAFriendDialog.jsx
+│   │   │   │   │   ├── SkipQuestionDialog.jsx
+│   │   │   │   │   └── TeamStatusDialog.jsx
 │   │   │   │   ├── AnswerPad.jsx
 │   │   │   │   ├── GameControls.jsx
 │   │   │   │   ├── GameStatusBar.jsx
 │   │   │   │   ├── LifelinePanel.jsx
-│   │   │   │   ├── PhoneAFriendModal.jsx
 │   │   │   │   ├── QuestionPanel.jsx
 │   │   │   │   └── TeamStatusCard.jsx
 │   │   │   ├── hooks
