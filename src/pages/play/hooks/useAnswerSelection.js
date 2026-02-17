@@ -130,9 +130,14 @@ export function useAnswerSelection() {
           prizeStructure,
         );
 
-        // Check if team completed all questions
-        const questionsAnsweredAfterThis = currentTeam.questionsAnswered + 1;
-        const isLastQuestion = questionsAnsweredAfterThis >= QUESTIONS_PER_SET;
+        // ─── FIX: Use currentQuestionNumber (game store) to detect the last
+        // question, NOT questionsAnswered (team store).
+        //
+        // questionsAnswered only increments on correct answers, so if any
+        // questions were skipped earlier, it lags behind the real position.
+        // currentQuestionNumber is advanced by BOTH answers AND skips, making
+        // it the reliable source of truth for "where are we in the set".
+        const isLastQuestion = currentQuestionNumber >= QUESTIONS_PER_SET;
 
         if (isLastQuestion) {
           // Team completed all questions - mark as completed
@@ -174,7 +179,7 @@ export function useAnswerSelection() {
           }
 
           console.log(
-            `🎉 Team advanced to question ${questionsAnsweredAfterThis + 1}! Prize: Rs.${newPrize}`,
+            `🎉 Team advanced to question ${currentQuestionNumber + 1}! Prize: Rs.${newPrize}`,
           );
         }
       } else {
