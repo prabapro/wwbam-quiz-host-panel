@@ -102,11 +102,12 @@
 │   ├── pages
 │   │   ├── play
 │   │   │   ├── components
+│   │   │   │   ├── dialogs
+│   │   │   │   │   └── PhoneAFriendDialog.jsx
 │   │   │   │   ├── AnswerPad.jsx
 │   │   │   │   ├── GameControls.jsx
 │   │   │   │   ├── GameStatusBar.jsx
 │   │   │   │   ├── LifelinePanel.jsx
-│   │   │   │   ├── PhoneAFriendModal.jsx
 │   │   │   │   ├── QuestionPanel.jsx
 │   │   │   │   └── TeamStatusCard.jsx
 │   │   │   ├── hooks

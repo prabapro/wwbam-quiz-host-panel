@@ -9,7 +9,7 @@ import { Badge } from '@components/ui/badge';
 import { Alert, AlertDescription } from '@components/ui/alert';
 import { Phone, Scissors, AlertTriangle } from 'lucide-react';
 import { cn } from '@lib/utils';
-import PhoneAFriendModal from './PhoneAFriendModal';
+import PhoneAFriendDialog from './dialogs/PhoneAFriendDialog';
 
 /**
  * Lifeline Panel Component
@@ -235,8 +235,8 @@ export default function LifelinePanel() {
         )}
       </div>
 
-      {/* Phone-a-Friend Modal — rendered outside the panel div to avoid stacking issues */}
-      <PhoneAFriendModal
+      {/* Phone-a-Friend Dialog — rendered outside the panel div to avoid stacking issues */}
+      <PhoneAFriendDialog
         open={isPhoneActive}
         contactNumber={currentTeam?.contact}
         phoneTimer={phoneTimer}

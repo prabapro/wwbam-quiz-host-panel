@@ -1,4 +1,4 @@
-// src/pages/play/components/PhoneAFriendModal.jsx
+// src/pages/play/components/dialogs/PhoneAFriendDialog.jsx
 
 import {
   Dialog,
@@ -12,7 +12,7 @@ import { Phone, Timer, CheckCircle2 } from 'lucide-react';
 import { cn } from '@lib/utils';
 
 /**
- * PhoneAFriendModal Component
+ * PhoneAFriendDialog Component
  *
  * Purpose: Host-facing modal shown while Phone-a-Friend lifeline is active.
  *
@@ -44,7 +44,7 @@ import { cn } from '@lib/utils';
  * @param {Function} props.onResume        - Called when host clicks "Resume Game"
  * @param {boolean}  props.isResuming      - Disable button while resuming
  */
-export default function PhoneAFriendModal({
+export default function PhoneAFriendDialog({
   open,
   contactNumber,
   phoneTimer,
