@@ -61,7 +61,6 @@ export function useAnswerSelection() {
   );
 
   // Teams Store (for updating team progress)
-  const currentTeam = useTeamsStore((state) => state.teams[currentTeamId]);
   const moveToNextQuestion = useTeamsStore((state) => state.moveToNextQuestion);
   const completeTeam = useTeamsStore((state) => state.completeTeam);
   const eliminateTeam = useTeamsStore((state) => state.eliminateTeam);
@@ -219,7 +218,6 @@ export function useAnswerSelection() {
     moveToNextQuestion,
     completeTeam,
     eliminateTeam,
-    currentTeam,
   ]);
 
   /**
