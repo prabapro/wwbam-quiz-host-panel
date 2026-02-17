@@ -14,11 +14,6 @@ import { useCurrentQuestion } from './useCurrentQuestion';
  *
  * Purpose: Smart button state management for game control buttons
  *
- * UPDATED: Added pre-flight checks for data readiness
- * - Checks isDataReady before allowing question load
- * - Ensures question set assignments are available
- * - Better error handling and user feedback
- *
  * Responsibilities:
  * - Calculate enabled/disabled state for each control button
  * - Provide handlers for each control action
@@ -26,11 +21,11 @@ import { useCurrentQuestion } from './useCurrentQuestion';
  * - Enforce game flow rules
  *
  * Button State Rules:
- * - Load Question: Enabled when (no question loaded OR answer validated - ready for next)
- * - Push to Display: Enabled when (question loaded AND not visible AND not revealed)
- * - Hide Question: Enabled when (question visible AND not revealed)
- * - Next Team: Enabled when (team eliminated OR completed)
- * - Skip Question: Always enabled (with confirmation)
+ * - Load Question: Enabled when team is active, data is ready, and no pending result
+ * - Push to Display: Enabled when question loaded, not visible, not revealed
+ * - Hide Question: Enabled when question visible and not revealed
+ * - Next Team: Enabled when team is eliminated or completed
+ * - Skip Question: Enabled when game is active and question is loaded
  * - Pause/Resume: Based on current game status
  */
 export function useGameControls() {
@@ -81,16 +76,25 @@ export function useGameControls() {
   /**
    * Can Load Question?
    * Enabled when:
-   * - Game data is ready (critical check!)
-   * - No question loaded yet (start of game or ready for first question)
-   * - OR answer has been validated (ready for next question)
-   * - AND current question number < QUESTIONS_PER_SET (not at max)
-   * - AND game is active
-   * - AND current team has a question set assigned
+   * - Game is active
+   * - Current team exists AND is still active (not eliminated or completed)
+   * - Game data is ready
+   * - Current team has a question set assigned
+   * - Question number hasn't exceeded the max
+   * - No question loaded yet, OR previous answer has been validated
    */
   const canLoadQuestion = useMemo(() => {
     if (gameStatus !== GAME_STATUS.ACTIVE) return false;
     if (!currentTeam) return false;
+
+    // Block if team is in a terminal state — they can no longer answer questions
+    if (
+      currentTeam.status === TEAM_STATUS.ELIMINATED ||
+      currentTeam.status === TEAM_STATUS.COMPLETED
+    ) {
+      return false;
+    }
+
     if (currentQuestionNumber >= QUESTIONS_PER_SET) return false;
 
     // CRITICAL: Check if data is ready before allowing load
@@ -109,8 +113,8 @@ export function useGameControls() {
     }
 
     // Can load if:
-    // 1. No question loaded yet (start of game)
-    // 2. OR answer has been validated (ready for next)
+    // 1. No question loaded yet (start of turn)
+    // 2. OR answer has been validated (ready for next question)
     return !hostQuestion || !!validationResult;
   }, [
     gameStatus,
@@ -130,10 +134,8 @@ export function useGameControls() {
    */
   const nextQuestionNumber = useMemo(() => {
     if (!hostQuestion) {
-      // No question loaded yet, start at question 1
       return currentQuestionNumber + 1 || 1;
     }
-    // Question loaded, next is current + 1
     return currentQuestionNumber + 1;
   }, [hostQuestion, currentQuestionNumber]);
 
@@ -168,7 +170,6 @@ export function useGameControls() {
       currentTeam.status === TEAM_STATUS.ELIMINATED ||
       currentTeam.status === TEAM_STATUS.COMPLETED;
 
-    // Check if there's a next team in queue
     const currentIndex = playQueue.indexOf(currentTeamId);
     const hasNextTeam = currentIndex < playQueue.length - 1;
 
@@ -177,7 +178,7 @@ export function useGameControls() {
 
   /**
    * Can Skip Question?
-   * - Always enabled (emergency action)
+   * - Game is active and a question is currently loaded
    */
   const canSkipQuestion = useMemo(() => {
     return gameStatus === GAME_STATUS.ACTIVE && !!hostQuestion;
@@ -206,8 +207,6 @@ export function useGameControls() {
   /**
    * Load next question from localStorage
    * Clears previous question state first
-   *
-   * UPDATED: Now includes pre-flight check for data readiness
    */
   const handleLoadQuestion = async () => {
     try {
@@ -243,22 +242,20 @@ export function useGameControls() {
       clearQuestion();
       clearHostQuestion();
 
-      // Load next question (with defensive fetching)
+      // Load next question
       await loadQuestion(nextQuestionNumber);
 
       console.log('✅ Question loaded successfully');
     } catch (err) {
       console.error('Failed to load question:', err);
-
-      // Provide user-friendly error message
       const userMessage =
         err.message || 'Failed to load question. Please try again.';
-      throw new Error(userMessage);
+      throw new Error(userMessage, { cause: err });
     }
   };
 
   /**
-   * Push to Display to public (push to Firebase)
+   * Push question to public display (Firebase)
    */
   const handleShowQuestion = async () => {
     try {
@@ -270,7 +267,7 @@ export function useGameControls() {
   };
 
   /**
-   * Hide question from public
+   * Hide question from public display
    */
   const handleHideQuestion = async () => {
     try {
@@ -334,7 +331,7 @@ export function useGameControls() {
     canResume,
 
     // Question Number
-    nextQuestionNumber, // For dynamic button label
+    nextQuestionNumber,
 
     // Loading States
     isLoading: questionLoading || isSyncingData,

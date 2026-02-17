@@ -30,6 +30,11 @@ import GameControls from './components/GameControls';
  * - Provides retry mechanism if data sync fails
  * - Uses store-level Firebase listener for real-time sync
  *
+ * FIXED: Lifeline real-time sync issue
+ * - Added teams listener alongside game state listener
+ * - Ensures lifeline availability updates are received in real-time from Firebase
+ * - When a lifeline is used, the UI now properly reflects the change immediately
+ *
  * Layout:
  * - Top: Game Status Bar (full width)
  * - Left Column (1/4): Game Controls (stacked buttons)
@@ -61,6 +66,7 @@ export default function Play() {
   // Teams Store State
   const teams = useTeamsStore((state) => state.teams);
   const currentTeam = teams[currentTeamId];
+  const startTeamsListener = useTeamsStore((state) => state.startTeamsListener);
 
   // Questions Store State
   const hostQuestion = useQuestionsStore((state) => state.hostQuestion);
@@ -113,23 +119,45 @@ export default function Play() {
   // ============================================================
 
   /**
-   * Start Firebase game state listener on mount
-   * The listener is managed by the store for consistency
+   * Start Firebase listeners on mount
+   * CRITICAL FIX: Start BOTH game state AND teams listeners
+   *
+   * This ensures:
+   * - Game state changes (question visibility, answer reveals) are synced
+   * - Team data changes (lifeline usage, status, progress) are synced in real-time
+   *
+   * Without the teams listener, lifeline usage updates from Firebase won't
+   * be reflected in the UI, causing both lifelines to appear available even
+   * after one has been used.
    */
   useEffect(() => {
-    console.log('🎮 Play Page: Starting game state listener...');
+    console.log('🎮 Play Page: Starting Firebase listeners...');
 
-    // Start store-level listener
-    const unsubscribe = startGameListener();
+    // Start game state listener
+    const unsubscribeGameState = startGameListener();
+    console.log('✅ Game state listener started');
 
-    // Cleanup listener on unmount
+    // Start teams listener (CRITICAL for lifeline availability sync)
+    const unsubscribeTeams = startTeamsListener();
+    console.log(
+      '✅ Teams listener started (lifeline availability sync enabled)',
+    );
+
+    // Cleanup both listeners on unmount
     return () => {
-      console.log('🎮 Play Page: Stopping game state listener');
-      if (unsubscribe) {
-        unsubscribe();
+      console.log('🎮 Play Page: Stopping Firebase listeners');
+
+      if (unsubscribeGameState) {
+        unsubscribeGameState();
+        console.log('🛑 Game state listener stopped');
+      }
+
+      if (unsubscribeTeams) {
+        unsubscribeTeams();
+        console.log('🛑 Teams listener stopped');
       }
     };
-  }, [startGameListener]);
+  }, [startGameListener, startTeamsListener]);
 
   // ============================================================
   // NAVIGATION GUARD
@@ -506,6 +534,21 @@ export default function Play() {
                   Structure:{' '}
                   <span className="text-foreground font-semibold">
                     {prizeStructure.length} levels
+                  </span>
+                </p>
+                {/* Lifeline availability debug */}
+                <p className="text-muted-foreground">
+                  Phone:{' '}
+                  <span className="text-foreground font-semibold">
+                    {currentTeam?.lifelinesAvailable?.phoneAFriend
+                      ? '✅'
+                      : '❌'}
+                  </span>
+                </p>
+                <p className="text-muted-foreground">
+                  50/50:{' '}
+                  <span className="text-foreground font-semibold">
+                    {currentTeam?.lifelinesAvailable?.fiftyFifty ? '✅' : '❌'}
                   </span>
                 </p>
               </div>

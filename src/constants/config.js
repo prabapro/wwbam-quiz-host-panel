@@ -102,9 +102,9 @@ export const MILESTONE_QUESTIONS = [5, 10, 15, 20];
 export const FIFTY_FIFTY_REMOVE_COUNT = 2;
 
 /**
- * Phone-a-Friend duration in minutes
+ * Phone-a-Friend duration in seconds
  */
-export const PHONE_A_FRIEND_DURATION_MINUTES = 3;
+export const PHONE_A_FRIEND_DURATION = 30;
 
 // ============================================================================
 // DISPLAY SETTINGS CONFIGURATION
@@ -140,8 +140,7 @@ export const DEFAULT_TIMER_ENABLED = false;
  * Default timer duration in seconds
  * Uses phone-a-friend duration as default
  */
-export const DEFAULT_TIMER_DURATION_SECONDS =
-  PHONE_A_FRIEND_DURATION_MINUTES * 60;
+export const DEFAULT_TIMER_DURATION_SECONDS = PHONE_A_FRIEND_DURATION;
 
 // ============================================================================
 // VALIDATION CONFIGURATION
@@ -300,7 +299,7 @@ export const getQuestionCountConfig = () => {
 export const getLifelineBehaviorConfig = () => {
   return {
     fiftyFiftyRemoveCount: FIFTY_FIFTY_REMOVE_COUNT,
-    phoneAFriendDuration: PHONE_A_FRIEND_DURATION_MINUTES,
+    phoneAFriendDuration: PHONE_A_FRIEND_DURATION,
   };
 };
 

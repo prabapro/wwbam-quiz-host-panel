@@ -24,7 +24,7 @@ import { cn } from '@lib/utils';
  * - Host clicks corresponding button (B)
  * - Button highlights in yellow (local state, not synced)
  * - Host can change selection before locking
- * - "Lock Answer" triggers validation against localStorage correct answer
+ * - "Lock Answer" triggers validation against correct answer
  * - Automatic result determination (correct/incorrect)
  *
  * States:
@@ -32,6 +32,7 @@ import { cn } from '@lib/utils';
  * 2. Question visible to public: Full opacity with ring animation (at Card level), active
  * 3. Selected: One option selected (yellow highlight)
  * 4. Locked: Answer validated and locked (no changes allowed)
+ * 5. 50/50 active: Eliminated options visually crossed out and disabled
  */
 export default function AnswerPad() {
   // Answer Selection Hook
@@ -50,17 +51,28 @@ export default function AnswerPad() {
   const questionVisible = useGameStore((state) => state.questionVisible);
   const answerRevealed = useGameStore((state) => state.answerRevealed);
 
-  // Questions Store (for checking if question is loaded)
+  // Questions Store
   const hostQuestion = useQuestionsStore((state) => state.hostQuestion);
+  const filteredOptions = useQuestionsStore((state) => state.filteredOptions);
 
-  // Answer options
+  // All answer options
   const options = ['A', 'B', 'C', 'D'];
 
-  // Is answer pad disabled?
+  // Is the answer pad globally disabled?
   const isDisabled = !questionVisible || answerRevealed || isLocking;
 
   // Is question loaded but not yet visible?
   const isWaitingForVisibility = !!hostQuestion && !questionVisible;
+
+  /**
+   * Check if a specific option has been eliminated by 50/50
+   * filteredOptions is an array of REMAINING uppercase options e.g. ['B', 'C']
+   * An option is eliminated if filteredOptions exists AND the option is not in it
+   */
+  const isEliminatedByFiftyFifty = (option) => {
+    if (!filteredOptions || filteredOptions.length === 0) return false;
+    return !filteredOptions.includes(option.toUpperCase());
+  };
 
   // Handle lock answer
   const handleLockAnswer = async () => {
@@ -73,7 +85,7 @@ export default function AnswerPad() {
 
   return (
     <div className="relative">
-      {/* Waiting for Visibility Badge - Orange for visibility */}
+      {/* Waiting for Visibility Badge */}
       {isWaitingForVisibility && (
         <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10">
           <Badge className="gap-1.5 text-xs shadow-lg bg-orange-500 hover:bg-orange-600 text-white border-orange-600">
@@ -128,18 +140,21 @@ export default function AnswerPad() {
               !validationResult.isCorrect &&
               selectedAnswer === option &&
               answerRevealed;
+            const isEliminated = isEliminatedByFiftyFifty(option);
 
             return (
               <Button
                 key={option}
                 onClick={() => selectAnswer(option)}
-                disabled={isDisabled || !!validationResult}
+                disabled={isDisabled || !!validationResult || isEliminated}
                 variant="outline"
                 size="lg"
                 className={cn(
                   'h-16 text-xl font-bold transition-all duration-200',
-                  // Default state
                   'border-2 hover:scale-105',
+                  // Eliminated by 50/50
+                  isEliminated &&
+                    'opacity-30 cursor-not-allowed line-through hover:scale-100',
                   // Selected state (before lock)
                   isSelected &&
                     !validationResult &&
@@ -150,8 +165,11 @@ export default function AnswerPad() {
                   // Incorrect answer (after lock and reveal)
                   isIncorrect &&
                     'bg-red-100 dark:bg-red-900/30 border-red-500 dark:border-red-600 ring-2 ring-red-500 text-red-900 dark:text-red-100',
-                  // Disabled state
-                  isDisabled && !isSelected && 'opacity-50 cursor-not-allowed',
+                  // Generic disabled state (not eliminated)
+                  isDisabled &&
+                    !isSelected &&
+                    !isEliminated &&
+                    'opacity-50 cursor-not-allowed',
                 )}>
                 <span>{option}</span>
               </Button>
@@ -210,8 +228,17 @@ export default function AnswerPad() {
         {questionVisible && !selectedAnswer && !validationResult && (
           <Alert className="bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700">
             <AlertDescription className="text-xs text-green-800 dark:text-green-200 text-center">
-              <strong>✓ Ready!</strong> Click option (A/B/C/D) to select team's
-              answer
+              {filteredOptions?.length > 0 ? (
+                <>
+                  <strong>✂️ 50/50 Active</strong> — only{' '}
+                  {filteredOptions.join(' & ')} are available
+                </>
+              ) : (
+                <>
+                  <strong>✓ Ready!</strong> Click option (A/B/C/D) to select
+                  team's answer
+                </>
+              )}
             </AlertDescription>
           </Alert>
         )}

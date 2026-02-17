@@ -334,7 +334,7 @@ Simple array of numbers (prize values in Rs.). Index 0 = Question 1, Index 19 = 
     "max-teams": 10,
     "questions-per-team": 20,
     "timer-enabled": false,
-    "timer-duration": 60,
+    "timer-duration": 30,
     "lifelines-enabled": {
       "phone-a-friend": true,
       "fifty-fifty": true,

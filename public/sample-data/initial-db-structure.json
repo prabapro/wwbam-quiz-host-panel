@@ -32,7 +32,7 @@
       "animation-duration": 500
     },
     "timer-enabled": false,
-    "timer-duration": 180
+    "timer-duration": 30
   },
   "allowed-hosts": {
     "f0aofgHcb2R6csVXAwais9SJw0O5": true,
