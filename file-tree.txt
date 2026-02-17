@@ -67,8 +67,6 @@
 │   │   │   ├── TeamConfigList.jsx
 │   │   │   ├── TeamForm.jsx
 │   │   │   └── TeamUploader.jsx
-│   │   ├── test
-│   │   │   └── FirebaseTest.jsx
 │   │   └── ui
 │   │       ├── alert-dialog.jsx
 │   │       ├── alert.jsx
@@ -93,7 +91,6 @@
 │   │   ├── defaultDatabase.js
 │   │   ├── gameStates.js
 │   │   ├── prizeStructure.js
-│   │   ├── storage.js
 │   │   ├── teamStates.js
 │   │   └── validationRules.js
 │   ├── hooks
@@ -109,13 +106,15 @@
 │   │   │   │   ├── GameControls.jsx
 │   │   │   │   ├── GameStatusBar.jsx
 │   │   │   │   ├── LifelinePanel.jsx
+│   │   │   │   ├── PhoneAFriendModal.jsx
 │   │   │   │   ├── QuestionPanel.jsx
 │   │   │   │   └── TeamStatusCard.jsx
 │   │   │   ├── hooks
 │   │   │   │   ├── useAnswerSelection.js
 │   │   │   │   ├── useCurrentQuestion.js
 │   │   │   │   ├── useGameControls.js
-│   │   │   │   └── useLifelineManagement.js
+│   │   │   │   ├── useLifelineManagement.js
+│   │   │   │   └── usePhoneTimer.js
 │   │   │   └── index.jsx
 │   │   ├── Home.jsx
 │   │   ├── Login.jsx
@@ -140,7 +139,6 @@
 │   │   └── index.css
 │   ├── utils
 │   │   ├── gameplay
-│   │   │   ├── answerValidation.js
 │   │   │   ├── lifelineLogic.js
 │   │   │   └── scoreCalculation.js
 │   │   ├── configSync.js
