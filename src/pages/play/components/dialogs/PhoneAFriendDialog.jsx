@@ -14,7 +14,7 @@ import { cn } from '@lib/utils';
 /**
  * PhoneAFriendDialog Component
  *
- * Purpose: Host-facing modal shown while Phone-a-Friend lifeline is active.
+ * Purpose: Host-facing dialog shown while Phone-a-Friend lifeline is active.
  *
  * Layout:
  * ┌─────────────────────────────────────┐
@@ -38,7 +38,7 @@ import { cn } from '@lib/utils';
  * - "Resume Game" is always available (host may end call early)
  * - Timer expiry auto-calls onResume (handled by usePhoneTimer in parent)
  *
- * @param {boolean}  props.open            - Whether modal is visible
+ * @param {boolean}  props.open            - Whether dialog is visible
  * @param {string}   props.contactNumber   - Team's contact phone number
  * @param {Object}   props.phoneTimer      - Timer state from usePhoneTimer
  * @param {Function} props.onResume        - Called when host clicks "Resume Game"
@@ -59,7 +59,7 @@ export default function PhoneAFriendDialog({
       // Prevent accidental dismiss — host must use "Resume Game"
       onOpenChange={() => {}}>
       <DialogContent
-        // Disable the default close button
+        showCloseButton={false}
         className="max-w-sm"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}>

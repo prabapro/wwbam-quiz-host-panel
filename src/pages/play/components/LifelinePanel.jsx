@@ -23,7 +23,7 @@ import PhoneAFriendDialog from './dialogs/PhoneAFriendDialog';
  * - Team chooses: Phone-a-Friend OR 50/50 (not both)
  *
  * Lifeline Types:
- * 1. Phone-a-Friend: Game pauses, modal shows contact + countdown timer
+ * 1. Phone-a-Friend: Game pauses, dialog shows contact + countdown timer
  * 2. 50/50: Remove two incorrect answers
  *
  * States:
