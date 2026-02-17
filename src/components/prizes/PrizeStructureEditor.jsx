@@ -34,7 +34,7 @@ import { formatPrize, getTotalPrizePool } from '@constants/prizeStructure';
 export default function PrizeStructureEditor({ onSaveSuccess }) {
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showDefaultConfirm, setShowDefaultConfirm] = useState(false);
-  const [activeView, setActiveView] = useState('ladder'); // 'ladder' or 'table'
+  const [activeView, setActiveView] = useState('ladder');
 
   const editedPrizeStructure = usePrizeStore(
     (state) => state.editedPrizeStructure,
@@ -43,13 +43,9 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
   const isSyncing = usePrizeStore((state) => state.isSyncing);
 
   const savePrizeStructure = usePrizeStore((state) => state.savePrizeStructure);
-
-  // Renamed from useDefaultStructure → applyDefaultStructure to avoid
-  // violating React's rules-of-hooks (names starting with "use" are treated as hooks)
-  const applyDefaultStructure = usePrizeStore(
-    (state) => state.useDefaultStructure,
+  const loadDefaultStructure = usePrizeStore(
+    (state) => state.loadDefaultStructure,
   );
-
   const discardChanges = usePrizeStore((state) => state.discardChanges);
   const addPrizeLevel = usePrizeStore((state) => state.addPrizeLevel);
   const removePrizeLevel = usePrizeStore((state) => state.removePrizeLevel);
@@ -58,7 +54,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
   );
   const getPrizeSummary = usePrizeStore((state) => state.getPrizeSummary);
 
-  // Get team count for total prize pool calculation
   const teams = useTeamsStore((state) => state.teams);
   const teamCount = Object.keys(teams).length;
 
@@ -68,26 +63,19 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
   const validation = validatePrizeStructure();
   const summary = getPrizeSummary();
 
-  // Calculate total prize pool based on team count
   const totalPrizePool =
     teamCount > 0
       ? getTotalPrizePool(teamCount, editedPrizeStructure)
       : summary.maxPrizePerTeam;
 
   const handleSave = async () => {
-    if (!validation.isValid) {
-      return;
-    }
-
+    if (!validation.isValid) return;
     const result = await savePrizeStructure();
-
-    if (result.success && onSaveSuccess) {
-      onSaveSuccess();
-    }
+    if (result.success && onSaveSuccess) onSaveSuccess();
   };
 
   const handleUseDefault = () => {
-    applyDefaultStructure();
+    loadDefaultStructure();
     setShowDefaultConfirm(false);
   };
 
@@ -98,7 +86,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
 
   return (
     <div className="space-y-6">
-      {/* Info Alert */}
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
@@ -108,7 +95,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </AlertDescription>
       </Alert>
 
-      {/* Active Game Warning */}
       {isGameActive && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -119,7 +105,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </Alert>
       )}
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
@@ -172,7 +157,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </Card>
       </div>
 
-      {/* Validation Error */}
       {!validation.isValid && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -186,9 +170,7 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </Alert>
       )}
 
-      {/* Actions Bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        {/* View Toggle */}
         <div className="flex items-center gap-2">
           <Button
             variant={activeView === 'ladder' ? 'default' : 'outline'}
@@ -204,9 +186,7 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
           </Button>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Add / Remove Level */}
           <Button
             variant="outline"
             size="sm"
@@ -225,7 +205,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
             Remove Level
           </Button>
 
-          {/* Use Default */}
           <Button
             variant="outline"
             size="sm"
@@ -235,7 +214,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
             Use Default
           </Button>
 
-          {/* Discard */}
           {hasUnsavedChanges && (
             <Button
               variant="outline"
@@ -246,7 +224,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
             </Button>
           )}
 
-          {/* Save */}
           <Button
             size="sm"
             onClick={handleSave}
@@ -255,7 +232,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
             {isSyncing ? 'Saving...' : 'Save Changes'}
           </Button>
 
-          {/* Unsaved indicator */}
           {hasUnsavedChanges && (
             <Badge variant="secondary" className="text-xs">
               Unsaved
@@ -264,7 +240,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </div>
       </div>
 
-      {/* Prize Structure View */}
       <Card>
         <CardContent className="pt-6">
           {activeView === 'ladder' ? (
@@ -275,7 +250,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </CardContent>
       </Card>
 
-      {/* Discard Changes Confirmation */}
       <AlertDialog
         open={showDiscardConfirm}
         onOpenChange={setShowDiscardConfirm}>
@@ -296,7 +270,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Use Default Confirmation */}
       <AlertDialog
         open={showDefaultConfirm}
         onOpenChange={setShowDefaultConfirm}>
@@ -305,7 +278,8 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
             <AlertDialogTitle>Use Default Prize Structure?</AlertDialogTitle>
             <AlertDialogDescription>
               This will replace the current prize structure with the default
-              20-level structure. Any unsaved changes will be lost.
+              20-level structure. Any unsaved changes will be lost. You will
+              still need to save to persist the change.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
