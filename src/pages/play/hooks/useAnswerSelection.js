@@ -21,7 +21,7 @@ import { QUESTIONS_PER_SET } from '@constants/config';
  * 4. Host clicks "Lock Answer"
  * 5. Hook validates against correct answer from localStorage
  * 6. If correct: Update prize, increment question, celebrate
- * 7. If incorrect: Check lifelines → offer or eliminate
+ * 7. If incorrect: Eliminate team immediately (WWBAM rules)
  * 8. Sync result to Firebase (reveal answer, update team)
  */
 
@@ -64,6 +64,7 @@ export function useAnswerSelection() {
   const currentTeam = useTeamsStore((state) => state.teams[currentTeamId]);
   const moveToNextQuestion = useTeamsStore((state) => state.moveToNextQuestion);
   const completeTeam = useTeamsStore((state) => state.completeTeam);
+  const eliminateTeam = useTeamsStore((state) => state.eliminateTeam);
 
   // Prize Store (for prize calculation)
   const prizeStructure = usePrizeStore((state) => state.prizeStructure);
@@ -142,7 +143,7 @@ export function useAnswerSelection() {
           const completeResult = await completeTeam(
             currentTeamId,
             newPrize,
-            currentQuestionNumber, // ← Make sure this parameter is there from previous fix
+            currentQuestionNumber,
           );
 
           if (!completeResult.success) {
@@ -177,11 +178,16 @@ export function useAnswerSelection() {
           );
         }
       } else {
-        // INCORRECT ANSWER FLOW
-        console.log('❌ Incorrect answer! Direct elimination (WWBAM rules)');
+        // INCORRECT ANSWER FLOW — WWBAM rules: wrong answer = immediate elimination
+        console.log('❌ Incorrect answer! Eliminating team (WWBAM rules)...');
 
-        // No lifeline checking - wrong answer after lock = direct elimination
-        // Lifelines must be used BEFORE locking answer, not as a safety net
+        const eliminateResult = await eliminateTeam(currentTeamId);
+
+        if (!eliminateResult.success) {
+          throw new Error('Failed to eliminate team');
+        }
+
+        console.log(`🚫 Team ${currentTeamId} eliminated`);
       }
 
       setIsLocking(false);
@@ -198,6 +204,7 @@ export function useAnswerSelection() {
     prizeStructure,
     moveToNextQuestion,
     completeTeam,
+    eliminateTeam,
     currentTeam,
   ]);
 

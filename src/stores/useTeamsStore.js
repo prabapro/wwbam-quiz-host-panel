@@ -268,13 +268,23 @@ export const useTeamsStore = create()(
 
         /**
          * Eliminate team (wrong answer or quit)
+         *
+         * @param {string} teamId     - Team ID to eliminate
+         * @param {number} [finalPrize] - Optional consolation prize amount.
+         *                               If omitted, currentPrize is left unchanged
+         *                               (avoids sending `undefined` to Firebase).
+         * @returns {Promise<Object>} Update result
          */
         eliminateTeam: async (teamId, finalPrize) => {
-          const result = await get().updateTeam(teamId, {
+          const updates = {
             status: TEAM_STATUS.ELIMINATED,
-            currentPrize: finalPrize,
             eliminatedAt: Date.now(),
-          });
+            // Only include currentPrize if a value was explicitly provided.
+            // Passing `undefined` to Firebase causes a hard rejection error.
+            ...(finalPrize !== undefined && { currentPrize: finalPrize }),
+          };
+
+          const result = await get().updateTeam(teamId, updates);
 
           console.log(`❌ Team eliminated: ${teamId}`);
 
