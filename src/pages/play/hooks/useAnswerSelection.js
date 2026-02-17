@@ -152,11 +152,11 @@ export function useAnswerSelection() {
 
           console.log(`✅ Team marked as completed with prize Rs.${newPrize}`);
 
-          // Check if this was the last team - if so, complete the game automatically
+          // Check if this was the last team — if so, complete the game automatically
           const playQueue = useGameStore.getState().playQueue;
           if (isLastTeamInQueue(currentTeamId, playQueue)) {
             console.log(
-              '🏁 Last team completed - ending game automatically...',
+              '🏁 Last team completed — ending game automatically...',
             );
             const completeGameAction = useGameStore.getState().completeGame;
             await completeGameAction();
@@ -188,6 +188,15 @@ export function useAnswerSelection() {
         }
 
         console.log(`🚫 Team ${currentTeamId} eliminated`);
+
+        // Check if this was the last team — if so, complete the game automatically
+        const playQueue = useGameStore.getState().playQueue;
+        if (isLastTeamInQueue(currentTeamId, playQueue)) {
+          console.log('🏁 Last team eliminated — ending game automatically...');
+          const completeGameAction = useGameStore.getState().completeGame;
+          await completeGameAction();
+          console.log('✅ Game completed automatically');
+        }
       }
 
       setIsLocking(false);
