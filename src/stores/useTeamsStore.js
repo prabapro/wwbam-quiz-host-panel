@@ -8,6 +8,7 @@ import {
   isValidTeamTransition,
   LIFELINE_TYPE,
 } from '@constants/teamStates';
+import { QUESTIONS_PER_SET } from '@constants/config';
 import { databaseService } from '@services/database.service';
 
 const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
@@ -264,6 +265,51 @@ export const useTeamsStore = create()(
             currentPrize: prizeWon,
             activeLifeline: null,
           });
+        },
+
+        /**
+         * Advance a team's question index after a skip
+         *
+         * Key differences from `moveToNextQuestion`:
+         * - Does NOT increment `questionsAnswered` (no credit for skipped questions)
+         * - Does NOT update `currentPrize` (prize is unchanged)
+         * - Returns `isLastQuestion` so the caller can decide whether to mark
+         *   the team as completed and/or end the game
+         *
+         * @param {string} teamId - Team ID to update
+         * @returns {Promise<{ success: boolean, isLastQuestion: boolean, error?: string }>}
+         */
+        skipTeamQuestion: async (teamId) => {
+          const { teams } = get();
+          const team = teams[teamId];
+
+          if (!team) {
+            console.warn(`skipTeamQuestion: Team ${teamId} not found`);
+            return {
+              success: false,
+              isLastQuestion: false,
+              error: 'Team not found',
+            };
+          }
+
+          const newQuestionIndex = team.currentQuestionIndex + 1;
+
+          // True when there are no more questions left after this skip
+          // (QUESTIONS_PER_SET is imported from @constants/config)
+          const isLastQuestion = newQuestionIndex >= QUESTIONS_PER_SET;
+
+          const result = await get().updateTeam(teamId, {
+            currentQuestionIndex: newQuestionIndex,
+            activeLifeline: null, // Clear any active lifeline state
+          });
+
+          if (result.success) {
+            console.log(
+              `⏭️ Team ${teamId} question index advanced to ${newQuestionIndex} (isLastQuestion: ${isLastQuestion})`,
+            );
+          }
+
+          return { ...result, isLastQuestion };
         },
 
         /**

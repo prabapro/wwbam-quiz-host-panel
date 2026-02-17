@@ -447,6 +447,62 @@ export const useGameStore = create()(
         },
 
         /**
+         * Skip the current question
+         *
+         * Clears all question-related UI state and syncs to Firebase so the public
+         * display is cleared.
+         *
+         * IMPORTANT: Does NOT increment currentQuestionNumber.
+         * When a question is loaded, currentQuestionNumber is already set to that
+         * question's number (via setQuestionNumber inside loadQuestion). Incrementing
+         * here would cause the NEXT load to skip a question entirely.
+         *
+         * The question counter naturally advances on the next loadQuestion call,
+         * where nextQuestionNumber = currentQuestionNumber + 1.
+         *
+         * Does NOT touch team status — handled by the caller
+         * (useGameControls › handleSkipQuestion) after this resolves.
+         *
+         * @returns {Promise<{ success: boolean, error?: string }>}
+         */
+        skipQuestion: async () => {
+          try {
+            const timestamp = Date.now();
+
+            // Clear question state locally — counter stays the same
+            set({
+              currentQuestion: null,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
+              selectedOption: null,
+              optionWasCorrect: null,
+              lastUpdated: timestamp,
+            });
+
+            // Sync cleared state to Firebase so public display is retracted
+            await databaseService.updateGameState({
+              currentQuestion: null,
+              questionVisible: false,
+              optionsVisible: false,
+              answerRevealed: false,
+              correctOption: null,
+              selectedOption: null,
+              optionWasCorrect: null,
+            });
+
+            console.log(
+              `⏭️ Question ${get().currentQuestionNumber} skipped — state cleared`,
+            );
+            return { success: true };
+          } catch (error) {
+            console.error('Failed to skip question:', error);
+            return { success: false, error: error.message };
+          }
+        },
+
+        /**
          * Uninitialize game (reset to NOT_STARTED)
          */
         uninitializeGame: async () => {

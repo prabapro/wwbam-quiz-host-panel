@@ -1,6 +1,6 @@
 // src/pages/play/hooks/useGameControls.js
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useGameStore } from '@stores/useGameStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
@@ -8,6 +8,17 @@ import { GAME_STATUS } from '@constants/gameStates';
 import { TEAM_STATUS } from '@constants/teamStates';
 import { QUESTIONS_PER_SET } from '@constants/config';
 import { useCurrentQuestion } from './useCurrentQuestion';
+
+/**
+ * Check if current team is the last team in play queue
+ * @param {string} teamId - Team ID
+ * @param {string[]} queue - Play queue array
+ * @returns {boolean}
+ */
+const isLastTeamInQueue = (teamId, queue) => {
+  if (!queue || queue.length === 0) return false;
+  return queue.indexOf(teamId) === queue.length - 1;
+};
 
 /**
  * useGameControls Hook
@@ -24,11 +35,15 @@ import { useCurrentQuestion } from './useCurrentQuestion';
  * - Load Question: Enabled when team is active, data is ready, and no pending result
  * - Push to Display: Enabled when question loaded, not visible, not revealed
  * - Hide Question: Enabled when question visible and not revealed
- * - Next Team: Enabled when team is eliminated or completed
- * - Skip Question: Enabled when game is active and question is loaded
+ * - Next Team: Enabled when team is eliminated, completed, OR last question was skipped
+ * - Skip Question: Enabled when game is active, question is loaded, and answer not yet validated
  * - Pause/Resume: Based on current game status
  */
 export function useGameControls() {
+  // ============================================================
+  // STORE SUBSCRIPTIONS
+  // ============================================================
+
   // Game Store
   const gameStatus = useGameStore((state) => state.gameStatus);
   const currentTeamId = useGameStore((state) => state.currentTeamId);
@@ -47,6 +62,8 @@ export function useGameControls() {
   const pauseGame = useGameStore((state) => state.pauseGame);
   const resumeGame = useGameStore((state) => state.resumeGame);
   const nextTeam = useGameStore((state) => state.nextTeam);
+  const skipQuestion = useGameStore((state) => state.skipQuestion);
+  const completeGame = useGameStore((state) => state.completeGame);
 
   // Questions Store
   const hostQuestion = useQuestionsStore((state) => state.hostQuestion);
@@ -58,6 +75,8 @@ export function useGameControls() {
   // Teams Store
   const teams = useTeamsStore((state) => state.teams);
   const currentTeam = teams[currentTeamId];
+  const skipTeamQuestion = useTeamsStore((state) => state.skipTeamQuestion);
+  const completeTeam = useTeamsStore((state) => state.completeTeam);
 
   // Current Question Hook
   const {
@@ -87,7 +106,6 @@ export function useGameControls() {
     if (gameStatus !== GAME_STATUS.ACTIVE) return false;
     if (!currentTeam) return false;
 
-    // Block if team is in a terminal state — they can no longer answer questions
     if (
       currentTeam.status === TEAM_STATUS.ELIMINATED ||
       currentTeam.status === TEAM_STATUS.COMPLETED
@@ -97,13 +115,11 @@ export function useGameControls() {
 
     if (currentQuestionNumber >= QUESTIONS_PER_SET) return false;
 
-    // CRITICAL: Check if data is ready before allowing load
     if (!isDataReady) {
       console.log('⏳ Game data not ready yet - cannot load question');
       return false;
     }
 
-    // Check if current team has a question set assigned
     const hasQuestionSet = questionSetAssignments?.[currentTeamId];
     if (!hasQuestionSet) {
       console.log(
@@ -112,9 +128,6 @@ export function useGameControls() {
       return false;
     }
 
-    // Can load if:
-    // 1. No question loaded yet (start of turn)
-    // 2. OR answer has been validated (ready for next question)
     return !hostQuestion || !!validationResult;
   }, [
     gameStatus,
@@ -129,13 +142,9 @@ export function useGameControls() {
 
   /**
    * Get next question number to load
-   * If no question loaded yet, start at 1
-   * Otherwise, current + 1
    */
   const nextQuestionNumber = useMemo(() => {
-    if (!hostQuestion) {
-      return currentQuestionNumber + 1 || 1;
-    }
+    if (!hostQuestion) return currentQuestionNumber + 1 || 1;
     return currentQuestionNumber + 1;
   }, [hostQuestion, currentQuestionNumber]);
 
@@ -178,11 +187,19 @@ export function useGameControls() {
 
   /**
    * Can Skip Question?
-   * - Game is active and a question is currently loaded
+   * - Game is active
+   * - A question is currently loaded
+   * - Answer has NOT already been validated (nothing left to skip)
+   * - Team is still actively playing (not already in a terminal state)
    */
   const canSkipQuestion = useMemo(() => {
-    return gameStatus === GAME_STATUS.ACTIVE && !!hostQuestion;
-  }, [gameStatus, hostQuestion]);
+    if (gameStatus !== GAME_STATUS.ACTIVE) return false;
+    if (!hostQuestion) return false;
+    // eslint-disable-next-line no-extra-boolean-cast
+    if (!!validationResult) return false; // Answer already validated — skip is irrelevant
+    if (!currentTeam || currentTeam.status !== TEAM_STATUS.ACTIVE) return false;
+    return true;
+  }, [gameStatus, hostQuestion, validationResult, currentTeam]);
 
   /**
    * Can Pause?
@@ -210,7 +227,6 @@ export function useGameControls() {
    */
   const handleLoadQuestion = async () => {
     try {
-      // Pre-flight check: Ensure data is ready
       if (!isDataReady) {
         console.log('⏳ Data not ready - attempting to sync from Firebase...');
         const syncResult = await ensureDataReady();
@@ -225,7 +241,6 @@ export function useGameControls() {
         console.log('✅ Data synced successfully');
       }
 
-      // Verify question set assignment exists
       const questionSetId = questionSetAssignments?.[currentTeamId];
       if (!questionSetId) {
         throw new Error(
@@ -238,11 +253,9 @@ export function useGameControls() {
       );
       console.log(`📚 Question set: ${questionSetId}`);
 
-      // Clear previous question state
       clearQuestion();
       clearHostQuestion();
 
-      // Load next question
       await loadQuestion(nextQuestionNumber);
 
       console.log('✅ Question loaded successfully');
@@ -289,20 +302,108 @@ export function useGameControls() {
   };
 
   /**
-   * Skip current question (emergency action)
-   * Requires confirmation
+   * Skip current question — full flow handler
+   *
+   * Handles all edge cases:
+   * 1. Hides question from public display if currently visible
+   * 2. Increments question counter in game store (syncs to Firebase)
+   * 3. Increments team's question index (no questionsAnswered credit)
+   * 4. If skipped question was the team's LAST question:
+   *    → marks team as COMPLETED with their current prize
+   *    → if that team was also the LAST in queue → completes the game
+   * 5. Clears host-side question state
    */
-  const handleSkipQuestion = () => {
+  const handleSkipQuestion = useCallback(async () => {
     const confirmed = window.confirm(
       'Are you sure you want to skip this question? This action cannot be undone.',
     );
 
-    if (confirmed) {
+    if (!confirmed) return;
+
+    try {
+      // Snapshot current state before any async operations
+      const teamIdSnapshot = useGameStore.getState().currentTeamId;
+      const queueSnapshot = useGameStore.getState().playQueue;
+      const teamSnapshot = useTeamsStore.getState().teams[teamIdSnapshot];
+
+      // Step 1: Retract from public display if currently visible
+      if (questionVisible) {
+        await hideQuestion();
+        console.log('🙈 Retracted question from public display before skip');
+      }
+
+      // Step 2: Clear question state in game store (counter stays — it already
+      // holds the loaded question's number; incrementing here would skip the next)
+      const gameSkipResult = await skipQuestion();
+      if (!gameSkipResult.success) {
+        throw new Error(
+          gameSkipResult.error || 'Failed to clear question state',
+        );
+      }
+
+      // Step 3: Advance team's question index (no reward for skip)
+      const teamSkipResult = await skipTeamQuestion(teamIdSnapshot);
+      if (!teamSkipResult.success) {
+        throw new Error(
+          teamSkipResult.error || 'Failed to update team question index',
+        );
+      }
+
+      // Step 4: Clear host-side question state
       clearQuestion();
       clearHostQuestion();
-      console.log('⏭️ Question skipped');
+
+      // Step 5: If this was the team's last question, mark them as completed.
+      // currentQuestionNumber already holds the skipped question's number
+      // (skipQuestion does NOT increment it), so it's the reliable position.
+      const skippedQuestionNumber =
+        useGameStore.getState().currentQuestionNumber;
+      const isLastQuestion = skippedQuestionNumber >= QUESTIONS_PER_SET;
+
+      if (isLastQuestion) {
+        const finalPrize = teamSnapshot?.currentPrize ?? 0;
+        const finalQuestionIndex = teamSnapshot?.currentQuestionIndex ?? 0;
+
+        const completeResult = await completeTeam(
+          teamIdSnapshot,
+          finalPrize,
+          finalQuestionIndex,
+        );
+
+        if (!completeResult.success) {
+          throw new Error('Failed to mark team as completed after last skip');
+        }
+
+        console.log(
+          `🏁 Team ${teamIdSnapshot} marked completed after skipping last question (prize: Rs.${finalPrize})`,
+        );
+
+        // Step 6: If this was also the last team in queue, end the game
+        if (isLastTeamInQueue(teamIdSnapshot, queueSnapshot)) {
+          const gameCompleteResult = await completeGame();
+          if (!gameCompleteResult.success) {
+            throw new Error('Failed to complete game after last team finished');
+          }
+          console.log('🏆 Game completed automatically — all teams finished');
+        }
+      }
+
+      console.log('⏭️ Question skipped successfully');
+    } catch (err) {
+      console.error('Failed to skip question:', err);
+      // Surface the error so the UI can react if needed
+      throw err;
     }
-  };
+  }, [
+    questionVisible,
+    hideQuestion,
+    skipQuestion,
+    skipTeamQuestion,
+    clearQuestion,
+    clearHostQuestion,
+    completeTeam,
+    completeGame,
+  ]);
 
   /**
    * Pause game
