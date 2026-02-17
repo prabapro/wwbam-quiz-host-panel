@@ -38,4 +38,6 @@ function Badge({ className, variant, asChild = false, ...props }) {
   );
 }
 
+// badgeVariants is intentionally co-exported with the component (shadcn/ui pattern).
+// eslint-disable-next-line react-refresh/only-export-components
 export { Badge, badgeVariants };

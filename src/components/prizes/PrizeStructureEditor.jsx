@@ -34,7 +34,7 @@ import { formatPrize, getTotalPrizePool } from '@constants/prizeStructure';
 export default function PrizeStructureEditor({ onSaveSuccess }) {
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showDefaultConfirm, setShowDefaultConfirm] = useState(false);
-  const [activeView, setActiveView] = useState('ladder'); // 'ladder' or 'table'
+  const [activeView, setActiveView] = useState('ladder');
 
   const editedPrizeStructure = usePrizeStore(
     (state) => state.editedPrizeStructure,
@@ -43,8 +43,8 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
   const isSyncing = usePrizeStore((state) => state.isSyncing);
 
   const savePrizeStructure = usePrizeStore((state) => state.savePrizeStructure);
-  const useDefaultStructure = usePrizeStore(
-    (state) => state.useDefaultStructure,
+  const loadDefaultStructure = usePrizeStore(
+    (state) => state.loadDefaultStructure,
   );
   const discardChanges = usePrizeStore((state) => state.discardChanges);
   const addPrizeLevel = usePrizeStore((state) => state.addPrizeLevel);
@@ -54,7 +54,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
   );
   const getPrizeSummary = usePrizeStore((state) => state.getPrizeSummary);
 
-  // Get team count for total prize pool calculation
   const teams = useTeamsStore((state) => state.teams);
   const teamCount = Object.keys(teams).length;
 
@@ -64,26 +63,19 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
   const validation = validatePrizeStructure();
   const summary = getPrizeSummary();
 
-  // Calculate total prize pool based on team count
   const totalPrizePool =
     teamCount > 0
       ? getTotalPrizePool(teamCount, editedPrizeStructure)
       : summary.maxPrizePerTeam;
 
   const handleSave = async () => {
-    if (!validation.isValid) {
-      return;
-    }
-
+    if (!validation.isValid) return;
     const result = await savePrizeStructure();
-
-    if (result.success && onSaveSuccess) {
-      onSaveSuccess();
-    }
+    if (result.success && onSaveSuccess) onSaveSuccess();
   };
 
   const handleUseDefault = () => {
-    useDefaultStructure();
+    loadDefaultStructure();
     setShowDefaultConfirm(false);
   };
 
@@ -94,7 +86,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
 
   return (
     <div className="space-y-6">
-      {/* Info Alert */}
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
@@ -104,7 +95,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </AlertDescription>
       </Alert>
 
-      {/* Active Game Warning */}
       {isGameActive && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -115,7 +105,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </Alert>
       )}
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
@@ -131,36 +120,20 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              {teamCount > 0 ? 'Total Prize Pool' : 'Max Prize Per Team'}
+              {teamCount > 0
+                ? `Total Prize Pool (${teamCount} teams)`
+                : 'Max Prize Per Team'}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{formatPrize(totalPrizePool)}</p>
-            {teamCount > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatPrize(summary.maxPrizePerTeam)} × {teamCount} teams
-              </p>
-            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Minimum Prize
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {formatPrize(summary.minPrize)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Maximum Prize
+              Top Prize
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -169,106 +142,106 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Starting Prize
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">
+              {formatPrize(summary.minPrize)}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Actions Bar */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Actions</CardTitle>
-            {hasUnsavedChanges && (
-              <Badge
-                variant="secondary"
-                className="bg-yellow-100 text-yellow-800">
-                Unsaved Changes
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={!hasUnsavedChanges || !validation.isValid || isSyncing}
-              className="flex-1 sm:flex-none">
-              <Save className="w-4 h-4 mr-2" />
-              {isSyncing ? 'Saving...' : 'Save to Firebase'}
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => setShowDefaultConfirm(true)}
-              disabled={isSyncing}>
-              <Download className="w-4 h-4 mr-2" />
-              Use Default
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => setShowDiscardConfirm(true)}
-              disabled={!hasUnsavedChanges || isSyncing}>
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Discard Changes
-            </Button>
-
-            <div className="flex gap-2 ml-auto">
-              <Button
-                variant="outline"
-                onClick={addPrizeLevel}
-                disabled={isSyncing}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Level
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={removePrizeLevel}
-                disabled={editedPrizeStructure.length <= 1 || isSyncing}>
-                <Minus className="w-4 h-4 mr-2" />
-                Remove Level
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Validation Errors */}
       {!validation.isValid && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Validation Errors:</strong>
-            <ul className="mt-2 list-disc list-inside">
-              {validation.errors.map((error, index) => (
-                <li key={index}>{error}</li>
+            <ul className="list-disc list-inside space-y-1">
+              {validation.errors.map((error, i) => (
+                <li key={i}>{error}</li>
               ))}
             </ul>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* View Toggle */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={activeView === 'ladder' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveView('ladder')}>
+            Ladder View
+          </Button>
+          <Button
+            variant={activeView === 'table' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveView('table')}>
+            Table View
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => addPrizeLevel(0)}
+            disabled={isGameActive}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add Level
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => removePrizeLevel(editedPrizeStructure.length - 1)}
+            disabled={isGameActive || editedPrizeStructure.length <= 1}>
+            <Minus className="w-4 h-4 mr-1" />
+            Remove Level
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDefaultConfirm(true)}
+            disabled={isGameActive}>
+            <Download className="w-4 h-4 mr-1" />
+            Use Default
+          </Button>
+
+          {hasUnsavedChanges && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDiscardConfirm(true)}>
+              <RotateCcw className="w-4 h-4 mr-1" />
+              Discard
+            </Button>
+          )}
+
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!hasUnsavedChanges || !validation.isValid || isSyncing}>
+            <Save className="w-4 h-4 mr-1" />
+            {isSyncing ? 'Saving...' : 'Save Changes'}
+          </Button>
+
+          {hasUnsavedChanges && (
+            <Badge variant="secondary" className="text-xs">
+              Unsaved
+            </Badge>
+          )}
+        </div>
+      </div>
+
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Prize Structure</CardTitle>
-            <div className="flex gap-2">
-              <Button
-                variant={activeView === 'ladder' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('ladder')}>
-                Ladder View
-              </Button>
-              <Button
-                variant={activeView === 'table' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveView('table')}>
-                Table View
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {activeView === 'ladder' ? (
             <PrizeStructureLadder />
           ) : (
@@ -277,7 +250,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </CardContent>
       </Card>
 
-      {/* Discard Changes Confirmation */}
       <AlertDialog
         open={showDiscardConfirm}
         onOpenChange={setShowDiscardConfirm}>
@@ -298,7 +270,6 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Use Default Confirmation */}
       <AlertDialog
         open={showDefaultConfirm}
         onOpenChange={setShowDefaultConfirm}>
@@ -307,7 +278,8 @@ export default function PrizeStructureEditor({ onSaveSuccess }) {
             <AlertDialogTitle>Use Default Prize Structure?</AlertDialogTitle>
             <AlertDialogDescription>
               This will replace the current prize structure with the default
-              20-level structure. Any unsaved changes will be lost.
+              20-level structure. Any unsaved changes will be lost. You will
+              still need to save to persist the change.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

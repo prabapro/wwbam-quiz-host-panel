@@ -77,8 +77,10 @@ async function extractViteAliases(viteConfigPath) {
 
     return aliases;
   } catch (error) {
+    // Preserve the original error as `cause` so callers have full context
     throw new Error(
       `Failed to extract aliases from Vite config: ${error.message}`,
+      { cause: error },
     );
   }
 }
@@ -92,22 +94,14 @@ function convertToJsconfigPaths(viteAliases) {
   const jsconfigPaths = {};
 
   Object.entries(viteAliases).forEach(([alias, targetPath]) => {
-    // Convert absolute path to relative path from project root
     let relativePath = targetPath;
 
-    // Handle different path formats from Vite config
     if (relativePath.startsWith('./')) {
-      // Remove leading './'
       relativePath = relativePath.slice(2);
     } else if (relativePath.startsWith('/')) {
-      // Remove leading '/'
       relativePath = relativePath.slice(1);
     }
 
-    // Don't add extra 'src/' prefix if it's already there
-    // The path from Vite should already be correct (e.g., './src' becomes 'src')
-
-    // Add trailing /* for both alias and path for proper TypeScript resolution
     const aliasPattern = alias.endsWith('/*') ? alias : `${alias}/*`;
     const pathPattern = relativePath.endsWith('/*')
       ? relativePath
@@ -130,7 +124,6 @@ async function readExistingJsconfig(jsconfigPath) {
     return JSON.parse(content);
   } catch (error) {
     if (error.code === 'ENOENT') {
-      // File doesn't exist, return default structure
       return {
         compilerOptions: {
           baseUrl: '.',
@@ -155,7 +148,7 @@ async function createBackup(jsconfigPath, backupPath) {
     return true;
   } catch (error) {
     if (error.code === 'ENOENT') {
-      return false; // File doesn't exist, no backup needed
+      return false;
     }
     throw error;
   }
@@ -224,7 +217,6 @@ async function syncAliases() {
   const spinner = ora('Syncing aliases from Vite to jsconfig...').start();
 
   try {
-    // Step 1: Extract aliases from Vite config
     spinner.text = 'Reading Vite configuration...';
     const viteAliases = await extractViteAliases(config.viteConfigPath);
 
@@ -233,33 +225,27 @@ async function syncAliases() {
       return;
     }
 
-    // Step 2: Convert to jsconfig format
     spinner.text = 'Converting aliases to jsconfig format...';
     const jsconfigPaths = convertToJsconfigPaths(viteAliases);
 
-    // Step 3: Read existing jsconfig
     spinner.text = 'Reading existing jsconfig...';
     const existingJsconfig = await readExistingJsconfig(config.jsconfigPath);
     const oldPaths = existingJsconfig.compilerOptions?.paths || {};
 
-    // Step 4: Create backup
     spinner.text = 'Creating backup...';
     const backupCreated = await createBackup(
       config.jsconfigPath,
       config.backupPath,
     );
 
-    // Step 5: Update jsconfig
     spinner.text = 'Updating jsconfig...';
     const updatedJsconfig = updateJsconfig(existingJsconfig, jsconfigPaths);
 
-    // Step 6: Write updated jsconfig
     spinner.text = 'Writing updated jsconfig...';
     await writeJsconfig(config.jsconfigPath, updatedJsconfig);
 
     spinner.succeed(chalk.green('Aliases synced successfully!'));
 
-    // Display results
     console.log(chalk.cyan('\n📁 Files:'));
     console.log(
       chalk.white(
@@ -284,7 +270,6 @@ async function syncAliases() {
       console.log(chalk.white(`  ${alias} → ${target}`));
     });
 
-    // Show comparison
     displayComparison(oldPaths, jsconfigPaths);
 
     console.log(chalk.cyan('\n✨ Next Steps:'));
@@ -352,7 +337,6 @@ async function validateViteConfig() {
 async function main() {
   console.log(chalk.cyan('🔄 Vite to JSConfig Alias Sync\n'));
 
-  // Validate Vite config first
   const isValid = await validateViteConfig();
   if (!isValid) {
     process.exit(1);

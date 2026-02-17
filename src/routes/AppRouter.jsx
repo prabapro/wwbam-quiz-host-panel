@@ -34,7 +34,6 @@ const LazyErrorFallback = ({ error, resetErrorBoundary }) => (
 );
 
 // Route wrapper component with error boundary and suspense
-// eslint-disable-next-line no-unused-vars
 const RouteWrapper = ({ component: Component, requiresAuth }) => {
   const element = (
     <ErrorBoundary fallback={LazyErrorFallback}>

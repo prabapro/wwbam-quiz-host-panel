@@ -10,9 +10,6 @@ const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
 /**
  * Prize Structure Store
  * Manages prize structure state and Firebase synchronization
- *
- * UPDATED: Added real-time Firebase listener for prize updates
- * Ensures prize structure stays fresh across all host instances
  */
 export const usePrizeStore = create()(
   devtools(
@@ -22,25 +19,12 @@ export const usePrizeStore = create()(
         // STATE
         // ============================================================
 
-        // Current prize structure (array of numbers)
         prizeStructure: [],
-
-        // Edited prize structure (local changes before save)
         editedPrizeStructure: [],
-
-        // Whether user has unsaved changes
         hasUnsavedChanges: false,
-
-        // Loading state for Firebase operations
         isLoading: false,
-
-        // Syncing state
         isSyncing: false,
-
-        // Error state
         error: null,
-
-        // Last sync timestamp
         lastSyncedAt: null,
 
         // ============================================================
@@ -65,7 +49,6 @@ export const usePrizeStore = create()(
               });
               console.log('✅ Prize structure loaded from Firebase');
             } else {
-              // No prize structure in Firebase - use default
               set({
                 prizeStructure: DEFAULT_PRIZE_STRUCTURE,
                 editedPrizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
@@ -111,6 +94,30 @@ export const usePrizeStore = create()(
         },
 
         /**
+         * Load default prize structure into the editor (local only — no Firebase write).
+         * The user still needs to hit Save to persist the change.
+         */
+        loadDefaultStructure: () => {
+          set({
+            editedPrizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
+            hasUnsavedChanges: true,
+          });
+          console.log('📋 Default prize structure loaded into editor');
+        },
+
+        /**
+         * Discard unsaved changes — resets editor back to the last saved structure.
+         */
+        discardChanges: () => {
+          const { prizeStructure } = get();
+          set({
+            editedPrizeStructure: [...prizeStructure],
+            hasUnsavedChanges: false,
+          });
+          console.log('↩️ Prize structure changes discarded');
+        },
+
+        /**
          * Update a single prize value
          */
         updatePrizeValue: (index, value) => {
@@ -127,6 +134,7 @@ export const usePrizeStore = create()(
 
         /**
          * Reset edited structure to saved structure
+         * @deprecated Use discardChanges instead
          */
         resetEditedStructure: () => {
           const { prizeStructure } = get();
@@ -231,19 +239,16 @@ export const usePrizeStore = create()(
         },
 
         /**
-         * Reset to default prize structure (for factory reset)
-         * Immediately syncs to both state and Firebase
-         *
-         * @returns {Promise<Object>} { success: boolean, error?: string }
+         * Reset to default prize structure (for factory reset).
+         * Immediately syncs to both local state and Firebase.
+         * @returns {Promise<{ success: boolean, error?: string }>}
          */
         resetToDefault: async () => {
           set({ isSyncing: true, error: null });
 
           try {
-            // Save default structure to Firebase
             await databaseService.setPrizeStructure(DEFAULT_PRIZE_STRUCTURE);
 
-            // Update local state
             set({
               prizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
               editedPrizeStructure: [...DEFAULT_PRIZE_STRUCTURE],
@@ -265,11 +270,8 @@ export const usePrizeStore = create()(
         },
 
         /**
-         * Start real-time Firebase listener for prize structure changes
-         * Returns unsubscribe function for cleanup
-         *
-         * IMPORTANT: This ensures all host instances see prize updates in real-time
-         * Call this in PrizeManagement page or any component that needs live prize data
+         * Start real-time Firebase listener for prize structure changes.
+         * Returns unsubscribe function for cleanup.
          */
         startPrizeListener: () => {
           console.log('🔄 Starting real-time prize structure listener...');
@@ -282,7 +284,6 @@ export const usePrizeStore = create()(
                   JSON.stringify(firebasePrizes) !==
                   JSON.stringify(editedPrizeStructure);
 
-                // Only update if there are no unsaved local edits
                 if (!hasLocalEdits || !get().hasUnsavedChanges) {
                   set({
                     prizeStructure: firebasePrizes,
@@ -311,9 +312,8 @@ export const usePrizeStore = create()(
       }),
       {
         name: `${appName}-prizes`,
-        version: 2, // Incremented version for new sync strategy
+        version: 2,
 
-        // Don't persist loading/error states or unsaved edits
         partialize: (state) => ({
           prizeStructure: state.prizeStructure,
           lastSyncedAt: state.lastSyncedAt,
@@ -331,11 +331,9 @@ export const usePrizeStore = create()(
           if (state) {
             console.log('💰 Prizes: Hydrated from localStorage');
 
-            // Initialize edited structure with saved structure
             state.editedPrizeStructure = [...state.prizeStructure];
             state.hasUnsavedChanges = false;
 
-            // AUTO-LOAD: Check if prize structure is empty
             const hasPrizes =
               state.prizeStructure && state.prizeStructure.length > 0;
 
@@ -344,7 +342,6 @@ export const usePrizeStore = create()(
                 '💰 Prizes: Empty state detected - auto-loading from Firebase...',
               );
 
-              // Trigger async load
               state.loadPrizeStructure().then((result) => {
                 if (result.success) {
                   console.log('💰 Prizes: Auto-load complete ✅');
