@@ -159,29 +159,61 @@ export function useLifelineManagement() {
     setActivationError(null);
 
     try {
-      // Apply 50/50 logic (calculate which options to remove)
+      // Apply 50/50 logic (normalize correctAnswer to uppercase)
       const result = applyFiftyFifty(
         ANSWER_OPTIONS,
-        hostQuestion.correctAnswer,
+        hostQuestion.correctAnswer.toUpperCase(),
       );
-      console.log('🔪 50/50 Applied:', result);
 
-      // Create filtered options object for Firebase
+      // ============================================================
+      // BUILD FILTERED OPTIONS OBJECT FOR FIREBASE
+      // ============================================================
+      // Case normalization: ANSWER_OPTIONS uses uppercase ['A', 'B', 'C', 'D']
+      // but hostQuestion.options uses lowercase keys {a: '5', b: '6', ...}
+      // Convert to lowercase when accessing hostQuestion.options
+
       const filteredOptionsObj = {};
-      result.remainingOptions.forEach((option) => {
-        filteredOptionsObj[option] = hostQuestion.options[option];
+
+      // Set all options to null (marks for deletion in Firebase)
+      ANSWER_OPTIONS.forEach((option) => {
+        filteredOptionsObj[option.toLowerCase()] = null;
       });
 
+      // Set remaining options to actual values
+      result.remainingOptions.forEach((option) => {
+        const lowercaseKey = option.toLowerCase();
+        const optionValue = hostQuestion.options[lowercaseKey];
+
+        // Defensive check: ensure the option exists
+        if (optionValue === undefined || optionValue === null) {
+          console.error(
+            `Option ${option} not found in question. Available options: ${Object.keys(hostQuestion.options).join(', ')}`,
+          );
+          throw new Error(
+            `Option ${option} not found in question. Available options: ${Object.keys(hostQuestion.options).join(', ')}`,
+          );
+        }
+
+        filteredOptionsObj[lowercaseKey] = optionValue;
+      });
+
+      // Validate no undefined values exist
+      const hasUndefined = Object.values(filteredOptionsObj).some(
+        (val) => val === undefined,
+      );
+      if (hasUndefined) {
+        throw new Error(
+          'Filtered options object contains undefined values. Firebase will reject this.',
+        );
+      }
+
       // ============================================================
-      // DATABASE OPERATION (delegated to service layer)
+      // DATABASE OPERATION
       // ============================================================
-      // This performs atomic updates to Firebase:
-      //   1. game-state/active-lifeline = 'fifty-fifty' (temporary)
+      // Atomic updates to Firebase:
+      //   1. game-state/active-lifeline = 'fifty-fifty'
       //   2. game-state/current-question/options = filteredOptionsObj
       //   3. teams/{teamId}/lifelines-available/fiftyFifty = false (PERMANENT)
-      //
-      // CRITICAL: Step 3 permanently marks this lifeline as used.
-      // It will NEVER revert to true for this team in this game.
 
       await databaseService.activateFiftyFiftyLifeline(
         currentTeamId,
@@ -192,21 +224,15 @@ export function useLifelineManagement() {
       // UPDATE LOCAL STATE
       // ============================================================
 
-      // Update questions store with filtered options
       setFilteredOptions(result.remainingOptions);
-
-      // Mark lifeline as used this question (prevents using another lifeline this question)
       setLifelineUsedThisQuestion(true);
 
-      // Clear active lifeline after brief delay (50/50 is instant)
+      // Clear active lifeline after brief delay
       setTimeout(async () => {
         await databaseService.clearActiveLifeline();
       }, 1000);
 
       console.log('✅ 50/50 activated successfully');
-      console.log(
-        '🔒 Team lifeline availability permanently updated in Firebase',
-      );
       setIsActivating(false);
 
       return {
@@ -239,29 +265,10 @@ export function useLifelineManagement() {
     setActivationError(null);
 
     try {
-      // ============================================================
-      // DATABASE OPERATION (delegated to service layer)
-      // ============================================================
-      // This performs atomic updates to Firebase:
-      //   1. game-state/active-lifeline = 'phone-a-friend' (temporary)
-      //   2. teams/{teamId}/lifelines-available/phoneAFriend = false (PERMANENT)
-      //
-      // CRITICAL: Step 2 permanently marks this lifeline as used.
-      // It will NEVER revert to true for this team in this game.
-
       await databaseService.activatePhoneAFriendLifeline(currentTeamId);
-
-      // ============================================================
-      // UPDATE LOCAL STATE
-      // ============================================================
-
-      // Mark lifeline as used this question (prevents using another lifeline this question)
       setLifelineUsedThisQuestion(true);
 
       console.log('📞 Phone-a-Friend activated successfully');
-      console.log(
-        '🔒 Team lifeline availability permanently updated in Firebase',
-      );
       setIsActivating(false);
 
       return { success: true };
@@ -279,8 +286,6 @@ export function useLifelineManagement() {
 
   const resumeFromPhoneAFriend = useCallback(async () => {
     try {
-      // Clear active lifeline from game-state (temporary state only)
-      // Does NOT affect team's lifeline availability (already permanently false)
       await databaseService.clearActiveLifeline();
       console.log('✅ Resumed from Phone-a-Friend');
       return { success: true };
@@ -301,7 +306,6 @@ export function useLifelineManagement() {
     lifelineUsedThisQuestion,
 
     // Availability (reads from team's Firebase lifeline status)
-    // Once false, these stay false for the entire game
     isPhoneAvailable: isPhoneAvailable(),
     isFiftyFiftyAvailable: isFiftyFiftyAvailable(),
     canUsePhone: canUseLifeline(LIFELINE_TYPE.PHONE_A_FRIEND),
