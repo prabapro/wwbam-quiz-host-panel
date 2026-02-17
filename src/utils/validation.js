@@ -107,17 +107,20 @@ export const validateQuestion = (question, expectedNumber) => {
       typeof question.options !== 'object' ||
       Array.isArray(question.options)
     ) {
-      errors.push('Options must be an object with keys a, b, c, d');
+      errors.push('Options must be an object with keys a/b/c/d or A/B/C/D');
     } else {
       ANSWER_OPTIONS.forEach((opt) => {
-        const key = opt.toLowerCase();
-        if (!(key in question.options)) {
+        // Accept both uppercase (A/B/C/D) and lowercase (a/b/c/d) keys
+        const lowerKey = opt.toLowerCase();
+        const upperKey = opt.toUpperCase();
+        const rawValue =
+          question.options[lowerKey] ?? question.options[upperKey];
+
+        if (rawValue === undefined) {
           errors.push(`Missing option: ${opt}`);
         } else {
           const optText =
-            typeof question.options[key] === 'object'
-              ? question.options[key]?.text
-              : question.options[key];
+            typeof rawValue === 'object' ? rawValue?.text : rawValue;
 
           if (
             !isValidLength(optText?.toString() || '', MIN_OPTION_TEXT_LENGTH)
