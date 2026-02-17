@@ -5,13 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
 import { Button } from '@components/ui/button';
 import { Badge } from '@components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@components/ui/alert';
+import { Alert, AlertDescription } from '@components/ui/alert';
 import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
-import { usePrizeStore } from '@stores/usePrizeStore';
 import { GAME_STATUS } from '@constants/gameStates';
-import { ArrowLeft, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@lib/utils';
 import GameStatusBar from './components/GameStatusBar';
 import QuestionPanel from './components/QuestionPanel';
@@ -35,6 +34,11 @@ import GameControls from './components/GameControls';
  * - Ensures lifeline availability updates are received in real-time from Firebase
  * - When a lifeline is used, the UI now properly reflects the change immediately
  *
+ * UPDATED: Game completion flow
+ * - Removed auto-render summary page on game completion
+ * - GameCompletedDialog (in GameControls) now handles completion UX
+ * - User sees dialog first, then navigates to home via "Back to Dashboard" button
+ *
  * Layout:
  * - Top: Game Status Bar (full width)
  * - Left Column (1/4): Game Controls (stacked buttons)
@@ -51,11 +55,9 @@ export default function Play() {
 
   // Game Store State
   const gameStatus = useGameStore((state) => state.gameStatus);
-  const currentTeamId = useGameStore((state) => state.currentTeamId);
   const currentQuestionNumber = useGameStore(
     (state) => state.currentQuestionNumber,
   );
-  const playQueue = useGameStore((state) => state.playQueue);
   const questionVisible = useGameStore((state) => state.questionVisible);
   const answerRevealed = useGameStore((state) => state.answerRevealed);
   const isDataReady = useGameStore((state) => state.isDataReady);
@@ -64,71 +66,61 @@ export default function Play() {
   const startGameListener = useGameStore((state) => state.startGameListener);
 
   // Teams Store State
-  const teams = useTeamsStore((state) => state.teams);
-  const currentTeam = teams[currentTeamId];
   const startTeamsListener = useTeamsStore((state) => state.startTeamsListener);
 
   // Questions Store State
-  const hostQuestion = useQuestionsStore((state) => state.hostQuestion);
-  const selectedAnswer = useQuestionsStore((state) => state.selectedAnswer);
   const validationResult = useQuestionsStore((state) => state.validationResult);
+  const selectedAnswer = useQuestionsStore((state) => state.selectedAnswer);
 
-  // Prize Store State
-  const prizeStructure = usePrizeStore((state) => state.prizeStructure) || [];
-
-  // Answer Pad States for Card-level styling
-  const isWaitingForVisibility = !!hostQuestion && !questionVisible;
-  const isAnswerPadActive = questionVisible && !answerRevealed;
+  // Prize Store State (ensure it's loaded)
 
   // ============================================================
-  // DATA READY CHECK ON MOUNT
+  // DATA READY CHECK
   // ============================================================
 
   /**
-   * Ensure critical game data is ready before allowing interactions
-   * This prevents the "No question set assigned" error
+   * Verify critical game data is synced from Firebase before allowing gameplay
    */
   useEffect(() => {
     const checkDataReady = async () => {
-      console.log('🎮 Play Page: Checking if data is ready...');
-      setIsCheckingData(true);
-      setDataCheckError(null);
+      console.log('🔍 Checking if game data is ready...');
 
-      try {
-        const result = await ensureDataReady();
-
-        if (!result.success) {
-          console.warn('⚠️ Failed to ensure data ready:', result.error);
-          setDataCheckError(result.error);
-        } else {
-          console.log('✅ Data is ready for gameplay');
-        }
-      } catch (error) {
-        console.error('Failed to check data readiness:', error);
-        setDataCheckError(error.message);
-      } finally {
+      // If already marked ready, skip check
+      if (isDataReady) {
+        console.log('✅ Data already marked as ready');
         setIsCheckingData(false);
+        return;
       }
+
+      // Attempt to ensure data is ready
+      const result = await ensureDataReady();
+
+      if (result.success) {
+        console.log('✅ Game data verified and ready');
+        setDataCheckError(null);
+      } else {
+        console.error('❌ Data ready check failed:', result.error);
+        setDataCheckError(
+          result.error || 'Failed to verify game data. Please try again.',
+        );
+      }
+
+      setIsCheckingData(false);
     };
 
     checkDataReady();
-  }, [ensureDataReady]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ============================================================
-  // REAL-TIME FIREBASE SYNC
+  // FIREBASE LISTENERS
   // ============================================================
 
   /**
-   * Start Firebase listeners on mount
-   * CRITICAL FIX: Start BOTH game state AND teams listeners
+   * Start Firebase real-time listeners for game state and teams
    *
-   * This ensures:
-   * - Game state changes (question visibility, answer reveals) are synced
-   * - Team data changes (lifeline usage, status, progress) are synced in real-time
-   *
-   * Without the teams listener, lifeline usage updates from Firebase won't
-   * be reflected in the UI, causing both lifelines to appear available even
-   * after one has been used.
+   * CRITICAL: Teams listener is required for lifeline availability sync
+   * When a lifeline is used, Firebase updates teams/{teamId}/lifelines-available
+   * Without this listener, the UI wouldn't know the lifeline was used until refresh
    */
   useEffect(() => {
     console.log('🎮 Play Page: Starting Firebase listeners...');
@@ -165,6 +157,10 @@ export default function Play() {
 
   /**
    * Redirect if game is not in a valid play page state
+   *
+   * NOTE: GAME_STATUS.COMPLETED is still a valid state here.
+   * GameCompletedDialog (inside GameControls) handles the completion UX,
+   * then navigates to '/' when user clicks "Back to Dashboard".
    */
   useEffect(() => {
     const isValidPlayPageState =
@@ -179,6 +175,28 @@ export default function Play() {
       navigate('/');
     }
   }, [gameStatus, navigate]);
+
+  // ============================================================
+  // DERIVED STATE FOR ANSWER PAD HIGHLIGHTING
+  // ============================================================
+
+  /**
+   * Answer pad is "active" when:
+   * - Question is visible to public
+   * - Answer hasn't been revealed yet
+   * - Answer hasn't been locked yet (no validation result)
+   */
+  const isAnswerPadActive =
+    questionVisible && !answerRevealed && !validationResult;
+
+  /**
+   * Answer pad is "waiting" when:
+   * - Question is loaded (host has it)
+   * - But question is not yet visible to public
+   * - Answer hasn't been revealed
+   */
+  const isWaitingForVisibility =
+    currentQuestionNumber > 0 && !questionVisible && !answerRevealed;
 
   // ============================================================
   // LOADING STATE - DATA NOT READY
@@ -258,44 +276,26 @@ export default function Play() {
   }
 
   // ============================================================
-  // GAME COMPLETED STATE
-  // ============================================================
-
-  if (!currentTeam && gameStatus === GAME_STATUS.COMPLETED) {
-    return (
-      <main className="container mx-auto py-8 px-4 max-w-7xl">
-        {/* Page Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Game Completed! 🏆</h1>
-            <p className="text-muted-foreground">
-              All teams have finished playing
-            </p>
-          </div>
-          <Button onClick={() => navigate('/')} variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-        </div>
-
-        {/* Game Completed Info */}
-        <Alert className="mb-6 bg-green-50 dark:bg-green-950/20 border-green-500">
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
-          <AlertTitle>Event Concluded</AlertTitle>
-          <AlertDescription>
-            The quiz competition has ended. All teams have completed their
-            rounds.
-          </AlertDescription>
-        </Alert>
-
-        {/* Post-game actions could go here */}
-      </main>
-    );
-  }
-
-  // ============================================================
   // MAIN GAMEPLAY INTERFACE
   // ============================================================
+
+  /**
+   * REMOVED: Auto-render "Game Completed" summary page
+   *
+   * Previously, this page would auto-render a completion summary when
+   * gameStatus === GAME_STATUS.COMPLETED. This prevented GameCompletedDialog
+   * from showing.
+   *
+   * New flow:
+   * 1. Game completes → gameStatus = COMPLETED
+   * 2. GameCompletedDialog (in GameControls) auto-opens via useEffect
+   * 3. User sees dialog with leaderboard
+   * 4. User clicks "Back to Dashboard"
+   * 5. Navigate to '/' → Home page shows "Game Completed" card
+   *
+   * The dialog provides a better UX with the ranked leaderboard before
+   * sending the host back to the dashboard.
+   */
 
   return (
     <main className="container mx-auto py-8 px-4 max-w-7xl space-y-6">
@@ -365,7 +365,7 @@ export default function Play() {
                       validationResult.isCorrect ? 'default' : 'destructive'
                     }
                     className="ml-auto text-xs">
-                    {validationResult.isCorrect ? '✓' : '✗'}
+                    {validationResult.isCorrect ? '✓ Correct' : '✗ Incorrect'}
                   </Badge>
                 )}
               </CardTitle>
@@ -382,180 +382,23 @@ export default function Play() {
         {/* Team Status Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Team Status</CardTitle>
+            <CardTitle className="text-base">Team Status</CardTitle>
           </CardHeader>
           <CardContent>
             <TeamStatusCard />
           </CardContent>
         </Card>
 
-        {/* Lifeline Panel */}
+        {/* Lifelines */}
         <Card>
           <CardHeader>
-            <CardTitle>Lifelines</CardTitle>
+            <CardTitle className="text-base">Lifelines</CardTitle>
           </CardHeader>
           <CardContent>
             <LifelinePanel />
           </CardContent>
         </Card>
       </div>
-
-      {/* Debug Info - Store State (Development) */}
-      {import.meta.env.DEV && (
-        <Card className="border-dashed bg-muted/30">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              🔧 Debug: Store State
-              <Badge variant="outline" className="ml-auto text-xs">
-                Development Only
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
-              {/* Game Store */}
-              <div className="space-y-1">
-                <p className="font-semibold text-blue-600 dark:text-blue-400 mb-2">
-                  Game Store:
-                </p>
-                <p className="text-muted-foreground">
-                  Status:{' '}
-                  <span className="text-foreground font-semibold">
-                    {gameStatus}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Data Ready:{' '}
-                  <span className="text-foreground font-semibold">
-                    {isDataReady ? '✅' : '❌'}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Team ID:{' '}
-                  <span className="text-foreground font-semibold">
-                    {currentTeamId?.slice(0, 8)}...
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Question:{' '}
-                  <span className="text-foreground font-semibold">
-                    {currentQuestionNumber}/{prizeStructure.length}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Queue:{' '}
-                  <span className="text-foreground font-semibold">
-                    {playQueue.length} teams
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Visible:{' '}
-                  <span className="text-foreground font-semibold">
-                    {questionVisible ? '👁️ Yes' : '🙈 No'}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Revealed:{' '}
-                  <span className="text-foreground font-semibold">
-                    {answerRevealed ? '✅ Yes' : '❌ No'}
-                  </span>
-                </p>
-              </div>
-
-              {/* Questions Store */}
-              <div className="space-y-1">
-                <p className="font-semibold text-green-600 dark:text-green-400 mb-2">
-                  Questions Store:
-                </p>
-                <p className="text-muted-foreground">
-                  Loaded:{' '}
-                  <span className="text-foreground font-semibold">
-                    {hostQuestion ? '✅' : '❌'}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Q Number:{' '}
-                  <span className="text-foreground font-semibold">
-                    {hostQuestion?.number || 'N/A'}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Selected:{' '}
-                  <span className="text-foreground font-semibold">
-                    {selectedAnswer || 'None'}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Validated:{' '}
-                  <span className="text-foreground font-semibold">
-                    {validationResult ? '✅' : '❌'}
-                  </span>
-                </p>
-                {validationResult && (
-                  <p className="text-muted-foreground">
-                    Result:{' '}
-                    <span
-                      className={cn(
-                        'font-semibold',
-                        validationResult.isCorrect
-                          ? 'text-green-600'
-                          : 'text-red-600',
-                      )}>
-                      {validationResult.isCorrect ? '✅ Correct' : '❌ Wrong'}
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              {/* Teams & Prize Store */}
-              <div className="space-y-1">
-                <p className="font-semibold text-purple-600 dark:text-purple-400 mb-2">
-                  Teams & Prizes:
-                </p>
-                <p className="text-muted-foreground">
-                  Team:{' '}
-                  <span className="text-foreground font-semibold">
-                    {currentTeam?.name || 'N/A'}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Status:{' '}
-                  <span className="text-foreground font-semibold">
-                    {currentTeam?.status || 'N/A'}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Prize:{' '}
-                  <span className="text-foreground font-semibold">
-                    Rs.{currentTeam?.currentPrize?.toLocaleString() || 0}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Structure:{' '}
-                  <span className="text-foreground font-semibold">
-                    {prizeStructure.length} levels
-                  </span>
-                </p>
-                {/* Lifeline availability debug */}
-                <p className="text-muted-foreground">
-                  Phone:{' '}
-                  <span className="text-foreground font-semibold">
-                    {currentTeam?.lifelinesAvailable?.phoneAFriend
-                      ? '✅'
-                      : '❌'}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  50/50:{' '}
-                  <span className="text-foreground font-semibold">
-                    {currentTeam?.lifelinesAvailable?.fiftyFifty ? '✅' : '❌'}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </main>
   );
 }
