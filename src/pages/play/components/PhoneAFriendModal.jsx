@@ -87,71 +87,86 @@ export default function PhoneAFriendModal({
           {/* Timer Section */}
           <div className="space-y-3">
             {!hasStarted ? (
-              /* Pre-timer: show Start Timer button */
-              <Button
-                onClick={start}
-                variant="outline"
-                size="lg"
-                className="w-full gap-2 border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30">
-                <Timer className="w-4 h-4" />
-                Start Timer
-              </Button>
-            ) : (
-              /* Timer running or expired */
-              <div className="space-y-2 text-center">
-                <div
-                  className={cn(
-                    'text-5xl font-bold font-mono tabular-nums',
-                    hasExpired
-                      ? 'text-red-600 dark:text-red-400'
-                      : progressPct <= 25
-                        ? 'text-orange-500 dark:text-orange-400'
-                        : 'text-foreground',
-                  )}>
-                  {display}
-                </div>
+              /* ── PRE-TIMER ───────────────────────────────────────────────
+                 Start Timer is the primary CTA.
+                 Resume is secondary — available if contact is unreachable. */
+              <div className="space-y-2">
+                <Button onClick={start} size="lg" className="w-full gap-2">
+                  <Timer className="w-4 h-4" />
+                  Start Timer
+                </Button>
 
-                {/* Progress bar */}
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <Button
+                  onClick={onResume}
+                  disabled={isResuming}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-muted-foreground hover:text-foreground">
+                  <CheckCircle2 className="w-3 h-3 mr-1.5" />
+                  {isResuming ? 'Resuming...' : 'Resume Game (skip timer)'}
+                </Button>
+              </div>
+            ) : (
+              /* ── TIMER RUNNING / EXPIRED ─────────────────────────────────
+                 Countdown takes centre stage.
+                 Resume Game is the only action once timer is running. */
+              <div className="space-y-4">
+                {/* Countdown display */}
+                <div className="space-y-2 text-center">
                   <div
                     className={cn(
-                      'h-full rounded-full transition-all duration-1000',
+                      'text-5xl font-bold font-mono tabular-nums',
                       hasExpired
-                        ? 'bg-red-500'
+                        ? 'text-red-600 dark:text-red-400'
                         : progressPct <= 25
-                          ? 'bg-orange-500'
-                          : 'bg-blue-500',
-                    )}
-                    style={{ width: `${progressPct}%` }}
-                  />
+                          ? 'text-orange-500 dark:text-orange-400'
+                          : 'text-foreground',
+                    )}>
+                    {display}
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full rounded-full transition-all duration-1000',
+                        hasExpired
+                          ? 'bg-red-500'
+                          : progressPct <= 25
+                            ? 'bg-orange-500'
+                            : 'bg-blue-500',
+                      )}
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+
+                  {hasExpired ? (
+                    <Badge variant="destructive" className="text-xs">
+                      Time&apos;s up
+                    </Badge>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Time remaining
+                    </p>
+                  )}
                 </div>
 
-                {hasExpired ? (
-                  <Badge variant="destructive" className="text-xs">
-                    Time&apos;s up
-                  </Badge>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Time remaining
-                  </p>
-                )}
+                {/* Resume — primary once timer is running */}
+                <Button
+                  onClick={onResume}
+                  disabled={isResuming}
+                  size="lg"
+                  className="w-full gap-2 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {isResuming ? 'Resuming...' : 'Resume Game'}
+                </Button>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  Game resumes automatically when the timer ends.
+                </p>
               </div>
             )}
           </div>
-
-          {/* Resume Game — always available */}
-          <Button
-            onClick={onResume}
-            disabled={isResuming}
-            size="lg"
-            className="w-full gap-2 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white">
-            <CheckCircle2 className="w-4 h-4" />
-            {isResuming ? 'Resuming...' : 'Resume Game'}
-          </Button>
-
-          <p className="text-xs text-muted-foreground text-center">
-            Game will resume automatically when the timer ends.
-          </p>
         </div>
       </DialogContent>
     </Dialog>
