@@ -30,12 +30,17 @@ import GameCompletedDialog from './dialogs/GameCompletedDialog';
  * Purpose: Main control buttons for managing question flow and game progression.
  *
  * Control Buttons (stacked full-width for narrow column):
- * 1. "Load Question X" - Fetch next question from localStorage
+ * 1. Primary Action   - Context-aware: "Load Question X" → "Load Last Question" → "Next Team"
  * 2. "Push to Display" - Push question to Firebase (visible to public)
  * 3. "Hide Question"  - Retract question from public view
- * 4. "Next Team"      - Re-opens TeamStatusDialog if already dismissed
- * 5. "Skip Question"  - Opens SkipQuestionDialog for confirmation
- * 6. "Pause / Resume" - Game state toggles
+ * 4. "Skip Question"  - Opens SkipQuestionDialog for confirmation
+ * 5. "Pause / Resume" - Game state toggles
+ *
+ * Primary Action button label logic:
+ *   - Default:             "Load Question X"
+ *   - On second-to-last Q: "Load Question X" (normal)
+ *   - On last question:    "Load Last Question"
+ *   - After last Q done:   "Next Team" (re-opens TeamStatusDialog)
  *
  * Dialogs mounted here (rendered as portals, visual position irrelevant):
  * - SkipQuestionDialog    — confirms before skipping
@@ -58,6 +63,7 @@ export default function GameControls() {
     canPause,
     canResume,
     nextQuestionNumber,
+    isNextQuestionLast,
     isCurrentQuestionLast,
     isLoading,
     error,
@@ -131,11 +137,43 @@ export default function GameControls() {
    */
   useEffect(() => {
     if (gameStatus === GAME_STATUS.COMPLETED) {
-      // Close team status dialog if still open
       setShowTeamStatusDialog(false);
       setShowGameCompletedDialog(true);
     }
   }, [gameStatus]);
+
+  // ============================================================
+  // DERIVED UI STATE
+  // ============================================================
+
+  /**
+   * Determine the label for the primary action button.
+   *
+   * Priority:
+   * 1. canNextTeam  → "Next Team"   (team finished, advance to next)
+   * 2. isNextQuestionLast → "Load Last Question"
+   * 3. default      → "Load Question X"
+   */
+  const primaryActionLabel = (() => {
+    if (isLoading) return canNextTeam ? 'Loading...' : 'Loading...';
+    if (canNextTeam) return 'Next Team';
+    if (isNextQuestionLast) return 'Load Last Question';
+    return `Load Question ${nextQuestionNumber}`;
+  })();
+
+  const primaryActionIcon = canNextTeam ? Users : FileText;
+  const PrimaryIcon = primaryActionIcon;
+
+  const canPrimaryAction = canNextTeam || canLoadQuestion;
+  const isPrimaryPulsing = canNextTeam || canLoadQuestion;
+
+  const handlePrimaryAction = () => {
+    if (canNextTeam) {
+      setShowTeamStatusDialog(true);
+    } else {
+      handleLoadQuestion();
+    }
+  };
 
   // ============================================================
   // DIALOG HANDLERS
@@ -186,18 +224,20 @@ export default function GameControls() {
             Question Controls
           </p>
 
-          {/* Load Question */}
+          {/* Primary Action: Load Question X / Load Last Question / Next Team */}
           <Button
-            onClick={handleLoadQuestion}
-            disabled={!canLoadQuestion || isLoading}
-            variant="default"
+            onClick={handlePrimaryAction}
+            disabled={!canPrimaryAction || isLoading}
+            variant={canPrimaryAction ? 'default' : 'outline'}
             size="lg"
             className={cn(
               'w-full gap-2 transition-all',
-              canLoadQuestion && 'ring-2 ring-blue-500 animate-pulse',
+              isPrimaryPulsing && 'ring-2 ring-blue-500 animate-pulse',
+              canNextTeam &&
+                'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white',
             )}>
-            <FileText className="w-4 h-4" />
-            {isLoading ? 'Loading...' : `Load Question ${nextQuestionNumber}`}
+            <PrimaryIcon className="w-4 h-4" />
+            {primaryActionLabel}
           </Button>
 
           {/* Push to Display */}
@@ -220,27 +260,6 @@ export default function GameControls() {
             className="w-full gap-2">
             <EyeOff className="w-4 h-4" />
             Hide Question
-          </Button>
-        </div>
-
-        {/* Team Navigation */}
-        <div className="space-y-2 pt-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            Team Navigation
-          </p>
-
-          {/* Next Team — re-opens TeamStatusDialog if dismissed */}
-          <Button
-            onClick={() => setShowTeamStatusDialog(true)}
-            disabled={!canNextTeam || isLoading}
-            variant={canNextTeam ? 'default' : 'outline'}
-            size="lg"
-            className={cn(
-              'w-full gap-2 transition-all',
-              canNextTeam && 'animate-pulse ring-2 ring-blue-500',
-            )}>
-            <Users className="w-4 h-4" />
-            Next Team
           </Button>
 
           {/* Skip Question — opens confirmation dialog */}
