@@ -57,9 +57,12 @@ export function useGameControls() {
   const questionVisible = useGameStore((state) => state.questionVisible);
   const answerRevealed = useGameStore((state) => state.answerRevealed);
   const playQueue = useGameStore((state) => state.playQueue);
-  const questionSetAssignments = useGameStore(
-    (state) => state.questionSetAssignments,
-  );
+  // NOTE: questionSetAssignments is intentionally NOT subscribed here as a
+  // reactive value. It was previously read from a React closure which could
+  // be stale between a Firebase onValue update and the next React render.
+  // Both canLoadQuestion and handleLoadQuestion now read it via
+  // useGameStore.getState() or delegate to getFreshQuestionSetAssignment()
+  // in useCurrentQuestion — both of which always return the live store value.
   const isDataReady = useGameStore((state) => state.isDataReady);
   const isSyncingData = useGameStore((state) => state.isSyncingData);
   const ensureDataReady = useGameStore((state) => state.ensureDataReady);
@@ -105,6 +108,12 @@ export function useGameControls() {
    * - Current team has a question set assigned
    * - Question number hasn't exceeded the max
    * - No question loaded yet, OR previous answer has been validated
+   *
+   * FIX: The question set assignment is read via useGameStore.getState() instead
+   * of a reactive closure. The reactive closure could hold a stale value in the
+   * window between Firebase pushing an update (store updated synchronously) and
+   * React re-rendering this component — causing the button to incorrectly
+   * disable itself. getState() always returns the live Zustand value.
    */
   const canLoadQuestion = useMemo(() => {
     if (gameStatus !== GAME_STATUS.ACTIVE) return false;
@@ -124,10 +133,14 @@ export function useGameControls() {
       return false;
     }
 
-    const hasQuestionSet = questionSetAssignments?.[currentTeamId];
+    // Read fresh from store directly — never stale, no React render dependency
+    const { questionSetAssignments, currentTeamId: freshTeamId } =
+      useGameStore.getState();
+    const hasQuestionSet = questionSetAssignments?.[freshTeamId];
+
     if (!hasQuestionSet) {
       console.log(
-        `⚠️ No question set assigned to current team: ${currentTeamId}`,
+        `⚠️ No question set assigned to current team: ${freshTeamId}`,
       );
       return false;
     }
@@ -140,8 +153,7 @@ export function useGameControls() {
     hostQuestion,
     validationResult,
     isDataReady,
-    questionSetAssignments,
-    currentTeamId,
+    // NOTE: questionSetAssignments deliberately excluded — read via getState() above
   ]);
 
   /**
@@ -242,8 +254,21 @@ export function useGameControls() {
   // ============================================================
 
   /**
-   * Load next question from localStorage
-   * Clears previous question state first
+   * Load next question for the current team.
+   *
+   * FIX: Removed the redundant stale-closure pre-check:
+   *   `const questionSetId = questionSetAssignments?.[currentTeamId]`
+   *   `if (!questionSetId) throw new Error(...)`
+   *
+   * That check ran BEFORE loadQuestion() and used a React closure value that
+   * could be stale. It would throw a false "no question set assigned" error
+   * even when the assignment was already in the Zustand store — because the
+   * closure hadn't updated yet since the last render.
+   *
+   * The correct logic lives inside useCurrentQuestion → getFreshQuestionSetAssignment(),
+   * which reads from useGameStore.getState() (always live) and falls back to a
+   * direct Firebase fetch if still not found. That path is now the single
+   * source of truth for assignment resolution.
    */
   const handleLoadQuestion = async () => {
     try {
@@ -261,21 +286,15 @@ export function useGameControls() {
         console.log('✅ Data synced successfully');
       }
 
-      const questionSetId = questionSetAssignments?.[currentTeamId];
-      if (!questionSetId) {
-        throw new Error(
-          `No question set assigned to team. Please reinitialize the game or check Firebase data.`,
-        );
-      }
-
       console.log(
         `📖 Loading question ${nextQuestionNumber} for team ${currentTeamId}`,
       );
-      console.log(`📚 Question set: ${questionSetId}`);
 
       clearQuestion();
       clearHostQuestion();
 
+      // getFreshQuestionSetAssignment() inside loadQuestion() handles
+      // assignment resolution via getState() + Firebase fallback
       await loadQuestion(nextQuestionNumber);
 
       console.log('✅ Question loaded successfully');
@@ -397,6 +416,9 @@ export function useGameControls() {
       throw err;
     }
   }, [
+    currentTeamId,
+    currentTeam,
+    playQueue,
     questionVisible,
     hideQuestion,
     skipQuestion,
