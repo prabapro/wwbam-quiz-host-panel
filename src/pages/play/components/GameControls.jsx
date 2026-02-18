@@ -150,13 +150,15 @@ export default function GameControls() {
    * Determine the label for the primary action button.
    *
    * Priority:
-   * 1. canNextTeam  → "Next Team"   (team finished, advance to next)
-   * 2. isNextQuestionLast → "Load Last Question"
-   * 3. default      → "Load Question X"
+   * 1. canNextTeam                          → "Next Team"          (team finished, advance to next)
+   * 2. !canLoadQuestion && lastQActive      → "Last Q Loaded"      (last Q is active, button disabled)
+   * 3. isNextQuestionLast                   → "Load Last Question" (about to load the final question)
+   * 4. default                              → "Load Question X"
    */
   const primaryActionLabel = (() => {
-    if (isLoading) return canNextTeam ? 'Loading...' : 'Loading...';
+    if (isLoading) return 'Loading...';
     if (canNextTeam) return 'Next Team';
+    if (!canLoadQuestion && isCurrentQuestionLast) return 'Last Q Loaded';
     if (isNextQuestionLast) return 'Load Last Question';
     return `Load Question ${nextQuestionNumber}`;
   })();
