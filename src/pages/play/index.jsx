@@ -16,7 +16,7 @@ import GameStatusBar from './components/GameStatusBar';
 import QuestionPanel from './components/QuestionPanel';
 import AnswerPad from './components/AnswerPad';
 import LifelinePanel from './components/LifelinePanel';
-import TeamStatusCard from './components/TeamStatusCard';
+import AllTeamsPanel from './components/AllTeamsPanel';
 import GameControls from './components/GameControls';
 
 /**
@@ -39,12 +39,17 @@ import GameControls from './components/GameControls';
  * - GameCompletedDialog (in GameControls) now handles completion UX
  * - User sees dialog first, then navigates to home via "Back to Dashboard" button
  *
+ * UPDATED: Bottom row layout
+ * - TeamStatusCard replaced by AllTeamsPanel (scrollable all-teams table)
+ * - GameStatusBar now shows full current-team details (members, set, lifelines, prize)
+ * - Bottom Row: Lifelines (1/4), All Teams (3/4)
+ *
  * Layout:
- * - Top: Game Status Bar (full width)
+ * - Top: Game Status Bar (full width — team info, set, progress, prize, lifelines)
  * - Left Column (1/4): Game Controls (stacked buttons)
  * - Middle Column (2/4): Question Display
  * - Right Column (1/4): Answer Pad (2x2 grid)
- * - Bottom Row: Team Status (1/2), Lifelines (1/2)
+ * - Bottom Row: Lifelines (1/4), All Teams Panel (3/4)
  */
 export default function Play() {
   const navigate = useNavigate();
@@ -71,8 +76,6 @@ export default function Play() {
   // Questions Store State
   const validationResult = useQuestionsStore((state) => state.validationResult);
   const selectedAnswer = useQuestionsStore((state) => state.selectedAnswer);
-
-  // Prize Store State (ensure it's loaded)
 
   // ============================================================
   // DATA READY CHECK
@@ -227,45 +230,24 @@ export default function Play() {
     );
   }
 
-  // ============================================================
-  // ERROR STATE - DATA CHECK FAILED
-  // ============================================================
-
-  if (dataCheckError && !isDataReady) {
+  if (dataCheckError) {
     return (
       <main className="container mx-auto py-8 px-4 max-w-7xl">
         <div className="flex items-center justify-center min-h-[60vh]">
-          <Card className="w-full max-w-md border-destructive">
+          <Card className="w-full max-w-md">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-4 text-center">
-                <AlertTriangle className="w-12 h-12 text-destructive" />
+                <AlertTriangle className="w-12 h-12 text-red-500" />
                 <div>
                   <h3 className="text-lg font-semibold mb-2">
-                    Failed to Load Game Data
+                    Data Sync Error
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     {dataCheckError}
                   </p>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        setDataCheckError(null);
-                        setIsCheckingData(true);
-                        ensureDataReady().then((result) => {
-                          if (!result.success) {
-                            setDataCheckError(result.error);
-                          }
-                          setIsCheckingData(false);
-                        });
-                      }}
-                      variant="default">
-                      Retry
-                    </Button>
-                    <Button onClick={() => navigate('/')} variant="outline">
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Back to Home
-                    </Button>
-                  </div>
+                  <Button onClick={() => window.location.reload()}>
+                    Retry
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -276,15 +258,13 @@ export default function Play() {
   }
 
   // ============================================================
-  // MAIN GAMEPLAY INTERFACE
+  // MAIN RENDER
   // ============================================================
 
   /**
-   * REMOVED: Auto-render "Game Completed" summary page
-   *
-   * Previously, this page would auto-render a completion summary when
-   * gameStatus === GAME_STATUS.COMPLETED. This prevented GameCompletedDialog
-   * from showing.
+   * NOTE: No redirect on GAME_STATUS.COMPLETED here.
+   * GameCompletedDialog (inside GameControls) handles the completion UX,
+   * then navigates to '/' when user clicks "Back to Dashboard".
    *
    * New flow:
    * 1. Game completes → gameStatus = COMPLETED
@@ -316,7 +296,7 @@ export default function Play() {
         </Alert>
       )}
 
-      {/* Top Bar - Game Status */}
+      {/* Top Bar - Game Status (team info, set, progress, prize, lifelines) */}
       <GameStatusBar />
 
       {/* Main Grid Layout */}
@@ -377,27 +357,31 @@ export default function Play() {
         </div>
       </div>
 
-      {/* Bottom Row - Team Status & Lifelines */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Team Status Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Team Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TeamStatusCard />
-          </CardContent>
-        </Card>
+      {/* Bottom Row - Lifelines (1/4) + All Teams Panel (3/4) */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Lifelines — 1/4 width */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Lifelines</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LifelinePanel />
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Lifelines */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Lifelines</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LifelinePanel />
-          </CardContent>
-        </Card>
+        {/* All Teams Panel — 3/4 width */}
+        <div className="lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">All Teams</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AllTeamsPanel />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </main>
   );
