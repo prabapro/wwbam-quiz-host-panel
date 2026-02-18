@@ -635,7 +635,6 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
 **Main Panels:**
 
 1. **Question Control Panel** (Left)
-
    - Current question display (host view with correct answer indicator)
    - Answer pad (A/B/C/D buttons)
    - Lock Answer button
@@ -643,7 +642,6 @@ Team Gamma       | Participants: Alex, Chris, Jordan  | Status: Configured ✅
    - Load Question / Push to Display / Next Question buttons
 
 2. **Team Status Panel** (Center)
-
    - Grid of all team cards
    - Color-coded statuses:
      - 🟦 Blue: `status: "active"` (currently playing)
@@ -827,7 +825,7 @@ Answer Locked & Validated:
 {
   "game-state/game-status": "completed",
   "game-state/current-team-id": null,
-  "game-state/last-updated": serverTimestamp()
+  "game-state/last-updated": serverTimestamp(),
 }
 ```
 
@@ -914,6 +912,7 @@ Answer Locked & Validated:
   "game-state/initialized-at": null,
   "game-state/started-at": null,
   "game-state/last-updated": serverTimestamp(),
+  "game-state/display-final-results": false,
 
   // Reset each team
   "teams/team-1/status": "waiting",

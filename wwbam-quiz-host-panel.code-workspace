@@ -28,6 +28,6 @@
         ],
       },
     ],
-    "cSpell.words": ["partialize", "WWBAM"],
+    "cSpell.words": ["partialize", "uninit", "WWBAM"],
   },
 }

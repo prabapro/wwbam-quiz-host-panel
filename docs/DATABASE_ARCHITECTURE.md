@@ -190,6 +190,7 @@ Simple object with Firebase Auth UIDs as keys.
 | `started-at`               | number\|null  | Timestamp when first team started playing                                         |
 | `last-updated`             | number        | Server timestamp of last update                                                   |
 | `active-lifeline`          | string\|null  | Currently active lifeline:`phone-a-friend` \| `fifty-fifty` \| `null`             |
+| `display-final-results`    | boolean       | When the final results are ready to display                                       |
 
 ### Valid Status Transitions
 
@@ -208,6 +209,7 @@ not-started → initialized → active ⇄ paused → completed
     "current-team-id": null,
     "current-question-number": 0,
     "active-lifeline": null,
+    "display-final-results": false,
     "current-question": null,
     "question-visible": false,
     "options-visible": false,
