@@ -5,6 +5,19 @@
     },
   ],
   "settings": {
+    "restoreTerminals.keepExistingTerminalsOpen": true,
+    "restoreTerminals.runOnStartup": true,
+    "restoreTerminals.terminals": [
+      {
+        "splitTerminals": [
+          {
+            "name": "Emulator",
+            "commands": ["pnpm emulator"],
+            "shouldRunCommands": false,
+          },
+        ],
+      },
+    ],
     "cSpell.words": ["partialize", "WWBAM"],
   },
 }
