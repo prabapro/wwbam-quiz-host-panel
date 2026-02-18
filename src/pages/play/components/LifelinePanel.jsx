@@ -18,21 +18,21 @@ import LifelineConfirmDialog from './dialogs/LifelineConfirmDialog';
  *
  * Purpose: Display and manage team's available lifelines.
  *
+ * REFACTORED: Compact vertical layout for 1/4-width column.
+ * Each lifeline is a stacked button: icon on top, label + badge below.
+ *
  * WWBAM Rules:
  * - Lifelines are DECISION TOOLS (not safety nets)
  * - Must be used BEFORE locking answer
  * - ONE lifeline per question maximum
  * - Team chooses: Phone-a-Friend OR 50/50 (not both)
  *
- * Lifeline Types:
- * 1. Phone-a-Friend: Confirmation → game pauses → PhoneAFriendDialog with timer
- * 2. 50/50: Confirmation → two incorrect options removed
- *
  * States:
- * - Available: Button enabled, full color
- * - Used (globally): Button disabled, greyed out, with "Used" badge
- * - Used this question: Both buttons locked
- * - After answer locked: Both buttons disabled
+ * - Available: Button enabled, full color, green badge
+ * - Active (Phone): Blue "Active" badge
+ * - Used globally: Disabled, greyed out, red "Used" badge
+ * - Used this question: Both locked, "Locked" badge
+ * - After answer locked: Both disabled
  */
 export default function LifelinePanel() {
   const [isResuming, setIsResuming] = useState(false);
@@ -69,7 +69,7 @@ export default function LifelinePanel() {
   // CONFIRMATION DIALOG STATE
   // ============================================================
 
-  const [pendingLifeline, setPendingLifeline] = useState(null); // LIFELINE_TYPE | null
+  const [pendingLifeline, setPendingLifeline] = useState(null);
 
   const handlePhoneClick = () =>
     setPendingLifeline(LIFELINE_TYPE.PHONE_A_FRIEND);
@@ -83,28 +83,56 @@ export default function LifelinePanel() {
 
   const handleConfirmActivation = async () => {
     const lifeline = pendingLifeline;
-    setPendingLifeline(null); // Close confirm dialog first
+    setPendingLifeline(null);
 
     if (lifeline === LIFELINE_TYPE.PHONE_A_FRIEND) {
       const result = await activatePhoneAFriend();
-      if (result.success) {
-        console.log('📞 Phone-a-Friend activated');
-      }
+      if (result.success) console.log('📞 Phone-a-Friend activated');
     } else if (lifeline === LIFELINE_TYPE.FIFTY_FIFTY) {
       const result = await activateFiftyFifty();
-      if (result.success) {
-        console.log('✂️ 50/50 activated:', result);
-      }
+      if (result.success) console.log('✂️ 50/50 activated:', result);
     }
   };
 
   const handleResume = async () => {
     setIsResuming(true);
     const result = await resumeFromPhoneAFriend();
-    if (!result.success) {
+    if (!result.success)
       console.error('Failed to resume from Phone-a-Friend:', result.error);
-    }
     setIsResuming(false);
+  };
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+
+  /**
+   * Resolve the status badge for a lifeline button
+   */
+  const getLifelineBadge = ({ isAvailable, isActive, canUse }) => {
+    if (isActive)
+      return (
+        <Badge className="text-xs bg-blue-600 hover:bg-blue-600">Active</Badge>
+      );
+    if (!isAvailable)
+      return (
+        <Badge variant="destructive" className="text-xs">
+          Used
+        </Badge>
+      );
+    if (!canUse && lifelineUsedThisQuestion)
+      return (
+        <Badge variant="secondary" className="text-xs">
+          Locked
+        </Badge>
+      );
+    if (canUse)
+      return (
+        <Badge className="text-xs bg-green-600 hover:bg-green-600">
+          Available
+        </Badge>
+      );
+    return null;
   };
 
   // ============================================================
@@ -113,110 +141,59 @@ export default function LifelinePanel() {
 
   return (
     <>
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Lifelines</h3>
-          {lifelineUsedThisQuestion && (
+      <div className="space-y-3">
+        {/* "Used this question" indicator */}
+        {lifelineUsedThisQuestion && (
+          <div className="flex justify-center">
             <Badge variant="secondary" className="text-xs">
               1 Used This Question
             </Badge>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Phone-a-Friend Button */}
+        {/* ── Phone-a-Friend ──────────────────────────────────── */}
         <Button
           onClick={handlePhoneClick}
           disabled={!canUsePhone || isActivating || isPhoneActive}
           variant={canUsePhone ? 'default' : 'outline'}
-          size="lg"
           className={cn(
-            'w-full h-auto p-4 transition-all',
+            'w-full h-auto py-3 px-3 flex flex-col items-center gap-1.5 transition-all',
             !isPhoneAvailable && 'opacity-50 cursor-not-allowed',
             canUsePhone && 'ring-2 ring-blue-500 hover:ring-blue-600',
           )}>
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <Phone className="w-5 h-5" />
-              <div className="text-left">
-                <p className="font-semibold text-sm">Phone-a-Friend</p>
-                <p className="text-xs opacity-80">
-                  Call someone for help (3 min)
-                </p>
-              </div>
-            </div>
-            <div>
-              {isPhoneActive && (
-                <Badge variant="default" className="text-xs bg-blue-600">
-                  Active
-                </Badge>
-              )}
-              {!isPhoneActive && !isPhoneAvailable && (
-                <Badge variant="destructive" className="text-xs">
-                  Used
-                </Badge>
-              )}
-              {!isPhoneActive &&
-                isPhoneAvailable &&
-                !canUsePhone &&
-                lifelineUsedThisQuestion && (
-                  <Badge variant="secondary" className="text-xs">
-                    Locked
-                  </Badge>
-                )}
-              {canUsePhone && (
-                <Badge variant="default" className="text-xs bg-green-600">
-                  Available
-                </Badge>
-              )}
-            </div>
-          </div>
+          <Phone className="w-5 h-5 shrink-0" />
+          <span className="text-xs font-semibold leading-tight text-center">
+            Phone-a-Friend
+          </span>
+          {getLifelineBadge({
+            isAvailable: isPhoneAvailable,
+            isActive: isPhoneActive,
+            canUse: canUsePhone,
+          })}
         </Button>
 
-        {/* 50/50 Button */}
+        {/* ── 50/50 ───────────────────────────────────────────── */}
         <Button
           onClick={handleFiftyFiftyClick}
           disabled={!canUseFiftyFifty || isActivating}
           variant={canUseFiftyFifty ? 'default' : 'outline'}
-          size="lg"
           className={cn(
-            'w-full h-auto p-4 transition-all',
+            'w-full h-auto py-3 px-3 flex flex-col items-center gap-1.5 transition-all',
             !isFiftyFiftyAvailable && 'opacity-50 cursor-not-allowed',
             canUseFiftyFifty && 'ring-2 ring-yellow-500 hover:ring-yellow-600',
           )}>
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <Scissors className="w-5 h-5" />
-              <div className="text-left">
-                <p className="font-semibold text-sm">50/50</p>
-                <p className="text-xs opacity-80">
-                  Remove two incorrect answers
-                </p>
-              </div>
-            </div>
-            <div>
-              {!isFiftyFiftyAvailable && (
-                <Badge variant="destructive" className="text-xs">
-                  Used
-                </Badge>
-              )}
-              {isFiftyFiftyAvailable &&
-                !canUseFiftyFifty &&
-                lifelineUsedThisQuestion && (
-                  <Badge variant="secondary" className="text-xs">
-                    Locked
-                  </Badge>
-                )}
-              {canUseFiftyFifty && (
-                <Badge variant="default" className="text-xs bg-green-600">
-                  Available
-                </Badge>
-              )}
-            </div>
-          </div>
+          <Scissors className="w-5 h-5 shrink-0" />
+          <span className="text-xs font-semibold leading-tight text-center">
+            50 / 50
+          </span>
+          {getLifelineBadge({
+            isAvailable: isFiftyFiftyAvailable,
+            isActive: false,
+            canUse: canUseFiftyFifty,
+          })}
         </Button>
 
-        {/* Error Alert */}
+        {/* ── Error ───────────────────────────────────────────── */}
         {activationError && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -226,7 +203,7 @@ export default function LifelinePanel() {
           </Alert>
         )}
 
-        {/* Info / Rule Reminders */}
+        {/* ── Status / Rule Reminder ──────────────────────────── */}
         {!canUsePhone &&
           !canUseFiftyFifty &&
           !isActivating &&
@@ -234,10 +211,10 @@ export default function LifelinePanel() {
             <Alert className="bg-muted/50">
               <AlertDescription className="text-xs text-muted-foreground text-center">
                 {lifelineUsedThisQuestion
-                  ? '⚠️ One lifeline per question. Answer locked after use.'
+                  ? '⚠️ One lifeline per question.'
                   : !isPhoneAvailable && !isFiftyFiftyAvailable
                     ? '❌ All lifelines used'
-                    : '🔒 Push question to display to enable lifelines'}
+                    : '🔒 Push question to display first'}
               </AlertDescription>
             </Alert>
           )}
@@ -245,16 +222,14 @@ export default function LifelinePanel() {
         {(canUsePhone || canUseFiftyFifty) && (
           <Alert className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300 dark:border-yellow-700">
             <AlertDescription className="text-xs text-yellow-800 dark:text-yellow-200 text-center">
-              <strong>⚠️ WWBAM Rule:</strong> Use BEFORE locking answer. Choose
-              ONE per question. Wrong answer after lock = elimination.
+              <strong>WWBAM:</strong> Use BEFORE locking. One per question.
             </AlertDescription>
           </Alert>
         )}
       </div>
 
-      {/* ── Dialogs ──────────────────────────────────────────────── */}
+      {/* ── Dialogs ─────────────────────────────────────────────── */}
 
-      {/* Lifeline Confirmation — shown before activating either lifeline */}
       <LifelineConfirmDialog
         open={!!pendingLifeline}
         onOpenChange={handleConfirmCancel}
@@ -263,7 +238,6 @@ export default function LifelinePanel() {
         isLoading={isActivating}
       />
 
-      {/* Phone-a-Friend Active Dialog — rendered outside panel to avoid stacking */}
       <PhoneAFriendDialog
         open={isPhoneActive}
         contactNumber={currentTeam?.contact}

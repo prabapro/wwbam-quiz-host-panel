@@ -108,12 +108,12 @@
 │   │   │   │   │   ├── PhoneAFriendDialog.jsx
 │   │   │   │   │   ├── SkipQuestionDialog.jsx
 │   │   │   │   │   └── TeamStatusDialog.jsx
+│   │   │   │   ├── AllTeamsPanel.jsx
 │   │   │   │   ├── AnswerPad.jsx
 │   │   │   │   ├── GameControls.jsx
 │   │   │   │   ├── GameStatusBar.jsx
 │   │   │   │   ├── LifelinePanel.jsx
-│   │   │   │   ├── QuestionPanel.jsx
-│   │   │   │   └── TeamStatusCard.jsx
+│   │   │   │   └── QuestionPanel.jsx
 │   │   │   ├── hooks
 │   │   │   │   ├── useAnswerSelection.js
 │   │   │   │   ├── useCurrentQuestion.js
