@@ -153,6 +153,22 @@ export function useGameControls() {
   }, [hostQuestion, currentQuestionNumber]);
 
   /**
+   * Is the NEXT question to be loaded the last one?
+   * Used by GameControls to show "Load Last Question" label instead of "Load Question X".
+   */
+  const isNextQuestionLast = useMemo(() => {
+    return nextQuestionNumber === QUESTIONS_PER_SET;
+  }, [nextQuestionNumber]);
+
+  /**
+   * Is the currently loaded question the last one for this team?
+   * Used by SkipQuestionDialog to show an extra warning.
+   */
+  const isCurrentQuestionLast = useMemo(() => {
+    return currentQuestionNumber >= QUESTIONS_PER_SET;
+  }, [currentQuestionNumber]);
+
+  /**
    * Can Push to Display?
    * - Question is loaded (host view)
    * - Question is not yet visible to public
@@ -204,14 +220,6 @@ export function useGameControls() {
     if (!currentTeam || currentTeam.status !== TEAM_STATUS.ACTIVE) return false;
     return true;
   }, [gameStatus, hostQuestion, validationResult, currentTeam]);
-
-  /**
-   * Is the currently loaded question the last one for this team?
-   * Used by SkipQuestionDialog to show an extra warning.
-   */
-  const isCurrentQuestionLast = useMemo(() => {
-    return currentQuestionNumber >= QUESTIONS_PER_SET;
-  }, [currentQuestionNumber]);
 
   /**
    * Can Pause?
@@ -326,45 +334,29 @@ export function useGameControls() {
    * 4. If skipped question was the team's LAST question:
    *    → marks team as COMPLETED with their current prize
    *    → if that team was also the LAST in queue → completes the game
-   * 5. Clears host-side question state
-   *
-   * @returns {Promise<void>}
    */
   const executeSkipQuestion = useCallback(async () => {
     try {
-      // Snapshot current state before any async operations
-      const teamIdSnapshot = useGameStore.getState().currentTeamId;
-      const queueSnapshot = useGameStore.getState().playQueue;
-      const teamSnapshot = useTeamsStore.getState().teams[teamIdSnapshot];
+      // Snapshot mutable values before any async ops
+      const teamIdSnapshot = currentTeamId;
+      const teamSnapshot = currentTeam;
+      const queueSnapshot = [...(playQueue ?? [])];
 
-      // Step 1: Retract from public display if currently visible
+      // Step 1: Hide question from public display if currently visible
       if (questionVisible) {
         await hideQuestion();
-        console.log('🙈 Retracted question from public display before skip');
       }
 
-      // Step 2: Clear question state in game store (counter stays — it already
-      // holds the loaded question's number; incrementing here would skip the next)
-      const gameSkipResult = await skipQuestion();
-      if (!gameSkipResult.success) {
-        throw new Error(
-          gameSkipResult.error || 'Failed to clear question state',
-        );
-      }
+      // Step 2: Clear question state in game store (counter stays the same)
+      await skipQuestion();
 
-      // Step 3: Advance team's question index (no reward for skip)
-      const teamSkipResult = await skipTeamQuestion(teamIdSnapshot);
-      if (!teamSkipResult.success) {
-        throw new Error(
-          teamSkipResult.error || 'Failed to update team question index',
-        );
-      }
+      // Step 3: Advance team's question index in teams store
+      await skipTeamQuestion(teamIdSnapshot);
 
       // Step 4: Clear host-side question state
       clearQuestion();
       clearHostQuestion();
 
-      // Step 5: If this was the team's last question, mark them as completed.
       // currentQuestionNumber already holds the skipped question's number
       // (skipQuestion does NOT increment it), so it's the reliable position.
       const skippedQuestionNumber =
@@ -389,7 +381,7 @@ export function useGameControls() {
           `🏁 Team ${teamIdSnapshot} marked completed after skipping last question (prize: Rs.${finalPrize})`,
         );
 
-        // Step 6: If this was also the last team in queue, end the game
+        // Step 5: If this was also the last team in queue, end the game
         if (isLastTeamInQueue(teamIdSnapshot, queueSnapshot)) {
           const gameCompleteResult = await completeGame();
           if (!gameCompleteResult.success) {
@@ -441,8 +433,9 @@ export function useGameControls() {
     canPause,
     canResume,
 
-    // Question Number
+    // Question Numbers & Flags
     nextQuestionNumber,
+    isNextQuestionLast,
     isCurrentQuestionLast,
 
     // Loading States
