@@ -339,6 +339,14 @@ export const useGameStore = create()(
         },
 
         /**
+         * Push final results Flag to Firebase to trigger public display of final results
+         */
+        pushFinalResults: async () => {
+          await databaseService.updateGameState({ displayFinalResults: true });
+          set({ displayFinalResults: true, lastUpdated: Date.now() });
+        },
+
+        /**
          * Move to next team in play queue
          * Updates current team and resets question-related state
          *
@@ -671,6 +679,8 @@ export const useGameStore = create()(
                   activeLifeline: firebaseGameState.activeLifeline || null,
                   isDataReady: true, // Mark as ready when receiving Firebase updates
                   lastUpdated: Date.now(),
+                  displayFinalResults:
+                    firebaseGameState.displayFinalResults ?? false,
                 });
               }
             },

@@ -1,5 +1,6 @@
 // src/pages/play/components/dialogs/GameCompletedDialog.jsx
 
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,9 +8,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@components/ui/alert-dialog';
 import { Button } from '@components/ui/button';
 import { Badge } from '@components/ui/badge';
-import { Trophy, Home } from 'lucide-react';
+import { Trophy, Home, Monitor } from 'lucide-react';
 import { cn } from '@lib/utils';
 import { formatPrize } from '@utils/gameplay/scoreCalculation';
 import { TEAM_STATUS } from '@constants/teamStates';
@@ -105,7 +117,7 @@ function PositionBadge({ place }) {
  * Purpose: Shown when all teams have finished (game status = COMPLETED).
  * Displays a leaderboard of all teams sorted by final prize with shared ranking.
  *
- * Behaviours:
+ * Behaviors:
  * - Cannot be dismissed accidentally — host must use the action button
  * - Shows ranked leaderboard with shared places for equal scores
  * - All joint-first teams receive the gold highlight background
@@ -116,8 +128,19 @@ function PositionBadge({ place }) {
  * @param {Object}   props.teams    - All teams object from store
  * @param {Function} props.onGoHome - Called when host clicks "Back to Dashboard"
  */
-export default function GameCompletedDialog({ open, teams, onGoHome }) {
+export default function GameCompletedDialog({
+  open,
+  teams,
+  onGoHome,
+  onPushResults,
+}) {
   const rankedTeams = rankTeams(teams);
+  const [resultsPushed, setResultsPushed] = useState(false);
+
+  const handlePushResults = async () => {
+    await onPushResults();
+    setResultsPushed(true);
+  };
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -181,7 +204,35 @@ export default function GameCompletedDialog({ open, teams, onGoHome }) {
           })}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-col">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                disabled={resultsPushed}
+                className="w-full gap-2"
+                size="lg">
+                <Monitor className="w-4 h-4" />
+                {resultsPushed
+                  ? '✓ Results Pushed to Display'
+                  : 'Push Results to Display'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Push Results to Display?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will show the final leaderboard on the public display.
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handlePushResults}>
+                  Yes, Push to Display
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button onClick={onGoHome} className="w-full gap-2" size="lg">
             <Home className="w-4 h-4" />
             Back to Dashboard

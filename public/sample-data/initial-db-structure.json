@@ -11,7 +11,8 @@
     "option-was-correct": null,
     "game-status": "not-started",
     "active-lifeline": null,
-    "last-updated": 0
+    "last-updated": 0,
+    "display-final-results": false
   },
   "teams": {},
   "prize-structure": [

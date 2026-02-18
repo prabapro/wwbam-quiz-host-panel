@@ -84,6 +84,7 @@ export default function GameControls() {
   const currentTeamId = useGameStore((state) => state.currentTeamId);
   const playQueue = useGameStore((state) => state.playQueue);
   const teams = useTeamsStore((state) => state.teams);
+  const pushFinalResults = useGameStore((state) => state.pushFinalResults);
 
   const currentTeam = teams[currentTeamId];
 
@@ -351,6 +352,7 @@ export default function GameControls() {
         open={showGameCompletedDialog}
         teams={teams}
         onGoHome={handleGoHome}
+        onPushResults={pushFinalResults}
       />
     </>
   );

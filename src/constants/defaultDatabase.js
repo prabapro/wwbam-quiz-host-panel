@@ -40,6 +40,7 @@ export const DEFAULT_GAME_STATE = {
   selectedOption: null,
   optionWasCorrect: null,
   activeLifeline: null,
+  displayFinalResults: false,
 };
 
 /**
