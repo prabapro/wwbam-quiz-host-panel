@@ -154,6 +154,14 @@ pnpm deploy:firebase  # Build + deploy to Firebase
 - Validate JSON structure against sample files
 - Extra questions beyond `QUESTIONS_PER_SET` are automatically trimmed
 
+**Firebase Emulator Port-in-use**
+
+> ⚠ database: Port 9000 is not open on localhost (127.0.0.1,::1), could not start Database Emulator.
+
+- Run `lsof -i 9000`
+- Get the PID(s) - ie: `50810`
+- Run `kill -9 <PID>` - ie: `kill -9 50810`
+
 ---
 
 ## Documentation
