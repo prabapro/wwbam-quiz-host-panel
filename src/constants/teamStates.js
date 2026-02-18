@@ -60,7 +60,7 @@ export const TEAM_STATUS_META = {
     icon: '❌',
   },
   [TEAM_STATUS.COMPLETED]: {
-    label: 'Winner',
+    label: 'Completed',
     description: 'Team completed all questions',
     color: 'green',
     bgColor: 'bg-green-500/10',
@@ -68,7 +68,7 @@ export const TEAM_STATUS_META = {
     borderColor: 'border-green-500/20',
     darkBgColor: 'dark:bg-green-500/20',
     darkTextColor: 'dark:text-green-400',
-    icon: '🏆',
+    icon: '✅',
   },
 };
 

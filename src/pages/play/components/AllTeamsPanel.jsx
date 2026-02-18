@@ -122,17 +122,20 @@ export default function AllTeamsPanel() {
                   {team.name}
                 </span>
 
-                {/* Status Badge */}
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    'text-xs shrink-0',
-                    statusMeta.bgColor,
-                    statusMeta.textColor,
-                    statusMeta.borderColor,
-                  )}>
-                  {statusMeta.icon} {statusMeta.label}
-                </Badge>
+                {/* Status + Prize */}
+                <div className="flex flex-col items-end shrink-0 min-w-0">
+                  <span
+                    className={cn(
+                      'text-xs font-semibold',
+                      statusMeta.textColor,
+                      statusMeta.darkTextColor,
+                    )}>
+                    {statusMeta.icon} {statusMeta.label}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatPrize(team.currentPrize || 0)}
+                  </span>
+                </div>
 
                 {/* Expand Toggle */}
                 <span className="text-muted-foreground shrink-0">
