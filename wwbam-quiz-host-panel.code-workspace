@@ -5,14 +5,24 @@
     },
   ],
   "settings": {
-    "restoreTerminals.keepExistingTerminalsOpen": true,
+    "restoreTerminals.keepExistingTerminalsOpen": false,
     "restoreTerminals.runOnStartup": true,
     "restoreTerminals.terminals": [
       {
         "splitTerminals": [
           {
-            "name": "Emulator",
+            "name": "Firebase",
             "commands": ["pnpm emulator"],
+            "shouldRunCommands": false,
+          },
+          {
+            "name": "Vite",
+            "commands": ["pnpm dev:q"],
+            "shouldRunCommands": false,
+          },
+          {
+            "name": "GIT",
+            "commands": ["git "],
             "shouldRunCommands": false,
           },
         ],
