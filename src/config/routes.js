@@ -20,6 +20,7 @@ const QuestionManagement = lazy(() => import('@pages/QuestionManagement'));
 const TeamManagement = lazy(() => import('@pages/TeamManagement'));
 const Play = lazy(() => import('@/pages/play'));
 const Reset = lazy(() => import('@pages/Reset'));
+const DatabaseViewer = lazy(() => import('@pages/db'));
 
 /**
  * Complete route configuration
@@ -103,6 +104,18 @@ export const ROUTE_CONFIG = {
     bypassGameStatusCheck: true, // Special flag: accessible in ANY game state
     sitemap_priority: 0.5,
     sitemap_changefreq: 'monthly',
+  },
+
+  // DB Viewer — dev/documentation tool
+  DB_VIEWER: {
+    path: '/db',
+    component: DatabaseViewer,
+    title: 'DB Viewer',
+    description: 'Inspect raw Firebase database nodes as JSON',
+    showInNav: true, // Show in navigation for easy access during development
+    category: 'main',
+    requiresAuth: true, // Protected route
+    // Excluded from sitemap intentionally
   },
 
   // Auth routes
