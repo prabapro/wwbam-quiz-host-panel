@@ -7,9 +7,6 @@
       "hosting": {
         "host-panel": [
           "wwbam-quiz"
-        ],
-        "public-display": [
-          "wwbam-quiz-display"
         ]
       },
       "database": {
