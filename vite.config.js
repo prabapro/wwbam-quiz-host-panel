@@ -104,6 +104,9 @@ export default defineConfig({
 
           // Zustand (state management)
           state: ['zustand'],
+
+          // Firebase modules
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/database'],
         },
       },
     },
