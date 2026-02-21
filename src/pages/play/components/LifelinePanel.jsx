@@ -50,6 +50,7 @@ export default function LifelinePanel() {
     canUsePhone,
     canUseFiftyFifty,
     phoneTimer,
+    startPhoneTimer,
     activateFiftyFifty,
     activatePhoneAFriend,
     resumeFromPhoneAFriend,
@@ -242,6 +243,7 @@ export default function LifelinePanel() {
         open={isPhoneActive}
         contactNumber={currentTeam?.contact}
         phoneTimer={phoneTimer}
+        onStartTimer={startPhoneTimer}
         onResume={handleResume}
         isResuming={isResuming}
       />

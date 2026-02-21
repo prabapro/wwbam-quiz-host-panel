@@ -82,6 +82,20 @@ export function useLifelineManagement() {
     }, []),
   });
 
+  /**
+   * Start the phone-a-friend countdown.
+   *
+   * Wraps phoneTimer.start() (local tick) with a Firebase write so the
+   * display app can derive remaining time from a shared timestamp — even
+   * if it reconnects mid-call.
+   *
+   * Called from PhoneAFriendDialog via the onStartTimer prop.
+   */
+  const startPhoneTimer = useCallback(async () => {
+    phoneTimer.start(); // start local countdown immediately
+    await databaseService.startLifelineTimer(); // write timestamp to Firebase
+  }, [phoneTimer]);
+
   // ============================================================
   // RESET ON NEW QUESTION
   // ============================================================
@@ -283,6 +297,7 @@ export function useLifelineManagement() {
    */
   const resumeFromPhoneAFriend = useCallback(async () => {
     try {
+      await databaseService.clearLifelineTimer();
       await databaseService.clearActiveLifeline();
       await resumeGame();
       phoneTimer.reset();
@@ -316,6 +331,7 @@ export function useLifelineManagement() {
 
     // Phone timer (exposed for PhoneAFriendDialog)
     phoneTimer,
+    startPhoneTimer,
 
     // Actions
     activateFiftyFifty,
