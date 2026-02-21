@@ -48,10 +48,11 @@ export default function PhoneAFriendDialog({
   open,
   contactNumber,
   phoneTimer,
+  onStartTimer,
   onResume,
   isResuming = false,
 }) {
-  const { display, hasStarted, hasExpired, progressPct, start } = phoneTimer;
+  const { display, hasStarted, hasExpired, progressPct } = phoneTimer;
 
   return (
     <Dialog
@@ -91,7 +92,10 @@ export default function PhoneAFriendDialog({
                  Start Timer is the primary CTA.
                  Resume is secondary — available if contact is unreachable. */
               <div className="space-y-2">
-                <Button onClick={start} size="lg" className="w-full gap-2">
+                <Button
+                  onClick={onStartTimer}
+                  size="lg"
+                  className="w-full gap-2">
                   <Timer className="w-4 h-4" />
                   Start Timer
                 </Button>

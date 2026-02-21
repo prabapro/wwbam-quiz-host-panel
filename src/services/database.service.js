@@ -703,6 +703,48 @@ export const onPrizeStructureChange = (callback) => {
 // ============================================================================
 
 /**
+ * Write the Unix ms timestamp when the host starts the Phone-a-Friend timer.
+ *
+ * The display app reads this to derive remaining time even if it reconnects
+ * mid-call — avoids the display timer resetting to full duration on refresh.
+ *
+ * Called from: useLifelineManagement → startPhoneTimer()
+ *
+ * @returns {Promise<void>}
+ */
+export const startLifelineTimer = async () => {
+  try {
+    await updateGameState({ lifelineTimerStartedAt: Date.now() });
+    console.log('⏱️ Lifeline timer started — timestamp written to Firebase');
+  } catch (error) {
+    console.error('Error writing lifeline timer start:', error);
+    throw error;
+  }
+};
+
+/**
+ * Clear the lifeline timer timestamp when the host resumes the game
+ * (manually via "Resume Game" button) or when the timer expires and
+ * auto-resume fires.
+ *
+ * Setting to null signals the display app that the call has ended and
+ * the overlay should hide.
+ *
+ * Called from: useLifelineManagement → resumeFromPhoneAFriend()
+ *
+ * @returns {Promise<void>}
+ */
+export const clearLifelineTimer = async () => {
+  try {
+    await updateGameState({ lifelineTimerStartedAt: null });
+    console.log('⏱️ Lifeline timer cleared');
+  } catch (error) {
+    console.error('Error clearing lifeline timer:', error);
+    throw error;
+  }
+};
+
+/**
  * Activate 50/50 lifeline (WWBAM Style)
  *
  * Atomic update that:
@@ -948,6 +990,8 @@ export const databaseService = {
   updateConfig,
 
   // Lifeline Operations
+  startLifelineTimer,
+  clearLifelineTimer,
   activateFiftyFiftyLifeline,
   activatePhoneAFriendLifeline,
   clearActiveLifeline,
