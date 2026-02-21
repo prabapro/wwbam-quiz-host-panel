@@ -172,25 +172,26 @@ Simple object with Firebase Auth UIDs as keys.
 
 ### Schema
 
-| Field                      | Type          | Description                                                                       |
-| -------------------------- | ------------- | --------------------------------------------------------------------------------- |
-| `game-status`              | string        | Game state: `not-started` \| `initialized` \| `active` \| `paused` \| `completed` |
-| `current-team-id`          | string\|null  | ID of team currently playing (null when paused/completed)                         |
-| `current-question-number`  | number        | Current question (0-20, 0 = not started)                                          |
-| `current-question`         | object\|null  | Question data WITHOUT correct answer (for public display)                         |
-| `question-visible`         | boolean       | Whether question is shown on public display                                       |
-| `options-visible`          | boolean       | Whether answer options are visible (false after 50/50)                            |
-| `answer-revealed`          | boolean       | Whether correct answer is highlighted                                             |
-| `correct-option`           | string\|null  | Correct answer letter (A/B/C/D) when revealed                                     |
-| `selected-option`          | string\|null  | Team's chosen answer (A/B/C/D) when locked, null before reveal                    |
-| `option-was-correct`       | boolean\|null | Whether the selected option was correct, null before reveal                       |
-| `play-queue`               | array         | Ordered team IDs for gameplay sequence                                            |
-| `question-set-assignments` | object        | Maps team IDs to question set IDs: `{ teamId: setId }`                            |
-| `initialized-at`           | number\|null  | Timestamp when game was initialized                                               |
-| `started-at`               | number\|null  | Timestamp when first team started playing                                         |
-| `last-updated`             | number        | Server timestamp of last update                                                   |
-| `active-lifeline`          | string\|null  | Currently active lifeline:`phone-a-friend` \| `fifty-fifty` \| `null`             |
-| `display-final-results`    | boolean       | When the final results are ready to display                                       |
+| Field                       | Type          | Description                                                                       |
+| --------------------------- | ------------- | --------------------------------------------------------------------------------- |
+| `game-status`               | string        | Game state: `not-started` \| `initialized` \| `active` \| `paused` \| `completed` |
+| `current-team-id`           | string\|null  | ID of team currently playing (null when paused/completed)                         |
+| `current-question-number`   | number        | Current question (0-20, 0 = not started)                                          |
+| `current-question`          | object\|null  | Question data WITHOUT correct answer (for public display)                         |
+| `question-visible`          | boolean       | Whether question is shown on public display                                       |
+| `options-visible`           | boolean       | Whether answer options are visible (false after 50/50)                            |
+| `answer-revealed`           | boolean       | Whether correct answer is highlighted                                             |
+| `correct-option`            | string\|null  | Correct answer letter (A/B/C/D) when revealed                                     |
+| `selected-option`           | string\|null  | Team's chosen answer (A/B/C/D) when locked, null before reveal                    |
+| `option-was-correct`        | boolean\|null | Whether the selected option was correct, null before reveal                       |
+| `play-queue`                | array         | Ordered team IDs for gameplay sequence                                            |
+| `question-set-assignments`  | object        | Maps team IDs to question set IDs: `{ teamId: setId }`                            |
+| `initialized-at`            | number\|null  | Timestamp when game was initialized                                               |
+| `started-at`                | number\|null  | Timestamp when first team started playing                                         |
+| `last-updated`              | number        | Server timestamp of last update                                                   |
+| `active-lifeline`           | string\|null  | Currently active lifeline:`phone-a-friend` \| `fifty-fifty` \| `null`             |
+| `lifeline-timer-started-at` | number\|null  | Unix ms timestamp when host started timer; null when not running                  |
+| `display-final-results`     | boolean       | When the final results are ready to display                                       |
 
 ### Valid Status Transitions
 
