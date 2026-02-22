@@ -155,7 +155,15 @@ const loadSampleQuestionSets = async (onProgress) => {
   try {
     onProgress?.('Loading sample question sets...');
 
-    const questionSetFiles = SAMPLE_FILES.questionSets;
+    const allQuestionSetFiles = SAMPLE_FILES.questionSets;
+    const questionSetFiles = allQuestionSetFiles.slice(0, MAX_TEAMS);
+
+    if (allQuestionSetFiles.length > MAX_TEAMS) {
+      console.log(
+        `✂️ Trimmed question sets from ${allQuestionSetFiles.length} to ${MAX_TEAMS} (MAX_TEAMS)`,
+      );
+    }
+
     const uploadedSetIds = [];
 
     for (let i = 0; i < questionSetFiles.length; i++) {

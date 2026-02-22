@@ -80,22 +80,36 @@ LIFELINE_TYPES = { ... }
 
 Edit this file to adjust game parameters before running the app.
 
-### Environment Variable Override
+### Environment Variable Overrides
 
-Override `QUESTIONS_PER_SET` at runtime using environment variables:
+Both `QUESTIONS_PER_SET` and `MAX_TEAMS` can be overridden at runtime via environment variables — no code changes needed.
+
+| Variable                 | Default | Description                     |
+| ------------------------ | ------- | ------------------------------- |
+| `VITE_QUESTIONS_PER_SET` | `20`    | Number of questions per team    |
+| `VITE_MAX_TEAMS`         | `10`    | Maximum number of teams allowed |
+
+#### Shorthand Dev Scripts
 
 ```bash
-# Use default (20 questions)
-pnpm dev
-
-# Override to 5 questions
-VITE_QUESTIONS_PER_SET=5 pnpm dev
-
-# Override to any number
-VITE_QUESTIONS_PER_SET=10 pnpm dev
+pnpm dev        # Default (10 teams, 10 question sets, 20 questions per set)
+pnpm dev:q      # VITE_QUESTIONS_PER_SET=5  (10 teams, 10 question sets, 5 questions per set)
+pnpm dev:t      # VITE_MAX_TEAMS=3          (3 teams,  3 question sets,  20 questions per set)
+pnpm dev:qt     # Both overrides            (3 teams,  3 question sets,  5 questions per set)
 ```
 
-**Behavior:** Uploaded question sets with ≥ `QUESTIONS_PER_SET` questions are accepted. Only the first N questions are saved and used in the game.
+#### Manual Override
+
+```bash
+VITE_QUESTIONS_PER_SET=10 pnpm dev
+VITE_MAX_TEAMS=5 pnpm dev
+VITE_QUESTIONS_PER_SET=10 VITE_MAX_TEAMS=5 pnpm dev
+```
+
+**Behavior:**
+
+- `VITE_QUESTIONS_PER_SET` — uploaded question sets must have at least this many questions; only the first N are saved and used in the game.
+- `VITE_MAX_TEAMS` — enforced during team upload/validation and when loading sample data (both teams and question sets are capped to this number).
 
 ---
 
@@ -106,7 +120,7 @@ VITE_QUESTIONS_PER_SET=10 pnpm dev
 All sample data files are in `/public/sample-data/`:
 
 - `sample-question-sets.zip` - 4 complete question sets (20 questions each)
-- `sample-teams.json` - 4 example teams
+- `sample-teams.json` - 10 example teams
 - `initial-db-structure.json` - Firebase initial setup
 
 **Basic Test Flow:**
