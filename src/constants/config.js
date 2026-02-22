@@ -22,8 +22,23 @@ export const IDEAL_MIN_TEAMS = 7;
 
 /**
  * Maximum number of teams allowed in competition
+ * Can be overridden by VITE_MAX_TEAMS environment variable
+ * Falls back to 10 if env var is not set or invalid
  */
-export const MAX_TEAMS = 10;
+export const MAX_TEAMS = (() => {
+  const envValue = import.meta.env.VITE_MAX_TEAMS;
+
+  if (envValue !== undefined && envValue !== '') {
+    const parsed = parseInt(envValue, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      console.log(`👥 MAX_TEAMS set from env: ${parsed}`);
+      return parsed;
+    }
+  }
+
+  console.log(`👥 MAX_TEAMS using default: 10`);
+  return 10;
+})();
 
 // ============================================================================
 // QUESTION CONFIGURATION
