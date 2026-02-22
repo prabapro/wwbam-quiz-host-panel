@@ -14,6 +14,7 @@ import { Trophy, XCircle, Users, ArrowRight } from 'lucide-react';
 import { cn } from '@lib/utils';
 import { formatPrize } from '@utils/gameplay/scoreCalculation';
 import { TEAM_STATUS } from '@constants/teamStates';
+import { useCountdownButton } from '@hooks/useCountdownButton';
 
 /**
  * TeamStatusDialog Component
@@ -25,7 +26,9 @@ import { TEAM_STATUS } from '@constants/teamStates';
  * - Cannot be dismissed by clicking outside — host must take an explicit action
  * - Shows team outcome (eliminated/completed) with final prize
  * - Shows next team name if one exists
- * - Single CTA: "Next Team" (or "Acknowledge" if it's the last team in queue)
+ * - Single CTA: "Next Team" (or "View Final Results" if it's the last team in queue)
+ * - Button is gated behind a 10-second countdown so the display app has time
+ *   to show the team welcome/result screen before the host advances
  *
  * @param {boolean}  props.open          - Whether dialog is visible
  * @param {string}   props.teamName      - Current team's name
@@ -48,6 +51,19 @@ export default function TeamStatusDialog({
 }) {
   const isEliminated = teamStatus === TEAM_STATUS.ELIMINATED;
   const isCompleted = teamStatus === TEAM_STATUS.COMPLETED;
+
+  const { isReady, secondsLeft } = useCountdownButton(open, 10);
+
+  const isDisabled = isLoading || !isReady;
+
+  const buttonLabel = (() => {
+    if (isLoading) return 'Loading...';
+    if (!isReady)
+      return isLastTeam
+        ? `View Results (${secondsLeft}s)`
+        : `Next Team (${secondsLeft}s)`;
+    return isLastTeam ? 'View Final Results' : 'Next Team';
+  })();
 
   return (
     <Dialog
@@ -131,15 +147,11 @@ export default function TeamStatusDialog({
         <DialogFooter>
           <Button
             onClick={onProceed}
-            disabled={isLoading}
+            disabled={isDisabled}
             className="w-full gap-2"
             size="lg">
             <ArrowRight className="w-4 h-4" />
-            {isLoading
-              ? 'Loading...'
-              : isLastTeam
-                ? 'View Final Results'
-                : 'Next Team'}
+            {buttonLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

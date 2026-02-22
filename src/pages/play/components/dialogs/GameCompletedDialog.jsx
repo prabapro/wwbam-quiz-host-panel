@@ -26,6 +26,7 @@ import { Trophy, Home, Monitor } from 'lucide-react';
 import { cn } from '@lib/utils';
 import { formatPrize } from '@utils/gameplay/scoreCalculation';
 import { TEAM_STATUS } from '@constants/teamStates';
+import { useCountdownButton } from '@hooks/useCountdownButton';
 
 /**
  * Sort and rank teams for the results leaderboard, supporting shared places.
@@ -60,7 +61,6 @@ function rankTeams(teams) {
   });
 
   // Assign shared place numbers
-  // Place is 1-based; ties keep the same place, next distinct rank skips accordingly
   let place = 1;
   return entries.map((team, index) => {
     if (index === 0) {
@@ -118,12 +118,14 @@ function PositionBadge({ place }) {
  * Purpose: Shown when all teams have finished (game status = COMPLETED).
  * Displays a leaderboard of all teams sorted by final prize with shared ranking.
  *
- * Behaviors:
+ * Behaviours:
  * - Cannot be dismissed accidentally — host must use the action button
  * - Shows ranked leaderboard with shared places for equal scores
  * - All joint-first teams receive the gold highlight background
  * - Multiple teams can share the same medal (2× 🥇, 3× 🥈, etc.)
  * - Teams sharing a place are ordered alphabetically
+ * - "Push Results to Display" button is gated behind a 10-second countdown
+ *   so the display app has time to settle before results are pushed
  *
  * @param {boolean}  props.open          - Whether dialog is visible
  * @param {Object}   props.teams         - All teams object from store
@@ -139,10 +141,18 @@ export default function GameCompletedDialog({
   const rankedTeams = rankTeams(teams);
   const [resultsPushed, setResultsPushed] = useState(false);
 
+  const { isReady, secondsLeft } = useCountdownButton(open, 10);
+
   const handlePushResults = async () => {
     await onPushResults();
     setResultsPushed(true);
   };
+
+  const pushButtonLabel = (() => {
+    if (resultsPushed) return '✓ Results Pushed to Display';
+    if (!isReady) return `Push Results to Display (${secondsLeft}s)`;
+    return 'Push Results to Display';
+  })();
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -210,16 +220,15 @@ export default function GameCompletedDialog({
         </div>
 
         <DialogFooter className="flex-col sm:flex-col">
+          {/* Push Results — gated behind countdown, then confirmation dialog */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
-                disabled={resultsPushed}
+                disabled={resultsPushed || !isReady}
                 className="w-full gap-2"
                 size="lg">
                 <Monitor className="w-4 h-4" />
-                {resultsPushed
-                  ? '✓ Results Pushed to Display'
-                  : 'Push Results to Display'}
+                {pushButtonLabel}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
