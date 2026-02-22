@@ -3,6 +3,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -59,9 +60,12 @@ export default function TeamStatusDialog({
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 sr-only">
-            Team Status Update
-          </DialogTitle>
+          <DialogTitle className="sr-only">Team Status Update</DialogTitle>
+          <DialogDescription className="sr-only">
+            {isEliminated
+              ? `${teamName} has been eliminated with a final prize of ${formatPrize(finalPrize)}.`
+              : `${teamName} has completed their round with a final prize of ${formatPrize(finalPrize)}.`}
+          </DialogDescription>
         </DialogHeader>
 
         {/* Status Hero */}
