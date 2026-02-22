@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -124,9 +125,10 @@ function PositionBadge({ place }) {
  * - Multiple teams can share the same medal (2× 🥇, 3× 🥈, etc.)
  * - Teams sharing a place are ordered alphabetically
  *
- * @param {boolean}  props.open     - Whether dialog is visible
- * @param {Object}   props.teams    - All teams object from store
- * @param {Function} props.onGoHome - Called when host clicks "Back to Dashboard"
+ * @param {boolean}  props.open          - Whether dialog is visible
+ * @param {Object}   props.teams         - All teams object from store
+ * @param {Function} props.onGoHome      - Called when host clicks "Back to Dashboard"
+ * @param {Function} props.onPushResults - Called when host pushes results to display
  */
 export default function GameCompletedDialog({
   open,
@@ -154,6 +156,9 @@ export default function GameCompletedDialog({
             <Trophy className="w-6 h-6 text-yellow-500" />
             Game Completed!
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Final leaderboard showing all teams ranked by prize won.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Leaderboard */}
@@ -233,6 +238,7 @@ export default function GameCompletedDialog({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
           <Button onClick={onGoHome} className="w-full gap-2" size="lg">
             <Home className="w-4 h-4" />
             Back to Dashboard

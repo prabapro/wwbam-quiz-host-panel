@@ -3,6 +3,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@components/ui/dialog';
@@ -41,6 +42,7 @@ import { cn } from '@lib/utils';
  * @param {boolean}  props.open            - Whether dialog is visible
  * @param {string}   props.contactNumber   - Team's contact phone number
  * @param {Object}   props.phoneTimer      - Timer state from usePhoneTimer
+ * @param {Function} props.onStartTimer    - Called when host clicks "Start Timer"
  * @param {Function} props.onResume        - Called when host clicks "Resume Game"
  * @param {boolean}  props.isResuming      - Disable button while resuming
  */
@@ -69,6 +71,10 @@ export default function PhoneAFriendDialog({
             <Phone className="w-5 h-5" />
             Phone-a-Friend
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Call the team&apos;s contact number. Start the timer when the call
+            begins, then resume the game when the call ends.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-2">
