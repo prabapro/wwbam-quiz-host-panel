@@ -1,6 +1,6 @@
 // src/pages/play/hooks/useGameControls.js
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useGameStore } from '@stores/useGameStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
@@ -42,6 +42,16 @@ const isLastTeamInQueue = (teamId, queue) => {
  * NOTE: Skip confirmation (previously window.confirm) is now handled by
  * SkipQuestionDialog in GameControls. This hook exposes `executeSkipQuestion`
  * as the raw action — no confirmation logic here.
+ *
+ * UPDATED (BUG FIX - 2026/02/22):
+ * - handleNextTeam is now async and properly awaits nextTeam() so that
+ *   Zustand state (currentTeamId) is guaranteed to be updated before the
+ *   host can click "Load Question 1". Previously nextTeam() was called
+ *   fire-and-forget, creating a race where the Zustand set() inside nextTeam()
+ *   (which happens only AFTER the first Firebase write resolves) hadn't run yet,
+ *   causing getFreshQuestionSetAssignment() to read the old team's ID.
+ * - Added handleSyncQuestions() for mid-game recovery of question set assignments
+ *   without requiring a page reload.
  */
 export function useGameControls() {
   // ============================================================
@@ -57,6 +67,7 @@ export function useGameControls() {
   const questionVisible = useGameStore((state) => state.questionVisible);
   const answerRevealed = useGameStore((state) => state.answerRevealed);
   const playQueue = useGameStore((state) => state.playQueue);
+
   // NOTE: questionSetAssignments is intentionally NOT subscribed here as a
   // reactive value. It was previously read from a React closure which could
   // be stale between a Firebase onValue update and the next React render.
@@ -66,6 +77,7 @@ export function useGameControls() {
   const isDataReady = useGameStore((state) => state.isDataReady);
   const isSyncingData = useGameStore((state) => state.isSyncingData);
   const ensureDataReady = useGameStore((state) => state.ensureDataReady);
+  const syncQuestionSets = useGameStore((state) => state.syncQuestionSets);
   const pauseGame = useGameStore((state) => state.pauseGame);
   const resumeGame = useGameStore((state) => state.resumeGame);
   const nextTeam = useGameStore((state) => state.nextTeam);
@@ -94,6 +106,14 @@ export function useGameControls() {
     isLoading: questionLoading,
     error: questionError,
   } = useCurrentQuestion();
+
+  // ============================================================
+  // SYNC STATE (for mid-game question set recovery)
+  // ============================================================
+
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState(null);
+  const [syncSuccess, setSyncSuccess] = useState(false);
 
   // ============================================================
   // BUTTON STATE CALCULATIONS
@@ -331,14 +351,31 @@ export function useGameControls() {
   };
 
   /**
-   * Move to next team (after elimination/completion)
+   * Move to next team (after elimination/completion).
+   *
+   * BUG FIX: Now async and properly awaited.
+   * Previously nextTeam() was called fire-and-forget. The Zustand set() inside
+   * nextTeam() only runs AFTER the first internal await (updateTeam → Firebase),
+   * so if the host clicked "Load Question 1" quickly after "Next Team", the
+   * currentTeamId in the store was still the old team, causing a stale lookup.
+   *
+   * Awaiting nextTeam() ensures the Zustand state is committed before
+   * clearQuestion()/clearHostQuestion() run — guaranteeing that any subsequent
+   * "Load Question" click reads the correct (new) team ID.
    */
-  const handleNextTeam = () => {
-    nextTeam();
-    clearQuestion();
-    clearHostQuestion();
-    console.log('✅ Moved to next team');
-  };
+  const handleNextTeam = useCallback(async () => {
+    try {
+      const result = await nextTeam();
+
+      if (!result.success && result.error) {
+        console.error('nextTeam failed:', result.error);
+      }
+    } finally {
+      clearQuestion();
+      clearHostQuestion();
+      console.log('✅ Moved to next team');
+    }
+  }, [nextTeam, clearQuestion, clearHostQuestion]);
 
   /**
    * Execute skip — raw action without confirmation.
@@ -350,34 +387,35 @@ export function useGameControls() {
    * 1. Hides question from public display if currently visible
    * 2. Clears question state in game store (counter stays)
    * 3. Advances team's question index (no prize credit for skip)
-   * 4. If skipped question was the team's LAST question:
-   *    → marks team as COMPLETED with their current prize
-   *    → if that team was also the LAST in queue → completes the game
+   * 4. If last question: marks team completed, ends game if last team
    */
   const executeSkipQuestion = useCallback(async () => {
-    try {
-      // Snapshot mutable values before any async ops
-      const teamIdSnapshot = currentTeamId;
-      const teamSnapshot = currentTeam;
-      const queueSnapshot = [...(playQueue ?? [])];
+    // Snapshot mutable values before any async boundary
+    const teamIdSnapshot = currentTeamId;
+    const teamSnapshot = currentTeam;
+    const queueSnapshot = [...playQueue];
 
-      // Step 1: Hide question from public display if currently visible
+    try {
+      // Step 1: Hide from public display if currently visible
       if (questionVisible) {
         await hideQuestion();
       }
 
-      // Step 2: Clear question state in game store (counter stays the same)
+      // Step 2: Clear question state in game store (counter preserved)
       await skipQuestion();
 
-      // Step 3: Advance team's question index in teams store
-      await skipTeamQuestion(teamIdSnapshot);
-
-      // Step 4: Clear host-side question state
+      // Step 3: Clear host question from questions store
       clearQuestion();
       clearHostQuestion();
 
-      // currentQuestionNumber already holds the skipped question's number
-      // (skipQuestion does NOT increment it), so it's the reliable position.
+      // Step 4: Advance team's question index in teams store
+      const skipResult = await skipTeamQuestion(teamIdSnapshot);
+
+      if (!skipResult.success) {
+        throw new Error(skipResult.error || 'Failed to advance team question');
+      }
+
+      // Step 5: Handle last-question completion
       const skippedQuestionNumber =
         useGameStore.getState().currentQuestionNumber;
       const isLastQuestion = skippedQuestionNumber >= QUESTIONS_PER_SET;
@@ -400,7 +438,7 @@ export function useGameControls() {
           `🏁 Team ${teamIdSnapshot} marked completed after skipping last question (prize: Rs.${finalPrize})`,
         );
 
-        // Step 5: If this was also the last team in queue, end the game
+        // Step 6: If this was also the last team in queue, end the game
         if (isLastTeamInQueue(teamIdSnapshot, queueSnapshot)) {
           const gameCompleteResult = await completeGame();
           if (!gameCompleteResult.success) {
@@ -445,6 +483,47 @@ export function useGameControls() {
     console.log('▶️ Game resumed');
   };
 
+  /**
+   * Sync question sets mid-game.
+   *
+   * Calls syncQuestionSets() from the game store which:
+   * 1. Fetches fresh questionSetAssignments from Firebase
+   * 2. Pre-loads all question sets in the play queue
+   *
+   * Exposes isSyncing / syncError / syncSuccess for UI feedback in GameControls
+   * so the host knows the operation outcome without checking the console.
+   *
+   * This is the recovery path when the host sees the "question set not assigned"
+   * error mid-game without having to reload the page or reinitialize.
+   */
+  const handleSyncQuestions = useCallback(async () => {
+    setSyncError(null);
+    setSyncSuccess(false);
+    setIsSyncing(true);
+
+    try {
+      const result = await syncQuestionSets();
+
+      if (result.success) {
+        console.log(
+          `✅ Manual sync complete: ${result.setsLoaded} set(s) loaded`,
+        );
+        setSyncSuccess(true);
+
+        // Auto-clear the success badge after 4 seconds
+        setTimeout(() => setSyncSuccess(false), 4000);
+      } else {
+        console.error('❌ Manual sync failed:', result.error);
+        setSyncError(result.error || 'Sync failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('❌ Sync threw an unexpected error:', err);
+      setSyncError(err.message || 'An unexpected error occurred during sync.');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [syncQuestionSets]);
+
   return {
     // Button States
     canLoadQuestion,
@@ -468,6 +547,11 @@ export function useGameControls() {
     isDataReady,
     isSyncingData,
 
+    // Sync State (for mid-game recovery button)
+    isSyncing,
+    syncError,
+    syncSuccess,
+
     // Handlers
     handleLoadQuestion,
     handleShowQuestion,
@@ -476,5 +560,6 @@ export function useGameControls() {
     executeSkipQuestion,
     handlePause,
     handleResume,
+    handleSyncQuestions,
   };
 }

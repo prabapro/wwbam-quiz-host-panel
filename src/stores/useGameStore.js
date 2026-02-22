@@ -20,8 +20,19 @@ const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
  * - Improved rehydration flow to prevent premature access
  * - Better handling of question set assignments sync
  *
- * Reduced localStorage persistence - only critical game config is persisted
- * All gameplay state is fetched fresh from Firebase
+ * UPDATED (BUG FIX - 2026/02/22): Question set assignment stability
+ * - startGameListener: Guards questionSetAssignments from being silently wiped
+ *   to {} when Firebase emits rapid sequential onValue callbacks during Phone-a-Friend
+ *   resume (3 writes: clearLifelineTimer → clearActiveLifeline → resumeGame).
+ *   Preserves the existing local assignments if the incoming snapshot is empty.
+ * - nextTeam(): Now pre-loads the next team's question set eagerly (non-blocking)
+ *   so it is ready by the time the host clicks "Load Question 1".
+ * - Added syncQuestionSets(): Manual mid-game recovery action that re-fetches
+ *   all question set assignments from Firebase and pre-loads every set in the
+ *   play queue. Exposed to the UI via useGameControls → GameControls "Sync" button.
+ *
+ * Reduced localStorage persistence - only critical game config is persisted.
+ * All gameplay state is fetched fresh from Firebase.
  */
 export const useGameStore = create()(
   devtools(
@@ -59,8 +70,8 @@ export const useGameStore = create()(
         },
 
         /**
-         * Ensure critical game data is loaded and ready
-         * If not ready, triggers fresh sync from Firebase
+         * Ensure critical game data is loaded and ready.
+         * If not ready, triggers fresh sync from Firebase.
          *
          * @returns {Promise<{ success: boolean, error?: string }>}
          */
@@ -182,6 +193,7 @@ export const useGameStore = create()(
             `✅ Answer revealed: ${correctOption} (Selected: ${selectedOption}, Correct: ${isCorrect})`,
           );
         },
+
         /**
          * Initialize game
          * Sets up play queue and question set assignments
@@ -339,7 +351,7 @@ export const useGameStore = create()(
         },
 
         /**
-         * Push final results Flag to Firebase to trigger public display of final results
+         * Push final results flag to Firebase to trigger public display of final results
          */
         pushFinalResults: async () => {
           await databaseService.updateGameState({ displayFinalResults: true });
@@ -347,16 +359,22 @@ export const useGameStore = create()(
         },
 
         /**
-         * Move to next team in play queue
-         * Updates current team and resets question-related state
+         * Move to next team in play queue.
+         * Updates current team and resets question-related state.
          *
-         * CRITICAL FIX: Does NOT modify previous team's status
+         * CRITICAL FIX: Does NOT modify previous team's status.
          * The previous team's status should already be set correctly by:
          * - completeTeam() → status: "completed"
          * - eliminateTeam() → status: "eliminated"
          * - (no action) → status remains "active" (team didn't finish)
          *
-         * Only updates the NEXT team's status to "active"
+         * Only updates the NEXT team's status to "active".
+         *
+         * BUG FIX: After advancing, non-blockingly pre-loads the next team's
+         * question set from Firebase so it is ready when the host clicks
+         * "Load Question 1". Without this, a cold cache after team transition
+         * requires an extra Firebase round-trip inside loadQuestion(), which can
+         * fail silently and produce the "question set not assigned" error in prod.
          *
          * @returns {Promise<Object>} { success: boolean, error?: string, nextTeamId?: string }
          */
@@ -391,7 +409,6 @@ export const useGameStore = create()(
             // UPDATE NEXT TEAM TO ACTIVE
             // ============================================================
 
-            // Set next team to active status
             await useTeamsStore.getState().updateTeam(nextTeamId, {
               status: 'active',
             });
@@ -443,6 +460,39 @@ export const useGameStore = create()(
 
             console.log(`✅ Moved to next team: ${nextTeamId}`);
 
+            // ============================================================
+            // PRE-LOAD NEXT TEAM'S QUESTION SET (non-blocking)
+            // ============================================================
+
+            // Eagerly fetch the next team's question set so it is warm in
+            // memory by the time the host clicks "Load Question 1".
+            // Any failure here is logged only — the lazy path inside
+            // loadQuestion() acts as a fallback.
+            const nextTeamQuestionSetId =
+              get().questionSetAssignments[nextTeamId];
+
+            if (nextTeamQuestionSetId) {
+              useQuestionsStore
+                .getState()
+                .loadQuestionSet(nextTeamQuestionSetId, { forceFresh: true })
+                .then((result) => {
+                  if (result.success) {
+                    console.log(
+                      `📚 Pre-loaded question set "${nextTeamQuestionSetId}" for next team ${nextTeamId}`,
+                    );
+                  } else {
+                    console.warn(
+                      `⚠️ Failed to pre-load question set "${nextTeamQuestionSetId}" for team ${nextTeamId}:`,
+                      result.error,
+                    );
+                  }
+                });
+            } else {
+              console.warn(
+                `⚠️ nextTeam: no question set assignment found for ${nextTeamId} — skipping pre-load`,
+              );
+            }
+
             return {
               success: true,
               nextTeamId,
@@ -455,18 +505,15 @@ export const useGameStore = create()(
         },
 
         /**
-         * Skip the current question
+         * Skip the current question.
          *
-         * Clears all question-related UI state and syncs to Firebase so the public
-         * display is cleared.
+         * Clears all question-related UI state and syncs to Firebase so the
+         * public display is cleared.
          *
          * IMPORTANT: Does NOT increment currentQuestionNumber.
-         * When a question is loaded, currentQuestionNumber is already set to that
-         * question's number (via setQuestionNumber inside loadQuestion). Incrementing
-         * here would cause the NEXT load to skip a question entirely.
-         *
-         * The question counter naturally advances on the next loadQuestion call,
-         * where nextQuestionNumber = currentQuestionNumber + 1.
+         * When a question is loaded, currentQuestionNumber is already set to
+         * that question's number (via setQuestionNumber inside loadQuestion).
+         * Incrementing here would cause the NEXT load to skip a question.
          *
          * Does NOT touch team status — handled by the caller
          * (useGameControls › handleSkipQuestion) after this resolves.
@@ -511,6 +558,123 @@ export const useGameStore = create()(
         },
 
         /**
+         * Sync question set assignments from Firebase and pre-load all question
+         * sets for every team in the play queue.
+         *
+         * USE CASE: Mid-game recovery when the host sees the
+         * "question set not assigned" error without needing to reload the page
+         * or reinitialize the game. Exposed to the UI via GameControls.
+         *
+         * Flow:
+         * 1. Fetch fresh game-state from Firebase (includes questionSetAssignments)
+         * 2. Update local store with fresh assignments (guards against empty map)
+         * 3. Deduplicate question set IDs across play queue
+         * 4. Force-refresh every question set from Firebase
+         * 5. Return success/failure with counts
+         *
+         * @returns {Promise<{ success: boolean, setsLoaded: number, error?: string }>}
+         */
+        syncQuestionSets: async () => {
+          console.log(
+            '🔄 Syncing question set assignments from Firebase (manual)...',
+          );
+
+          try {
+            // 1. Fetch fresh game state from Firebase
+            const firebaseGameState = await databaseService.getGameState();
+
+            if (!firebaseGameState) {
+              return {
+                success: false,
+                setsLoaded: 0,
+                error: 'Could not reach Firebase. Check your connection.',
+              };
+            }
+
+            const freshAssignments = firebaseGameState.questionSetAssignments;
+
+            if (
+              !freshAssignments ||
+              Object.keys(freshAssignments).length === 0
+            ) {
+              return {
+                success: false,
+                setsLoaded: 0,
+                error:
+                  'No question set assignments found in Firebase. Has the game been initialized?',
+              };
+            }
+
+            // 2. Update local store (always trust a non-empty result from Firebase)
+            set({ questionSetAssignments: freshAssignments });
+            console.log(
+              `✅ Question set assignments refreshed: ${Object.keys(freshAssignments).length} teams`,
+            );
+
+            // 3. Collect unique set IDs from the play queue
+            const { playQueue } = get();
+
+            const uniqueSetIds = [
+              ...new Set(
+                playQueue
+                  .map((teamId) => freshAssignments[teamId])
+                  .filter(Boolean),
+              ),
+            ];
+
+            if (uniqueSetIds.length === 0) {
+              return {
+                success: false,
+                setsLoaded: 0,
+                error:
+                  'Play queue teams have no matching question set assignments.',
+              };
+            }
+
+            console.log(
+              `📚 Pre-loading ${uniqueSetIds.length} question set(s): ${uniqueSetIds.join(', ')}`,
+            );
+
+            // 4. Force-refresh all question sets in parallel
+            const loadResults = await Promise.allSettled(
+              uniqueSetIds.map((setId) =>
+                useQuestionsStore
+                  .getState()
+                  .loadQuestionSet(setId, { forceFresh: true }),
+              ),
+            );
+
+            const successCount = loadResults.filter(
+              (r) => r.status === 'fulfilled' && r.value?.success,
+            ).length;
+
+            const failureCount = uniqueSetIds.length - successCount;
+
+            if (failureCount > 0) {
+              console.warn(
+                `⚠️ ${failureCount}/${uniqueSetIds.length} question sets failed to load`,
+              );
+            }
+
+            console.log(
+              `✅ Sync complete: ${successCount}/${uniqueSetIds.length} question sets loaded`,
+            );
+
+            return {
+              success: successCount > 0,
+              setsLoaded: successCount,
+              error:
+                failureCount > 0
+                  ? `${failureCount} set(s) could not be loaded from Firebase.`
+                  : undefined,
+            };
+          } catch (error) {
+            console.error('Failed to sync question sets:', error);
+            return { success: false, setsLoaded: 0, error: error.message };
+          }
+        },
+
+        /**
          * Uninitialize game (reset to NOT_STARTED)
          */
         uninitializeGame: async () => {
@@ -548,8 +712,8 @@ export const useGameStore = create()(
         },
 
         /**
-         * Load game state from Firebase
-         * Fetches fresh data from Firebase and updates local state
+         * Load game state from Firebase.
+         * Fetches fresh data from Firebase and updates local state.
          */
         loadFromFirebase: async () => {
           try {
@@ -606,9 +770,9 @@ export const useGameStore = create()(
         },
 
         /**
-         * Reset app to factory defaults
-         * Clears ALL data including question sets from Firebase
-         * Syncs to Firebase and resets local state
+         * Reset app to factory defaults.
+         * Clears ALL data including question sets from Firebase.
+         * Syncs to Firebase and resets local state.
          *
          * @returns {Promise<Object>} { success: boolean, error?: string }
          */
@@ -632,11 +796,19 @@ export const useGameStore = create()(
         },
 
         /**
-         * Start real-time Firebase listener for game state changes
-         * Returns unsubscribe function for cleanup
+         * Start real-time Firebase listener for game state changes.
+         * Returns unsubscribe function for cleanup.
          *
-         * IMPORTANT: This ensures the store always has fresh data from Firebase
-         * Call this in components/pages that need real-time game state updates
+         * IMPORTANT: This ensures the store always has fresh data from Firebase.
+         * Call this in components/pages that need real-time game state updates.
+         *
+         * BUG FIX: questionSetAssignments guard
+         * The Phone-a-Friend resume flow triggers 3 rapid sequential Firebase writes
+         * (clearLifelineTimer → clearActiveLifeline → resumeGame). Each write fires
+         * the onValue callback with the full game-state snapshot. In practice the
+         * snapshot always contains questionSetAssignments, but to be safe we now
+         * preserve the existing local assignments when Firebase sends an empty/missing
+         * map — avoiding a race-condition wipe of the assignments mid-game.
          */
         startGameListener: () => {
           console.log('🔄 Starting real-time game state listener...');
@@ -657,6 +829,32 @@ export const useGameStore = create()(
                       : 'missing',
                 });
 
+                // Guard: never silently overwrite a populated questionSetAssignments
+                // with an empty map. If Firebase sends a snapshot where assignments
+                // are absent or empty, keep the existing local value.
+                const incomingAssignments =
+                  firebaseGameState.questionSetAssignments;
+                const currentAssignments = get().questionSetAssignments;
+
+                const safeAssignments =
+                  incomingAssignments &&
+                  Object.keys(incomingAssignments).length > 0
+                    ? incomingAssignments
+                    : currentAssignments &&
+                        Object.keys(currentAssignments).length > 0
+                      ? currentAssignments
+                      : {};
+
+                if (
+                  incomingAssignments &&
+                  Object.keys(incomingAssignments).length === 0 &&
+                  Object.keys(currentAssignments || {}).length > 0
+                ) {
+                  console.warn(
+                    '⚠️ Firebase sent empty questionSetAssignments — preserving local assignments to prevent data loss',
+                  );
+                }
+
                 // Update local state with Firebase data
                 // NOTE: We only update these fields to avoid overwriting local-only state
                 set({
@@ -665,8 +863,7 @@ export const useGameStore = create()(
                   currentQuestionNumber:
                     firebaseGameState.currentQuestionNumber,
                   playQueue: firebaseGameState.playQueue || [],
-                  questionSetAssignments:
-                    firebaseGameState.questionSetAssignments || {},
+                  questionSetAssignments: safeAssignments,
                   currentQuestion: firebaseGameState.currentQuestion,
                   questionVisible: firebaseGameState.questionVisible,
                   optionsVisible: firebaseGameState.optionsVisible,
@@ -759,25 +956,6 @@ export const useGameStore = create()(
                         });
                     }
                   }
-                } else {
-                  console.warn('⚠️ Game state auto-load failed:', result.error);
-                }
-              });
-            } else {
-              console.log(
-                `🎮 Game state loaded from localStorage: ${state.gameStatus}`,
-              );
-
-              // Even with local data, sync from Firebase to ensure freshness
-              console.log('🔄 Syncing fresh data from Firebase...');
-              state.loadFromFirebase().then((result) => {
-                if (result.success) {
-                  console.log('✅ Fresh data synced from Firebase');
-                } else {
-                  console.warn(
-                    '⚠️ Failed to sync from Firebase:',
-                    result.error,
-                  );
                 }
               });
             }
@@ -785,9 +963,6 @@ export const useGameStore = create()(
         },
       },
     ),
-    {
-      name: 'game-store',
-    },
   ),
 );
 

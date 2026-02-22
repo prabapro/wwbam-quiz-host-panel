@@ -18,6 +18,9 @@ import {
   Pause,
   Play,
   AlertTriangle,
+  RotateCcw,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@lib/utils';
 import SkipQuestionDialog from './dialogs/SkipQuestionDialog';
@@ -30,17 +33,15 @@ import GameCompletedDialog from './dialogs/GameCompletedDialog';
  * Purpose: Main control buttons for managing question flow and game progression.
  *
  * Control Buttons (stacked full-width for narrow column):
- * 1. Primary Action   - Context-aware: "Load Question X" → "Load Last Question" → "Next Team"
+ * 1. Primary Action    - Context-aware: "Load Question X" → "Load Last Question" → "Next Team"
  * 2. "Push to Display" - Push question to Firebase (visible to public)
- * 3. "Hide Question"  - Retract question from public view
- * 4. "Skip Question"  - Opens SkipQuestionDialog for confirmation
- * 5. "Pause / Resume" - Game state toggles
+ * 3. "Hide Question"   - Retract question from public view
+ * 4. "Skip Question"   - Opens SkipQuestionDialog for confirmation
+ * 5. "Pause / Resume"  - Game state toggles
  *
- * Primary Action button label logic:
- *   - Default:             "Load Question X"
- *   - On second-to-last Q: "Load Question X" (normal)
- *   - On last question:    "Load Last Question"
- *   - After last Q done:   "Next Team" (re-opens TeamStatusDialog)
+ * Recovery Section:
+ * 6. "Sync Questions"  - Mid-game recovery: re-fetches question set assignments
+ *    from Firebase and pre-loads all question sets.
  *
  * Dialogs mounted here (rendered as portals, visual position irrelevant):
  * - SkipQuestionDialog    — confirms before skipping
@@ -67,6 +68,9 @@ export default function GameControls() {
     isCurrentQuestionLast,
     isLoading,
     error,
+    isSyncing,
+    syncError,
+    syncSuccess,
     handleLoadQuestion,
     handleShowQuestion,
     handleHideQuestion,
@@ -74,6 +78,7 @@ export default function GameControls() {
     executeSkipQuestion,
     handlePause,
     handleResume,
+    handleSyncQuestions,
   } = useGameControls();
 
   // ============================================================
@@ -147,15 +152,6 @@ export default function GameControls() {
   // DERIVED UI STATE
   // ============================================================
 
-  /**
-   * Determine the label for the primary action button.
-   *
-   * Priority:
-   * 1. canNextTeam                          → "Next Team"          (team finished, advance to next)
-   * 2. !canLoadQuestion && lastQActive      → "Last Q Loaded"      (last Q is active, button disabled)
-   * 3. isNextQuestionLast                   → "Load Last Question" (about to load the final question)
-   * 4. default                              → "Load Question X"
-   */
   const primaryActionLabel = (() => {
     if (isLoading) return 'Loading...';
     if (canNextTeam) return 'Next Team';
@@ -164,11 +160,8 @@ export default function GameControls() {
     return `Load Question ${nextQuestionNumber}`;
   })();
 
-  const primaryActionIcon = canNextTeam ? Users : FileText;
-  const PrimaryIcon = primaryActionIcon;
-
+  const PrimaryIcon = canNextTeam ? Users : FileText;
   const canPrimaryAction = canNextTeam || canLoadQuestion;
-  const isPrimaryPulsing = canNextTeam || canLoadQuestion;
 
   const handlePrimaryAction = () => {
     if (canNextTeam) {
@@ -198,10 +191,9 @@ export default function GameControls() {
     setIsAdvancingTeam(true);
     try {
       if (isLastTeamInQueue) {
-        // No next team — game complete dialog will auto-open via gameStatus effect
         setShowTeamStatusDialog(false);
       } else {
-        handleNextTeam();
+        await handleNextTeam();
         setShowTeamStatusDialog(false);
       }
     } finally {
@@ -235,7 +227,7 @@ export default function GameControls() {
             size="lg"
             className={cn(
               'w-full gap-2 transition-all',
-              isPrimaryPulsing && 'ring-2 ring-blue-500 animate-pulse',
+              canPrimaryAction && 'ring-2 ring-blue-500 animate-pulse',
               canNextTeam &&
                 'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white',
             )}>
@@ -251,7 +243,7 @@ export default function GameControls() {
             size="lg"
             className="w-full gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white">
             <Eye className="w-4 h-4" />
-            {isLoading ? 'Showing...' : 'Push to Display'}
+            {isLoading ? 'Processing...' : 'Push to Display'}
           </Button>
 
           {/* Hide Question */}
@@ -264,62 +256,108 @@ export default function GameControls() {
             <EyeOff className="w-4 h-4" />
             Hide Question
           </Button>
+        </div>
 
-          {/* Skip Question — opens confirmation dialog */}
+        {/* Game Actions */}
+        <div className="border-t pt-3">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            Game Actions
+          </p>
+
+          {/* Skip Question */}
           <Button
             onClick={() => setShowSkipDialog(true)}
             disabled={!canSkipQuestion || isLoading}
-            variant="ghost"
-            size="sm"
-            className="w-full gap-2 text-muted-foreground">
+            variant="outline"
+            size="lg"
+            className="w-full gap-2 mb-2">
             <SkipForward className="w-4 h-4" />
             Skip Question
           </Button>
+
+          {/* Pause / Resume */}
+          {canPause && (
+            <Button
+              onClick={handlePause}
+              variant="outline"
+              size="lg"
+              className="w-full gap-2">
+              <Pause className="w-4 h-4" />
+              Pause Game
+            </Button>
+          )}
+          {canResume && (
+            <Button
+              onClick={handleResume}
+              variant="outline"
+              size="lg"
+              className="w-full gap-2">
+              <Play className="w-4 h-4" />
+              Resume Game
+            </Button>
+          )}
         </div>
 
-        {/* Game State Controls */}
-        <div className="space-y-2 pt-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            Game State
-          </p>
-
-          <Button
-            onClick={handlePause}
-            disabled={!canPause || isLoading}
-            variant="outline"
-            size="sm"
-            className="w-full gap-2">
-            <Pause className="w-4 h-4" />
-            Pause
-          </Button>
-
-          <Button
-            onClick={handleResume}
-            disabled={!canResume || isLoading}
-            variant="outline"
-            size="sm"
-            className="w-full gap-2">
-            <Play className="w-4 h-4" />
-            Resume
-          </Button>
-        </div>
-
-        {/* Error Alert */}
+        {/* Error display */}
         {error && (
-          <Alert variant="destructive" className="mt-3">
+          <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="text-xs">{error}</AlertDescription>
           </Alert>
         )}
 
-        {/* Helpful Hints */}
-        <div className="p-3 bg-muted/50 rounded-lg border border-dashed mt-3">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            <strong>💡 Flow:</strong>
-            <br />
-            Load → Show → Lock Answer → Next
-          </p>
-        </div>
+        {/* Recovery Section */}
+        {(gameStatus === GAME_STATUS.ACTIVE ||
+          gameStatus === GAME_STATUS.PAUSED) && (
+          <div className="border-t pt-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Recovery
+            </p>
+
+            <Button
+              onClick={handleSyncQuestions}
+              disabled={isSyncing || isLoading}
+              variant="outline"
+              size="lg"
+              className={cn(
+                'w-full gap-2',
+                syncSuccess &&
+                  'border-green-500 text-green-600 dark:text-green-400',
+              )}>
+              {isSyncing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : syncSuccess ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : (
+                <RotateCcw className="w-4 h-4" />
+              )}
+              {isSyncing
+                ? 'Syncing...'
+                : syncSuccess
+                  ? 'Synced!'
+                  : 'Sync Questions'}
+            </Button>
+
+            {syncError && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  {syncError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {syncSuccess && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1 text-center">
+                Question sets refreshed from Firebase.
+              </p>
+            )}
+
+            <p className="text-xs text-muted-foreground mt-2 leading-snug">
+              Use if you see a "question set not assigned" error mid-game.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Dialogs ─────────────────────────────────────────────── */}
