@@ -28,6 +28,13 @@ const SAMPLE_FILES = {
     '/sample-data/sample-question-set-01.json',
     '/sample-data/sample-question-set-02.json',
     '/sample-data/sample-question-set-03.json',
+    '/sample-data/sample-question-set-04.json',
+    '/sample-data/sample-question-set-05.json',
+    '/sample-data/sample-question-set-06.json',
+    '/sample-data/sample-question-set-07.json',
+    '/sample-data/sample-question-set-08.json',
+    '/sample-data/sample-question-set-09.json',
+    '/sample-data/sample-question-set-10.json',
   ],
 };
 

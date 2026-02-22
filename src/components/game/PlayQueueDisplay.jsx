@@ -12,7 +12,7 @@ import { Users, FileJson, ArrowRight } from 'lucide-react';
 export default function PlayQueueDisplay({
   playQueuePreview,
   currentTeamId = null,
-  maxHeight = '400px',
+  maxHeight = '720px',
   showHeader = true,
 }) {
   if (!playQueuePreview || playQueuePreview.length === 0) {
@@ -52,7 +52,7 @@ export default function PlayQueueDisplay({
                 {/* Position Number */}
                 <div
                   className={`
-                  flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm flex-shrink-0
+                  flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm shrink-0
                   ${
                     isCurrentTeam
                       ? 'bg-primary text-primary-foreground'
@@ -64,7 +64,7 @@ export default function PlayQueueDisplay({
 
                 {/* Team Info */}
                 <div className="flex items-start gap-2 flex-1 min-w-0">
-                  <Users className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  <Users className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{item.teamName}</p>
                     {item.teamParticipants && (
@@ -76,11 +76,11 @@ export default function PlayQueueDisplay({
                 </div>
 
                 {/* Arrow */}
-                <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
 
                 {/* Question Set Info */}
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <FileJson className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <FileJson className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="text-sm text-muted-foreground truncate">
                     {item.questionSetName}
                   </span>
@@ -88,7 +88,7 @@ export default function PlayQueueDisplay({
 
                 {/* Current Team Badge */}
                 {isCurrentTeam && (
-                  <Badge className="bg-primary hover:bg-primary flex-shrink-0">
+                  <Badge className="bg-primary hover:bg-primary shrink-0">
                     Playing
                   </Badge>
                 )}
