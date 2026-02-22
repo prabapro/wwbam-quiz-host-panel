@@ -268,7 +268,7 @@ export default function InitializeGameModal({ open, onOpenChange }) {
               <h3 className="text-sm font-semibold mb-3">
                 Generated Play Order
               </h3>
-              <ScrollArea className="h-[300px] pr-4">
+              <ScrollArea className="h-75 pr-4">
                 <PlayQueueDisplay
                   playQueuePreview={playQueuePreview}
                   showHeader={false}
