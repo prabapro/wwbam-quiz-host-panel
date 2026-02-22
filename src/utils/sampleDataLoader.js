@@ -7,7 +7,7 @@
  * Used for testing and demonstrations
  *
  * Features:
- * - Loads sample teams JSON
+ * - Loads sample teams JSON, capped to MAX_TEAMS
  * - Loads sample question set JSONs
  * - Trims questions to QUESTIONS_PER_SET from config
  * - Clears existing data first (atomic operation)
@@ -17,7 +17,7 @@
 
 import { databaseService } from '@services/database.service';
 import { useTeamsStore } from '@stores/useTeamsStore';
-import { QUESTIONS_PER_SET } from '@constants/config';
+import { QUESTIONS_PER_SET, MAX_TEAMS } from '@constants/config';
 
 /**
  * Sample data file paths
@@ -87,6 +87,8 @@ const clearExistingData = async (onProgress) => {
 
 /**
  * Load sample teams from JSON file
+ * Only uploads up to MAX_TEAMS teams (respects env var override)
+ *
  * @param {Function} onProgress - Progress callback
  * @returns {Promise<Object>} Result object with loaded team IDs
  */
@@ -100,7 +102,16 @@ const loadSampleTeams = async (onProgress) => {
       throw new Error('Invalid teams JSON structure');
     }
 
-    const teams = teamsData.teams;
+    // Cap teams to MAX_TEAMS
+    const allTeams = teamsData.teams;
+    const teams = allTeams.slice(0, MAX_TEAMS);
+
+    if (allTeams.length > MAX_TEAMS) {
+      console.log(
+        `✂️ Trimmed sample teams from ${allTeams.length} to ${MAX_TEAMS} (MAX_TEAMS)`,
+      );
+    }
+
     const uploadedTeamIds = [];
 
     for (let i = 0; i < teams.length; i++) {
@@ -135,6 +146,8 @@ const loadSampleTeams = async (onProgress) => {
 
 /**
  * Load sample question sets from JSON files
+ * Trims each set to QUESTIONS_PER_SET questions
+ *
  * @param {Function} onProgress - Progress callback
  * @returns {Promise<Object>} Result object with loaded set IDs
  */

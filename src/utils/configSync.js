@@ -7,7 +7,7 @@
  */
 
 import { DEFAULT_CONFIG } from '@constants/defaultDatabase';
-import { QUESTIONS_PER_SET } from '@constants/config';
+import { QUESTIONS_PER_SET, MAX_TEAMS } from '@constants/config';
 import { getConfig, updateConfig } from '@services/database.service';
 import { auth } from '@config/firebase';
 
@@ -27,7 +27,8 @@ const isAuthenticated = () => {
 export const getCurrentAppConfig = () => {
   return {
     ...DEFAULT_CONFIG,
-    questionsPerTeam: QUESTIONS_PER_SET, // May be overridden by env var
+    maxTeams: MAX_TEAMS, // May be overridden by VITE_MAX_TEAMS
+    questionsPerTeam: QUESTIONS_PER_SET, // May be overridden by VITE_QUESTIONS_PER_SET
   };
 };
 
