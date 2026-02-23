@@ -43,6 +43,14 @@ const isLastTeamInQueue = (teamId, queue) => {
  * SkipQuestionDialog in GameControls. This hook exposes `executeSkipQuestion`
  * as the raw action — no confirmation logic here.
  *
+ * UPDATED (BUG FIX - canLoadQuestion after sync recovery):
+ * - `questionSetAssignments` is now subscribed reactively as a derived boolean
+ *   (`hasQuestionSetForCurrentTeam`). This boolean is added to the canLoadQuestion
+ *   useMemo dep array so it re-computes when assignments arrive after a sync.
+ * - The actual assignment value inside the memo body is still read via
+ *   getState() to prevent stale-closure issues — the reactive boolean is only
+ *   used as a re-render trigger, not as the source of truth.
+ *
  * UPDATED (BUG FIX - 2026/02/22):
  * - handleNextTeam is now async and properly awaits nextTeam() so that
  *   Zustand state (currentTeamId) is guaranteed to be updated before the
@@ -68,12 +76,16 @@ export function useGameControls() {
   const answerRevealed = useGameStore((state) => state.answerRevealed);
   const playQueue = useGameStore((state) => state.playQueue);
 
-  // NOTE: questionSetAssignments is intentionally NOT subscribed here as a
-  // reactive value. It was previously read from a React closure which could
-  // be stale between a Firebase onValue update and the next React render.
-  // Both canLoadQuestion and handleLoadQuestion now read it via
-  // useGameStore.getState() or delegate to getFreshQuestionSetAssignment()
-  // in useCurrentQuestion — both of which always return the live store value.
+  // NOTE: questionSetAssignments is subscribed here as a derived boolean only.
+  // The boolean acts as a reactive trigger so canLoadQuestion re-computes
+  // whenever assignments arrive (e.g. after the sync recovery flow).
+  // The actual assignment lookup inside the memo still uses getState() to
+  // avoid any stale-closure race between a Firebase update and the next
+  // React render cycle.
+  const hasQuestionSetForCurrentTeam = useGameStore((state) =>
+    Boolean(state.questionSetAssignments?.[state.currentTeamId]),
+  );
+
   const isDataReady = useGameStore((state) => state.isDataReady);
   const isSyncingData = useGameStore((state) => state.isSyncingData);
   const ensureDataReady = useGameStore((state) => state.ensureDataReady);
@@ -129,11 +141,11 @@ export function useGameControls() {
    * - Question number hasn't exceeded the max
    * - No question loaded yet, OR previous answer has been validated
    *
-   * FIX: The question set assignment is read via useGameStore.getState() instead
-   * of a reactive closure. The reactive closure could hold a stale value in the
-   * window between Firebase pushing an update (store updated synchronously) and
-   * React re-rendering this component — causing the button to incorrectly
-   * disable itself. getState() always returns the live Zustand value.
+   * `hasQuestionSetForCurrentTeam` is a subscribed Zustand selector so it is
+   * always fresh at render time — no stale-closure risk. It also acts as the
+   * reactive trigger that re-runs this memo after syncQuestionSets() writes
+   * fresh assignments into the store, enabling the Load Question button
+   * without a page reload.
    */
   const canLoadQuestion = useMemo(() => {
     if (gameStatus !== GAME_STATUS.ACTIVE) return false;
@@ -153,14 +165,14 @@ export function useGameControls() {
       return false;
     }
 
-    // Read fresh from store directly — never stale, no React render dependency
-    const { questionSetAssignments, currentTeamId: freshTeamId } =
-      useGameStore.getState();
-    const hasQuestionSet = questionSetAssignments?.[freshTeamId];
-
-    if (!hasQuestionSet) {
+    // `hasQuestionSetForCurrentTeam` is a subscribed selector (always fresh at
+    // render time), so it is safe to consume directly here. It also serves as
+    // the reactive trigger that re-runs this memo after sync recovery writes
+    // fresh assignments into the store — enabling the Load Question button
+    // without a page reload.
+    if (!hasQuestionSetForCurrentTeam) {
       console.log(
-        `⚠️ No question set assigned to current team: ${freshTeamId}`,
+        `⚠️ No question set assigned to current team: ${currentTeamId}`,
       );
       return false;
     }
@@ -169,11 +181,12 @@ export function useGameControls() {
   }, [
     gameStatus,
     currentTeam,
+    currentTeamId,
     currentQuestionNumber,
     hostQuestion,
     validationResult,
     isDataReady,
-    // NOTE: questionSetAssignments deliberately excluded — read via getState() above
+    hasQuestionSetForCurrentTeam,
   ]);
 
   /**
@@ -363,64 +376,74 @@ export function useGameControls() {
    * clearQuestion()/clearHostQuestion() run — guaranteeing that any subsequent
    * "Load Question" click reads the correct (new) team ID.
    */
-  const handleNextTeam = useCallback(async () => {
+  const handleNextTeam = async () => {
     try {
       const result = await nextTeam();
 
-      if (!result.success && result.error) {
-        console.error('nextTeam failed:', result.error);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to move to next team');
       }
-    } finally {
+
       clearQuestion();
       clearHostQuestion();
-      console.log('✅ Moved to next team');
+
+      console.log('✅ Moved to next team successfully');
+    } catch (err) {
+      console.error('Failed to move to next team:', err);
+      throw err;
     }
-  }, [nextTeam, clearQuestion, clearHostQuestion]);
+  };
 
   /**
-   * Execute skip — raw action without confirmation.
+   * Skip the current question.
    *
-   * Confirmation is handled upstream by SkipQuestionDialog in GameControls.
-   * This function is called only after the host has confirmed.
+   * Exposed as `executeSkipQuestion` — confirmation is handled upstream
+   * by SkipQuestionDialog in GameControls before this is called.
    *
-   * Full flow:
-   * 1. Hides question from public display if currently visible
-   * 2. Clears question state in game store (counter stays)
-   * 3. Advances team's question index (no prize credit for skip)
-   * 4. If last question: marks team completed, ends game if last team
+   * Flow:
+   * 1. Hide question from public if currently visible
+   * 2. Skip question in game store (clears state, syncs to Firebase)
+   * 3. Record skip in team store
+   * 4. If this was the last question → complete the team
+   * 5. If this was the last team → complete the game
    */
   const executeSkipQuestion = useCallback(async () => {
-    // Snapshot mutable values before any async boundary
+    // Capture current values at the moment of execution
     const teamIdSnapshot = currentTeamId;
     const teamSnapshot = currentTeam;
     const queueSnapshot = [...playQueue];
 
     try {
-      // Step 1: Hide from public display if currently visible
+      // Step 1: Hide question from public if visible
       if (questionVisible) {
         await hideQuestion();
       }
 
-      // Step 2: Clear question state in game store (counter preserved)
-      await skipQuestion();
+      // Step 2: Skip question in game store
+      const skipResult = await skipQuestion();
 
-      // Step 3: Clear host question from questions store
+      if (!skipResult.success) {
+        throw new Error(skipResult.error || 'Failed to skip question');
+      }
+
+      // Step 3: Record skip in team store
+      const teamSkipResult = await skipTeamQuestion(teamIdSnapshot);
+
+      if (!teamSkipResult.success) {
+        throw new Error(
+          teamSkipResult.error || 'Failed to record skip in team store',
+        );
+      }
+
+      // Clear local question state
       clearQuestion();
       clearHostQuestion();
 
-      // Step 4: Advance team's question index in teams store
-      const skipResult = await skipTeamQuestion(teamIdSnapshot);
+      // Step 4: If this was the last question, complete the team
+      const wasLastQuestion =
+        teamSnapshot?.currentQuestionIndex >= QUESTIONS_PER_SET - 1;
 
-      if (!skipResult.success) {
-        throw new Error(skipResult.error || 'Failed to advance team question');
-      }
-
-      // Step 5: Handle last-question completion
-      const skippedQuestionNumber =
-        useGameStore.getState().currentQuestionNumber;
-      const isLastQuestion = skippedQuestionNumber >= QUESTIONS_PER_SET;
-
-      if (isLastQuestion) {
+      if (wasLastQuestion) {
         const finalPrize = teamSnapshot?.currentPrize ?? 0;
         const finalQuestionIndex = teamSnapshot?.currentQuestionIndex ?? 0;
 
@@ -438,7 +461,7 @@ export function useGameControls() {
           `🏁 Team ${teamIdSnapshot} marked completed after skipping last question (prize: Rs.${finalPrize})`,
         );
 
-        // Step 6: If this was also the last team in queue, end the game
+        // Step 5: If this was also the last team in queue, end the game
         if (isLastTeamInQueue(teamIdSnapshot, queueSnapshot)) {
           const gameCompleteResult = await completeGame();
           if (!gameCompleteResult.success) {
@@ -490,11 +513,12 @@ export function useGameControls() {
    * 1. Fetches fresh questionSetAssignments from Firebase
    * 2. Pre-loads all question sets in the play queue
    *
+   * After the store is updated, the reactive `hasQuestionSetForCurrentTeam`
+   * selector fires → canLoadQuestion useMemo re-runs → Load Question button
+   * becomes enabled without requiring a page reload.
+   *
    * Exposes isSyncing / syncError / syncSuccess for UI feedback in GameControls
    * so the host knows the operation outcome without checking the console.
-   *
-   * This is the recovery path when the host sees the "question set not assigned"
-   * error mid-game without having to reload the page or reinitialize.
    */
   const handleSyncQuestions = useCallback(async () => {
     setSyncError(null);
