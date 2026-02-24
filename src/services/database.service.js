@@ -104,20 +104,43 @@ const convertKeysToKebab = (obj, parentKey = '') => {
 };
 
 /**
- * Recursively convert object keys from kebab-case to camelCase
+ * Recursively convert object keys from kebab-case to camelCase.
+ *
+ * Special handling for `question-set-assignments`:
+ *   The nested object is a flat map of { [teamId]: questionSetId }. Both the
+ *   keys (Firebase push IDs used as team IDs) and the values (question set IDs)
+ *   must be preserved verbatim — they are opaque identifiers, not schema keys.
+ *   Applying kebabToCamel to them corrupts IDs containing hyphens (e.g.
+ *   "-Oabc-xyz" → "-OabcXyz"), breaking all subsequent lookups.
+ *
  * @param {Object|Array|*} obj - Object to convert
- * @returns {Object|Array|*} Object with camelCase keys
+ * @param {string} parentKey   - Parent key name for context (kebab-case)
+ * @returns {Object|Array|*} Object with camelCase schema keys; ID maps intact
  */
-const convertKeysToCamel = (obj) => {
+const convertKeysToCamel = (obj, parentKey = '') => {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(convertKeysToCamel);
+  if (Array.isArray(obj))
+    return obj.map((item) => convertKeysToCamel(item, parentKey));
 
   const converted = {};
   Object.keys(obj).forEach((key) => {
     const camelKey = kebabToCamel(key);
-    converted[camelKey] = convertKeysToCamel(obj[key]);
+
+    // Preserve the question-set-assignments map as-is.
+    // Keys are Firebase-generated team IDs; values are question-set IDs.
+    // Neither should be camelCased — they are opaque identifiers, not schema keys.
+    // This mirrors the identical guard that already exists in convertKeysToKebab.
+    if (
+      key === 'question-set-assignments' ||
+      camelKey === 'questionSetAssignments'
+    ) {
+      converted[camelKey] = obj[key]; // pass through untouched
+    } else {
+      converted[camelKey] = convertKeysToCamel(obj[key], key);
+    }
   });
+
   return converted;
 };
 

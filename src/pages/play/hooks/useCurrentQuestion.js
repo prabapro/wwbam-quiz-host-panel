@@ -68,14 +68,15 @@ export function useCurrentQuestion() {
   const setQuestionNumber = useGameStore((state) => state.setQuestionNumber);
 
   /**
-   * Get fresh question set assignment for current team
-   * Reads from store and falls back to Firebase if not found
+   * Get fresh question set assignment for the current team.
+   * Reads from Zustand store first (via getState() — always live, never stale),
+   * and falls back to a direct Firebase fetch if the assignment is absent.
    *
    * @returns {Promise<{ success: boolean, questionSetId?: string, error?: string }>}
    */
   const getFreshQuestionSetAssignment = async () => {
     try {
-      // Read fresh state from store (not from closure)
+      // Always read fresh state — do NOT rely on closure-captured values.
       const currentTeamId = useGameStore.getState().currentTeamId;
       const questionSetAssignments =
         useGameStore.getState().questionSetAssignments;
@@ -84,7 +85,7 @@ export function useCurrentQuestion() {
         return { success: false, error: 'No current team ID' };
       }
 
-      // Check if we have assignment in local state
+      // ── In-memory lookup ──────────────────────────────────────────────────────
       let questionSetId = questionSetAssignments?.[currentTeamId];
 
       if (questionSetId) {
@@ -94,9 +95,24 @@ export function useCurrentQuestion() {
         return { success: true, questionSetId };
       }
 
-      // Assignment not in local state - fetch fresh from Firebase
+      // Diagnostic: log the mismatch so key-corruption issues are immediately visible.
+      const availableKeys = questionSetAssignments
+        ? Object.keys(questionSetAssignments)
+        : [];
+      console.warn(
+        '⚠️ getFreshQuestionSetAssignment: in-memory lookup missed.',
+        {
+          currentTeamId,
+          availableKeysInStore: availableKeys,
+          // If currentTeamId appears camelCased in availableKeys, this is the
+          // ID-corruption bug: convertKeysToCamel mangled the Firebase push key.
+          exactMatch: availableKeys.includes(currentTeamId),
+        },
+      );
+
+      // ── Firebase fallback ─────────────────────────────────────────────────────
       console.log(
-        '🔄 Question set assignment missing - fetching from Firebase...',
+        '🔄 Question set assignment missing in store — fetching from Firebase...',
       );
 
       const firebaseGameState = await databaseService.getGameState();
@@ -111,18 +127,31 @@ export function useCurrentQuestion() {
       questionSetId = firebaseGameState.questionSetAssignments?.[currentTeamId];
 
       if (!questionSetId) {
+        // Diagnostic: confirm whether Firebase also has a key mismatch or is genuinely empty.
+        const firebaseKeys = firebaseGameState.questionSetAssignments
+          ? Object.keys(firebaseGameState.questionSetAssignments)
+          : [];
+        console.warn(
+          '⚠️ getFreshQuestionSetAssignment: Firebase fallback also missed.',
+          {
+            currentTeamId,
+            availableKeysInFirebase: firebaseKeys,
+            exactMatch: firebaseKeys.includes(currentTeamId),
+          },
+        );
+
         return {
           success: false,
           error: `No question set assigned to team ${currentTeamId} in Firebase`,
         };
       }
 
-      // Update local store with fresh assignment
+      // ── Update store with fresh Firebase data ─────────────────────────────────
       console.log(
         `✅ Fetched question set assignment from Firebase: ${questionSetId}`,
       );
 
-      // Update game store with fresh assignments
+      // Always write the full map back so subsequent in-memory lookups succeed.
       useGameStore.setState({
         questionSetAssignments: firebaseGameState.questionSetAssignments,
       });
