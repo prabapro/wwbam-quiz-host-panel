@@ -47,6 +47,13 @@ import GameCompletedDialog from './dialogs/GameCompletedDialog';
  * - SkipQuestionDialog    — confirms before skipping
  * - TeamStatusDialog      — auto-opens on team elimination/completion
  * - GameCompletedDialog   — auto-opens when game status = COMPLETED
+ *
+ * UPDATED (BUG FIX - Load Question permanently disabled after sync recovery):
+ * - `hasQuestionSetForCurrentTeam` is no longer used to disable the Load button.
+ *   It is consumed here purely as a UI warning signal: when the assignment appears
+ *   missing in-memory, a small amber warning badge is shown on the button so the
+ *   host is informed — but the button stays enabled so the action can self-recover
+ *   via getFreshQuestionSetAssignment() → Firebase fallback inside loadQuestion().
  */
 export default function GameControls() {
   const navigate = useNavigate();
@@ -68,6 +75,7 @@ export default function GameControls() {
     isCurrentQuestionLast,
     isLoading,
     error,
+    hasQuestionSetForCurrentTeam,
     isSyncing,
     syncError,
     syncSuccess,
@@ -163,6 +171,11 @@ export default function GameControls() {
   const PrimaryIcon = canNextTeam ? Users : FileText;
   const canPrimaryAction = canNextTeam || canLoadQuestion;
 
+  // Show a warning on the Load button when the assignment looks missing in-memory.
+  // The button remains enabled — loadQuestion() self-recovers via Firebase fallback.
+  const showAssignmentWarning =
+    canLoadQuestion && !canNextTeam && !hasQuestionSetForCurrentTeam;
+
   const handlePrimaryAction = () => {
     if (canNextTeam) {
       setShowTeamStatusDialog(true);
@@ -220,20 +233,42 @@ export default function GameControls() {
           </p>
 
           {/* Primary Action: Load Question X / Load Last Question / Next Team */}
-          <Button
-            onClick={handlePrimaryAction}
-            disabled={!canPrimaryAction || isLoading}
-            variant={canPrimaryAction ? 'default' : 'outline'}
-            size="lg"
-            className={cn(
-              'w-full gap-2 transition-all',
-              canPrimaryAction && 'ring-2 ring-blue-500 animate-pulse',
-              canNextTeam &&
-                'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white',
-            )}>
-            <PrimaryIcon className="w-4 h-4" />
-            {primaryActionLabel}
-          </Button>
+          <div className="relative">
+            <Button
+              onClick={handlePrimaryAction}
+              disabled={!canPrimaryAction || isLoading}
+              variant={canPrimaryAction ? 'default' : 'outline'}
+              size="lg"
+              className={cn(
+                'w-full gap-2 transition-all',
+                canPrimaryAction && 'ring-2 ring-blue-500 animate-pulse',
+                canNextTeam &&
+                  'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white',
+              )}>
+              <PrimaryIcon className="w-4 h-4" />
+              {primaryActionLabel}
+            </Button>
+
+            {/* Non-blocking assignment warning badge */}
+            {showAssignmentWarning && (
+              <div
+                className="absolute -top-1.5 -right-1.5 z-10"
+                title="Question set assignment not found in memory — clicking Load will attempt to fetch it from Firebase automatically">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-bold text-amber-900 ring-1 ring-background">
+                  !
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Assignment warning inline hint — only shown when badge is visible */}
+          {showAssignmentWarning && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-snug flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 shrink-0" />
+              Assignment missing in memory — tap Load to auto-recover, or use
+              Sync Questions below.
+            </p>
+          )}
 
           {/* Push to Display */}
           <Button
