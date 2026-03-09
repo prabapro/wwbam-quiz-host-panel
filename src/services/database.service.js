@@ -44,24 +44,16 @@ export const DB_PATHS = {
 /**
  * Convert camelCase to kebab-case
  * Handles consecutive capitals correctly (e.g., phoneAFriend → phone-a-friend)
- * @param {string} str - camelCase string
- * @returns {string} kebab-case string
  */
 const camelToKebab = (str) => {
-  return (
-    str
-      // Insert hyphen before uppercase letter following lowercase/digit
-      .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-      // Insert hyphen before uppercase letter followed by lowercase (handles consecutive capitals)
-      .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
-      .toLowerCase()
-  );
+  return str
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase();
 };
 
 /**
  * Convert kebab-case to camelCase
- * @param {string} str - kebab-case string
- * @returns {string} camelCase string
  */
 const kebabToCamel = (str) => {
   return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -70,101 +62,71 @@ const kebabToCamel = (str) => {
 /**
  * Recursively convert object keys from camelCase to kebab-case
  * Special handling for playQueue and questionSetAssignments to preserve team IDs
- * @param {Object|Array|*} obj - Object to convert
- * @param {string} parentKey - Parent key name for context
- * @returns {Object|Array|*} Object with kebab-case keys
  */
-const convertKeysToKebab = (obj, parentKey = '') => {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
+export const convertKeysToKebab = (obj) => {
   if (Array.isArray(obj)) {
-    // playQueue is an array of team IDs - preserve them as-is
-    if (parentKey === 'playQueue' || parentKey === 'play-queue') {
-      return obj; // Don't convert team IDs
-    }
-    return obj.map((item) => convertKeysToKebab(item, parentKey));
+    return obj.map((item) => convertKeysToKebab(item));
   }
 
-  const converted = {};
-  Object.keys(obj).forEach((key) => {
-    const kebabKey = camelToKebab(key);
+  if (obj !== null && typeof obj === 'object') {
+    const PRESERVE_KEYS = ['questionSetAssignments', 'lifelinesAvailable'];
 
-    // Special handling for questionSetAssignments
-    if (
-      key === 'questionSetAssignments' ||
-      kebabKey === 'question-set-assignments'
-    ) {
-      // Preserve team IDs as keys and question set IDs as values
-      converted[kebabKey] = obj[key]; // Don't recursively convert
-    } else {
-      converted[kebabKey] = convertKeysToKebab(obj[key], kebabKey);
-    }
-  });
-  return converted;
+    return Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => {
+        const kebabKey = camelToKebab(key);
+
+        if (
+          PRESERVE_KEYS.includes(key) &&
+          typeof value === 'object' &&
+          value !== null
+        ) {
+          const convertedInner = {};
+          Object.entries(value).forEach(([innerKey, innerValue]) => {
+            convertedInner[innerKey] = convertKeysToKebab(innerValue, innerKey);
+          });
+          return [kebabKey, convertedInner];
+        }
+
+        return [kebabKey, convertKeysToKebab(value, key)];
+      }),
+    );
+  }
+
+  return obj;
 };
 
 /**
- * Recursively convert object keys from kebab-case to camelCase.
- *
- * Special handling for `question-set-assignments`:
- *   The nested object is a flat map of { [teamId]: questionSetId }. Both the
- *   keys (Firebase push IDs used as team IDs) and the values (question set IDs)
- *   must be preserved verbatim — they are opaque identifiers, not schema keys.
- *   Applying kebabToCamel to them corrupts IDs containing hyphens (e.g.
- *   "-Oabc-xyz" → "-OabcXyz"), breaking all subsequent lookups.
- *
- * @param {Object|Array|*} obj - Object to convert
- * @param {string} parentKey   - Parent key name for context (kebab-case)
- * @returns {Object|Array|*} Object with camelCase schema keys; ID maps intact
+ * Recursively convert object keys from kebab-case to camelCase
  */
-const convertKeysToCamel = (obj, parentKey = '') => {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj))
-    return obj.map((item) => convertKeysToCamel(item, parentKey));
+export const convertKeysToCamel = (obj) => {
+  if (Array.isArray(obj)) return obj.map(convertKeysToCamel);
 
-  const converted = {};
-  Object.keys(obj).forEach((key) => {
-    const camelKey = kebabToCamel(key);
+  if (obj !== null && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => [
+        kebabToCamel(key),
+        convertKeysToCamel(value),
+      ]),
+    );
+  }
 
-    // Preserve the question-set-assignments map as-is.
-    // Keys are Firebase-generated team IDs; values are question-set IDs.
-    // Neither should be camelCased — they are opaque identifiers, not schema keys.
-    // This mirrors the identical guard that already exists in convertKeysToKebab.
-    if (
-      key === 'question-set-assignments' ||
-      camelKey === 'questionSetAssignments'
-    ) {
-      converted[camelKey] = obj[key]; // pass through untouched
-    } else {
-      converted[camelKey] = convertKeysToCamel(obj[key], key);
-    }
-  });
-
-  return converted;
+  return obj;
 };
 
 // ============================================================================
-// QUESTION SETS OPERATIONS
+// QUESTION SET OPERATIONS
 // ============================================================================
 
-/**
- * Get all question sets
- * @returns {Promise<Object|null>} Question sets object or null
- */
 export const getAllQuestionSets = async () => {
   try {
     const snapshot = await get(ref(database, DB_PATHS.QUESTION_SETS));
     if (!snapshot.exists()) return null;
 
-    const questionSets = snapshot.val();
+    const sets = snapshot.val();
     const convertedSets = {};
-
-    // Convert each set's keys from kebab-case to camelCase
-    Object.keys(questionSets).forEach((setId) => {
-      convertedSets[setId] = convertKeysToCamel(questionSets[setId]);
+    Object.keys(sets).forEach((setId) => {
+      convertedSets[setId] = convertKeysToCamel(sets[setId]);
     });
-
     return convertedSets;
   } catch (error) {
     console.error('Error fetching question sets:', error);
@@ -172,11 +134,6 @@ export const getAllQuestionSets = async () => {
   }
 };
 
-/**
- * Get single question set by ID
- * @param {string} setId - Question set ID
- * @returns {Promise<Object|null>} Question set object or null
- */
 export const getQuestionSet = async (setId) => {
   try {
     const snapshot = await get(
@@ -189,11 +146,6 @@ export const getQuestionSet = async (setId) => {
   }
 };
 
-/**
- * Save question set to Firebase
- * @param {Object} questionSet - Question set data
- * @returns {Promise<{ success: boolean, setId?: string, error?: string }>}
- */
 export const saveQuestionSet = async (questionSet) => {
   try {
     const { setId } = questionSet;
@@ -202,19 +154,14 @@ export const saveQuestionSet = async (questionSet) => {
       return { success: false, error: 'Question set ID is required' };
     }
 
-    // Convert camelCase to kebab-case for Firebase
-    const kebabQuestionSet = convertKeysToKebab({
+    const kebabData = convertKeysToKebab({
       ...questionSet,
       uploadedAt: serverTimestamp(),
       lastModified: serverTimestamp(),
     });
 
-    await set(
-      ref(database, `${DB_PATHS.QUESTION_SETS}/${setId}`),
-      kebabQuestionSet,
-    );
-
-    console.log(`✅ Question set saved to Firebase: ${setId}`);
+    await set(ref(database, `${DB_PATHS.QUESTION_SETS}/${setId}`), kebabData);
+    console.log(`✅ Question set saved: ${setId}`);
     return { success: true, setId };
   } catch (error) {
     console.error('Error saving question set:', error);
@@ -222,15 +169,8 @@ export const saveQuestionSet = async (questionSet) => {
   }
 };
 
-/**
- * Update question set
- * @param {string} setId - Question set ID
- * @param {Object} updates - Fields to update (camelCase)
- * @returns {Promise<{ success: boolean, error?: string }>}
- */
 export const updateQuestionSet = async (setId, updates) => {
   try {
-    // Convert camelCase updates to kebab-case
     const kebabUpdates = convertKeysToKebab({
       ...updates,
       lastModified: serverTimestamp(),
@@ -251,11 +191,6 @@ export const updateQuestionSet = async (setId, updates) => {
   }
 };
 
-/**
- * Delete question set
- * @param {string} setId - Question set ID
- * @returns {Promise<{ success: boolean, error?: string }>}
- */
 export const deleteQuestionSet = async (setId) => {
   try {
     await remove(ref(database, `${DB_PATHS.QUESTION_SETS}/${setId}`));
@@ -267,11 +202,6 @@ export const deleteQuestionSet = async (setId) => {
   }
 };
 
-/**
- * Check if question set exists
- * @param {string} setId - Question set ID
- * @returns {Promise<boolean>}
- */
 export const questionSetExists = async (setId) => {
   try {
     const snapshot = await get(
@@ -284,24 +214,13 @@ export const questionSetExists = async (setId) => {
   }
 };
 
-/**
- * Get question sets metadata (without full question data)
- * @returns {Promise<Object>}
- */
 export const getQuestionSetsMetadata = async () => {
   try {
     const allSets = await getAllQuestionSets();
 
-    if (!allSets) {
-      return {
-        totalSets: 0,
-        setIds: [],
-        sets: [],
-      };
-    }
+    if (!allSets) return { totalSets: 0, setIds: [], sets: [] };
 
     const setIds = Object.keys(allSets);
-
     return {
       totalSets: setIds.length,
       setIds,
@@ -317,19 +236,10 @@ export const getQuestionSetsMetadata = async () => {
     };
   } catch (error) {
     console.error('Failed to get question sets metadata:', error);
-    return {
-      totalSets: 0,
-      setIds: [],
-      sets: [],
-    };
+    return { totalSets: 0, setIds: [], sets: [] };
   }
 };
 
-/**
- * Listen to question sets changes
- * @param {Function} callback - Callback function receiving question sets data
- * @returns {Function} Unsubscribe function
- */
 export const onQuestionSetsChange = (callback) => {
   const questionSetsRef = ref(database, DB_PATHS.QUESTION_SETS);
   onValue(questionSetsRef, (snapshot) => {
@@ -340,8 +250,6 @@ export const onQuestionSetsChange = (callback) => {
 
     const questionSets = snapshot.val();
     const convertedSets = {};
-
-    // Convert each set's keys from kebab-case to camelCase
     Object.keys(questionSets).forEach((setId) => {
       convertedSets[setId] = convertKeysToCamel(questionSets[setId]);
     });
@@ -356,10 +264,6 @@ export const onQuestionSetsChange = (callback) => {
 // GAME STATE OPERATIONS
 // ============================================================================
 
-/**
- * Get game state
- * @returns {Promise<Object|null>} Game state or null
- */
 export const getGameState = async () => {
   try {
     const snapshot = await get(ref(database, DB_PATHS.GAME_STATE));
@@ -370,14 +274,8 @@ export const getGameState = async () => {
   }
 };
 
-/**
- * Update game state
- * @param {Object} updates - Fields to update (camelCase)
- * @returns {Promise<void>}
- */
 export const updateGameState = async (updates) => {
   try {
-    // Convert camelCase updates to kebab-case
     const kebabUpdates = convertKeysToKebab(updates);
 
     const updatePath = {};
@@ -385,7 +283,6 @@ export const updateGameState = async (updates) => {
       updatePath[`${DB_PATHS.GAME_STATE}/${key}`] = kebabUpdates[key];
     });
 
-    // Add last-updated timestamp
     updatePath[`${DB_PATHS.GAME_STATE}/last-updated`] = serverTimestamp();
 
     await update(ref(database), updatePath);
@@ -396,15 +293,8 @@ export const updateGameState = async (updates) => {
   }
 };
 
-/**
- * Set current question (without correct answer for public display)
- * @param {Object} question - Question data
- * @param {number} questionNumber - Question number (1-20)
- * @returns {Promise<void>}
- */
 export const setCurrentQuestion = async (question, questionNumber) => {
   try {
-    // Remove correct answer before saving to Firebase
     // eslint-disable-next-line no-unused-vars
     const { correctAnswer, ...publicQuestion } = question;
 
@@ -425,8 +315,51 @@ export const setCurrentQuestion = async (question, questionNumber) => {
 };
 
 /**
- * Reveal correct answer
+ * Lock selected answer for public display (deliberation state).
+ *
+ * Writes ONLY `selected-option` to Firebase so the display app shows the
+ * option in amber ("thinking" state). Does NOT reveal the correct answer —
+ * that only happens when the host explicitly confirms via confirmAnswer().
+ *
+ * @param {string} selectedOption - The option the team has chosen (A/B/C/D)
+ * @returns {Promise<void>}
+ */
+export const lockAnswerSelection = async (selectedOption) => {
+  try {
+    await updateGameState({ selectedOption });
+    console.log(
+      `🔒 Answer locked for display: ${selectedOption} (pending host confirmation)`,
+    );
+  } catch (error) {
+    console.error('Error locking answer selection:', error);
+    throw error;
+  }
+};
+
+/**
+ * Clear a previously locked answer (host changed their mind during deliberation).
+ *
+ * Resets `selected-option` to null so the display returns to the default state.
+ * Called when host clicks "Change Answer" during the locked phase.
+ *
+ * @returns {Promise<void>}
+ */
+export const clearLockedAnswer = async () => {
+  try {
+    await updateGameState({ selectedOption: null });
+    console.log('↩️ Locked answer cleared — returning to selection phase');
+  } catch (error) {
+    console.error('Error clearing locked answer:', error);
+    throw error;
+  }
+};
+
+/**
+ * Reveal correct answer — final step after host confirmation.
+ *
  * @param {string} correctOption - Correct answer (A/B/C/D)
+ * @param {string} selectedOption - Team's chosen answer (A/B/C/D)
+ * @param {boolean} isCorrect - Whether the selection was correct
  * @returns {Promise<void>}
  */
 export const revealAnswer = async (
@@ -451,10 +384,6 @@ export const revealAnswer = async (
   }
 };
 
-/**
- * Reset game state to defaults
- * @returns {Promise<void>}
- */
 export const resetGameState = async () => {
   try {
     const kebabDefaults = convertKeysToKebab(DEFAULT_GAME_STATE);
@@ -466,11 +395,6 @@ export const resetGameState = async () => {
   }
 };
 
-/**
- * Listen to game state changes
- * @param {Function} callback - Callback function receiving game state
- * @returns {Function} Unsubscribe function
- */
 export const onGameStateChange = (callback) => {
   const gameStateRef = ref(database, DB_PATHS.GAME_STATE);
   onValue(gameStateRef, (snapshot) => {
@@ -478,7 +402,6 @@ export const onGameStateChange = (callback) => {
     callback(data);
   });
 
-  // Return unsubscribe function
   return () => off(gameStateRef);
 };
 
@@ -486,10 +409,6 @@ export const onGameStateChange = (callback) => {
 // TEAM OPERATIONS
 // ============================================================================
 
-/**
- * Get all teams
- * @returns {Promise<Object|null>} Teams object or null
- */
 export const getTeams = async () => {
   try {
     const snapshot = await get(ref(database, DB_PATHS.TEAMS));
@@ -497,15 +416,12 @@ export const getTeams = async () => {
 
     const teams = snapshot.val();
     const convertedTeams = {};
-
-    // Convert each team's keys from kebab-case to camelCase
     Object.keys(teams).forEach((teamId) => {
       convertedTeams[teamId] = {
         id: teamId,
         ...convertKeysToCamel(teams[teamId]),
       };
     });
-
     return convertedTeams;
   } catch (error) {
     console.error('Error fetching teams:', error);
@@ -513,11 +429,6 @@ export const getTeams = async () => {
   }
 };
 
-/**
- * Get single team by ID
- * @param {string} teamId - Team ID
- * @returns {Promise<Object|null>} Team object or null
- */
 export const getTeam = async (teamId) => {
   try {
     const snapshot = await get(ref(database, `${DB_PATHS.TEAMS}/${teamId}`));
@@ -530,11 +441,6 @@ export const getTeam = async (teamId) => {
   }
 };
 
-/**
- * Create new team
- * @param {Object} teamData - Team data
- * @returns {Promise<string>} New team ID
- */
 export const createTeam = async (teamData) => {
   try {
     const newTeamRef = push(ref(database, DB_PATHS.TEAMS));
@@ -565,23 +471,13 @@ export const createTeam = async (teamData) => {
   }
 };
 
-/**
- * Update team data
- * @param {string} teamId - Team ID
- * @param {Object} updates - Fields to update (camelCase)
- * @returns {Promise<void>}
- */
 export const updateTeam = async (teamId, updates) => {
   try {
-    // Convert camelCase updates to kebab-case
     const kebabUpdates = convertKeysToKebab(updates);
-
     const updatePath = {};
     Object.keys(kebabUpdates).forEach((key) => {
       updatePath[`${DB_PATHS.TEAMS}/${teamId}/${key}`] = kebabUpdates[key];
     });
-
-    // Add last-updated timestamp
     updatePath[`${DB_PATHS.TEAMS}/${teamId}/last-updated`] = serverTimestamp();
 
     await update(ref(database), updatePath);
@@ -592,76 +488,55 @@ export const updateTeam = async (teamId, updates) => {
   }
 };
 
-/**
- * Delete team
- * @param {string} teamId - Team ID
- * @returns {Promise<void>}
- */
 export const deleteTeam = async (teamId) => {
   try {
     await remove(ref(database, `${DB_PATHS.TEAMS}/${teamId}`));
     console.log('✅ Team deleted:', teamId);
+    return { success: true };
   } catch (error) {
     console.error('Error deleting team:', error);
-    throw error;
+    return { success: false, error: error.message };
   }
 };
 
-/**
- * Delete all teams (for factory reset)
- * @returns {Promise<void>}
- */
 export const deleteAllTeams = async () => {
   try {
     await set(ref(database, DB_PATHS.TEAMS), {});
-    console.log('✅ All teams deleted from Firebase');
+    console.log('✅ All teams deleted');
+    return { success: true };
   } catch (error) {
     console.error('Error deleting all teams:', error);
-    throw error;
+    return { success: false, error: error.message };
   }
 };
 
-/**
- * Eliminate team
- * @param {string} teamId - Team ID
- * @returns {Promise<void>}
- */
 export const eliminateTeam = async (teamId) => {
   try {
-    await updateTeam(teamId, {
-      status: 'eliminated',
-      eliminatedAt: serverTimestamp(),
-    });
+    await updateTeam(teamId, { status: 'eliminated' });
+    console.log('✅ Team eliminated:', teamId);
+    return { success: true };
   } catch (error) {
     console.error('Error eliminating team:', error);
-    throw error;
+    return { success: false, error: error.message };
   }
 };
 
-/**
- * Listen to teams changes
- * @param {Function} callback - Callback function receiving teams data
- * @returns {Function} Unsubscribe function
- */
 export const onTeamsChange = (callback) => {
   const teamsRef = ref(database, DB_PATHS.TEAMS);
   onValue(teamsRef, (snapshot) => {
     if (!snapshot.exists()) {
-      callback(null);
+      callback({});
       return;
     }
 
     const teams = snapshot.val();
     const convertedTeams = {};
-
-    // Convert each team's keys from kebab-case to camelCase
     Object.keys(teams).forEach((teamId) => {
       convertedTeams[teamId] = {
         id: teamId,
         ...convertKeysToCamel(teams[teamId]),
       };
     });
-
     callback(convertedTeams);
   });
 
@@ -672,10 +547,6 @@ export const onTeamsChange = (callback) => {
 // PRIZE STRUCTURE OPERATIONS
 // ============================================================================
 
-/**
- * Get prize structure
- * @returns {Promise<Array|null>} Prize array or null
- */
 export const getPrizeStructure = async () => {
   try {
     const snapshot = await get(ref(database, DB_PATHS.PRIZE_STRUCTURE));
@@ -686,38 +557,22 @@ export const getPrizeStructure = async () => {
   }
 };
 
-/**
- * Set prize structure
- * @param {Array<number>} prizes - Array of prize values
- * @returns {Promise<void>}
- */
 export const setPrizeStructure = async (prizes) => {
   try {
     await set(ref(database, DB_PATHS.PRIZE_STRUCTURE), prizes);
-    console.log('✅ Prize structure set');
+    console.log('✅ Prize structure saved');
+    return { success: true };
   } catch (error) {
-    console.error('Error setting prize structure:', error);
-    throw error;
+    console.error('Error saving prize structure:', error);
+    return { success: false, error: error.message };
   }
 };
 
-/**
- * Listen to prize structure changes
- * @param {Function} callback - Callback function receiving prize structure array
- * @returns {Function} Unsubscribe function
- */
 export const onPrizeStructureChange = (callback) => {
   const prizeRef = ref(database, DB_PATHS.PRIZE_STRUCTURE);
   onValue(prizeRef, (snapshot) => {
-    if (!snapshot.exists()) {
-      callback(null);
-      return;
-    }
-
-    const prizeStructure = snapshot.val();
-    callback(prizeStructure);
+    callback(snapshot.exists() ? snapshot.val() : null);
   });
-
   return () => off(prizeRef);
 };
 
@@ -725,116 +580,53 @@ export const onPrizeStructureChange = (callback) => {
 // LIFELINE OPERATIONS
 // ============================================================================
 
-/**
- * Write the Unix ms timestamp when the host starts the Phone-a-Friend timer.
- *
- * The display app reads this to derive remaining time even if it reconnects
- * mid-call — avoids the display timer resetting to full duration on refresh.
- *
- * Called from: useLifelineManagement → startPhoneTimer()
- *
- * @returns {Promise<void>}
- */
 export const startLifelineTimer = async () => {
   try {
     await updateGameState({ lifelineTimerStartedAt: Date.now() });
-    console.log('⏱️ Lifeline timer started — timestamp written to Firebase');
+    console.log('✅ Lifeline timer started');
   } catch (error) {
-    console.error('Error writing lifeline timer start:', error);
+    console.error('Error starting lifeline timer:', error);
     throw error;
   }
 };
 
-/**
- * Clear the lifeline timer timestamp when the host resumes the game
- * (manually via "Resume Game" button) or when the timer expires and
- * auto-resume fires.
- *
- * Setting to null signals the display app that the call has ended and
- * the overlay should hide.
- *
- * Called from: useLifelineManagement → resumeFromPhoneAFriend()
- *
- * @returns {Promise<void>}
- */
 export const clearLifelineTimer = async () => {
   try {
     await updateGameState({ lifelineTimerStartedAt: null });
-    console.log('⏱️ Lifeline timer cleared');
+    console.log('✅ Lifeline timer cleared');
   } catch (error) {
     console.error('Error clearing lifeline timer:', error);
     throw error;
   }
 };
 
-/**
- * Activate 50/50 lifeline (WWBAM Style)
- *
- * Atomic update that:
- * 1. Updates game-state with filtered options
- * 2. Sets active-lifeline to 'fifty-fifty'
- * 3. Marks lifeline as used for team
- *
- * @param {string} teamId - Team ID
- * @param {Object} filteredOptionsObj - Filtered options object (e.g., { A: "London", B: "Paris" })
- * @returns {Promise<void>}
- */
-export const activateFiftyFiftyLifeline = async (
-  teamId,
-  filteredOptionsObj,
-) => {
+export const activateFiftyFiftyLifeline = async (teamId, remainingOptions) => {
   try {
     const updates = {};
-
-    // 1. Update game-state with filtered options
-    updates['game-state/current-question/options'] = filteredOptionsObj;
     updates['game-state/active-lifeline'] = 'fifty-fifty';
     updates['game-state/last-updated'] = serverTimestamp();
-
-    // 2. Update team lifeline status (mark as used)
     updates[`${DB_PATHS.TEAMS}/${teamId}/lifelines-available/fifty-fifty`] =
       false;
     updates[`${DB_PATHS.TEAMS}/${teamId}/last-updated`] = serverTimestamp();
 
-    // 3. Atomic update
     await update(ref(database), updates);
-
-    console.log('✅ 50/50 lifeline activated:', {
-      teamId,
-      filteredOptions: filteredOptionsObj,
-    });
+    console.log('✅ 50/50 lifeline activated:', teamId, remainingOptions);
   } catch (error) {
     console.error('Error activating 50/50 lifeline:', error);
     throw error;
   }
 };
 
-/**
- * Activate Phone-a-Friend lifeline (WWBAM Style)
- *
- * Atomic update that:
- * 1. Sets active-lifeline in game-state to 'phone-a-friend'
- * 2. Marks lifeline as used for team
- *
- * @param {string} teamId - Team ID
- * @returns {Promise<void>}
- */
 export const activatePhoneAFriendLifeline = async (teamId) => {
   try {
     const updates = {};
-
-    // 1. Set active lifeline in game-state
     updates['game-state/active-lifeline'] = 'phone-a-friend';
     updates['game-state/last-updated'] = serverTimestamp();
-
-    // 2. Update team lifeline status (mark as used)
     updates[`${DB_PATHS.TEAMS}/${teamId}/lifelines-available/phone-a-friend`] =
       false;
     updates[`${DB_PATHS.TEAMS}/${teamId}/last-updated`] = serverTimestamp();
 
-    // 3. Atomic update
     await update(ref(database), updates);
-
     console.log('✅ Phone-a-Friend lifeline activated:', teamId);
   } catch (error) {
     console.error('Error activating Phone-a-Friend lifeline:', error);
@@ -842,21 +634,9 @@ export const activatePhoneAFriendLifeline = async (teamId) => {
   }
 };
 
-/**
- * Clear active lifeline from game-state
- *
- * Called after:
- * - 50/50 completes (options filtered)
- * - Phone-a-Friend call ends (host resumes)
- * - Moving to next question
- *
- * @returns {Promise<void>}
- */
 export const clearActiveLifeline = async () => {
   try {
-    await updateGameState({
-      activeLifeline: null,
-    });
+    await updateGameState({ activeLifeline: null });
     console.log('✅ Active lifeline cleared');
   } catch (error) {
     console.error('Error clearing active lifeline:', error);
@@ -868,10 +648,6 @@ export const clearActiveLifeline = async () => {
 // CONFIG OPERATIONS
 // ============================================================================
 
-/**
- * Get game configuration
- * @returns {Promise<Object|null>} Config object or null
- */
 export const getConfig = async () => {
   try {
     const snapshot = await get(ref(database, DB_PATHS.CONFIG));
@@ -882,11 +658,6 @@ export const getConfig = async () => {
   }
 };
 
-/**
- * Update configuration
- * @param {Object} updates - Config updates (camelCase)
- * @returns {Promise<void>}
- */
 export const updateConfig = async (updates) => {
   try {
     const kebabUpdates = convertKeysToKebab(updates);
@@ -908,41 +679,26 @@ export const updateConfig = async (updates) => {
 // FACTORY RESET
 // ============================================================================
 
-/**
- * Reset entire database to defaults (use with caution!)
- * @returns {Promise<void>}
- */
 export const resetDatabaseToDefaults = async () => {
   try {
     const updates = {};
 
-    // 1. Reset game-state to defaults (convert to kebab-case)
     const gameStateDefaults = convertKeysToKebab(DEFAULT_GAME_STATE);
     Object.keys(gameStateDefaults).forEach((key) => {
       updates[`${DB_PATHS.GAME_STATE}/${key}`] = gameStateDefaults[key];
     });
 
-    // 2. Clear teams (set to empty object)
     updates[DB_PATHS.TEAMS] = {};
-
-    // 3. Reset prize structure to defaults
     updates[DB_PATHS.PRIZE_STRUCTURE] = DEFAULT_PRIZE_STRUCTURE;
 
-    // 4. Reset config to defaults (convert to kebab-case)
     const configDefaults = convertKeysToKebab(DEFAULT_CONFIG);
     Object.keys(configDefaults).forEach((key) => {
       updates[`${DB_PATHS.CONFIG}/${key}`] = configDefaults[key];
     });
 
-    // 5. Clear question sets (set to empty object)
     updates[DB_PATHS.QUESTION_SETS] = {};
 
-    // NOTE: We clear question-sets during factory reset but preserve allowed-hosts
-    // allowed-hosts contains auth UIDs and should persist across resets
-
-    // Perform atomic update
     await update(ref(database), updates);
-
     console.log('✅ Firebase database reset to factory defaults');
   } catch (error) {
     console.error('❌ Error resetting database to defaults:', error);
@@ -951,15 +707,9 @@ export const resetDatabaseToDefaults = async () => {
 };
 
 // ============================================================================
-// MULTI-PATH ATOMIC UPDATES
+// ATOMIC OPERATIONS
 // ============================================================================
 
-/**
- * Perform atomic multi-path update
- * Example: Update game state and team data simultaneously
- * @param {Object} updates - Object with paths as keys
- * @returns {Promise<void>}
- */
 export const atomicUpdate = async (updates) => {
   try {
     await update(ref(database), updates);
@@ -989,6 +739,8 @@ export const databaseService = {
   getGameState,
   updateGameState,
   setCurrentQuestion,
+  lockAnswerSelection, // NEW — preview selected option on display (amber, deliberation)
+  clearLockedAnswer, // NEW — undo lock if host changes mind
   revealAnswer,
   resetGameState,
   onGameStateChange,
