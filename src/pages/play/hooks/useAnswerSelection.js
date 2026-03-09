@@ -235,7 +235,19 @@ export function useAnswerSelection() {
 
         if (isLastQuestion) {
           console.log(`🏆 Team completed all ${QUESTIONS_PER_SET} questions!`);
-          await completeTeam(currentTeamId, newPrize);
+          await completeTeam(currentTeamId, newPrize, currentQuestionNumber);
+
+          // Auto-complete game if this was the last team in the queue.
+          // completeGame() sets gameStatus = COMPLETED, which triggers
+          // GameCompletedDialog in GameControls via its useEffect.
+          const playQueue = useGameStore.getState().playQueue;
+          if (isLastTeamInQueue(currentTeamId, playQueue)) {
+            console.log(
+              '🏁 Last team completed — ending game automatically...',
+            );
+            await useGameStore.getState().completeGame();
+            console.log('✅ Game completed automatically');
+          }
         } else {
           console.log(`✅ Team advances. New prize: Rs.${newPrize}`);
           await moveToNextQuestion(currentTeamId, newPrize);

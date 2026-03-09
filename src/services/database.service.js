@@ -102,12 +102,24 @@ export const convertKeysToCamel = (obj) => {
   if (Array.isArray(obj)) return obj.map(convertKeysToCamel);
 
   if (obj !== null && typeof obj === 'object') {
-    return Object.fromEntries(
-      Object.entries(obj).map(([key, value]) => [
-        kebabToCamel(key),
-        convertKeysToCamel(value),
-      ]),
-    );
+    const converted = {};
+
+    Object.keys(obj).forEach((key) => {
+      const camelKey = kebabToCamel(key);
+
+      // question-set-assignments values are Firebase push IDs (e.g. "-OnH_cgVHSfT-yzR9QfC").
+      // They contain hyphens which kebabToCamel would mangle — pass through untouched.
+      if (
+        key === 'question-set-assignments' ||
+        camelKey === 'questionSetAssignments'
+      ) {
+        converted[camelKey] = obj[key];
+      } else {
+        converted[camelKey] = convertKeysToCamel(obj[key]);
+      }
+    });
+
+    return converted;
   }
 
   return obj;
