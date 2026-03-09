@@ -1,6 +1,6 @@
 // src/pages/play/hooks/useAnswerSelection.js
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useGameStore } from '@stores/useGameStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
@@ -12,37 +12,46 @@ import { QUESTIONS_PER_SET } from '@constants/config';
 /**
  * useAnswerSelection Hook
  *
- * Purpose: Manage the answer selection and locking flow
+ * Manages the 3-phase answer selection flow, mirroring the real WWBAM show:
  *
- * Flow:
- * 1. Team announces answer verbally
- * 2. Host selects option (A/B/C/D) via AnswerPad
- * 3. Selected answer stored in local state (NOT synced to Firebase)
- * 4. Host clicks "Lock Answer"
- * 5. Hook validates against correct answer from localStorage
- * 6. If correct: Update prize, increment question, celebrate
- * 7. If incorrect: Eliminate team immediately (WWBAM rules)
- * 8. Sync result to Firebase (reveal answer, update team)
+ * ── Phase 1: SELECTING ──────────────────────────────────────────────────────
+ *   Host clicks A/B/C/D → option highlighted locally only.
+ *   "Lock Answer" sends the choice to Firebase (selectedOption written).
+ *   Display shows the option in amber — audience sees the team's choice.
+ *
+ * ── Phase 2: LOCKED (deliberation) ─────────────────────────────────────────
+ *   `isLocked = true` locally. Firebase has `selected-option` set.
+ *   Host can discuss, debate, reconsider with participants.
+ *   "Change Answer" → clears Firebase selectedOption, returns to Phase 1.
+ *   "Confirm Answer" → validates + reveals + triggers all team/game updates.
+ *
+ * ── Phase 3: CONFIRMED (revealed) ──────────────────────────────────────────
+ *   `validationResult` set in store. Firebase has `answer-revealed: true`.
+ *   Correct/wrong colours shown on display and host panel.
+ *   No further changes allowed until next question is loaded.
+ *
+ * Security note: correct answer validation always happens locally from the
+ * host-only `question-sets` node — never from Firebase game-state.
  */
 
 /**
- * Check if current team is the last team in play queue
- * @param {string} currentTeamId - Current team ID
- * @param {Array} playQueue - Play queue array
- * @returns {boolean} True if this is the last team
+ * @param {string} currentTeamId
+ * @param {Array} playQueue
+ * @returns {boolean}
  */
 const isLastTeamInQueue = (currentTeamId, playQueue) => {
   if (!playQueue || playQueue.length === 0) return false;
-  const currentIndex = playQueue.indexOf(currentTeamId);
-  return currentIndex === playQueue.length - 1;
+  return playQueue.indexOf(currentTeamId) === playQueue.length - 1;
 };
 
 export function useAnswerSelection() {
-  // Local state for answer locking process
+  // ── Local async-operation flags ────────────────────────────────────────────
   const [isLocking, setIsLocking] = useState(false);
-  const [lockError, setLockError] = useState(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
-  // Questions Store (for validation)
+  // ── Questions Store ────────────────────────────────────────────────────────
   const hostQuestion = useQuestionsStore((state) => state.hostQuestion);
   const selectedAnswer = useQuestionsStore((state) => state.selectedAnswer);
   const validationResult = useQuestionsStore((state) => state.validationResult);
@@ -54,163 +63,228 @@ export function useAnswerSelection() {
     (state) => state.validateSelectedAnswer,
   );
 
-  // Game Store (for question state)
+  // ── Reset local lock state when a new question is loaded ──────────────────
+  //
+  // hostQuestion?.id changing (or becoming null) is the authoritative signal
+  // that loadQuestion() ran. isLocked is purely local state and must not carry
+  // over from the previous question — otherwise Phase 2 UI persists on a fresh
+  // question where no answer has been locked yet.
+  useEffect(() => {
+    setIsLocked(false);
+    setIsLocking(false);
+    setIsConfirming(false);
+    setActionError(null);
+  }, [hostQuestion?.id]);
+
+  // ── Game Store ─────────────────────────────────────────────────────────────
   const currentTeamId = useGameStore((state) => state.currentTeamId);
   const currentQuestionNumber = useGameStore(
     (state) => state.currentQuestionNumber,
   );
+  const questionVisible = useGameStore((state) => state.questionVisible);
 
-  // Teams Store (for updating team progress)
+  // ── Teams Store ────────────────────────────────────────────────────────────
   const moveToNextQuestion = useTeamsStore((state) => state.moveToNextQuestion);
   const completeTeam = useTeamsStore((state) => state.completeTeam);
   const eliminateTeam = useTeamsStore((state) => state.eliminateTeam);
 
-  // Prize Store (for prize calculation)
+  // ── Prize Store ────────────────────────────────────────────────────────────
   const prizeStructure = usePrizeStore((state) => state.prizeStructure);
 
+  // ============================================================
+  // PHASE 1 ACTIONS — Selecting
+  // ============================================================
+
   /**
-   * Select an answer option (A/B/C/D)
-   * Stored locally, not synced to Firebase until locked
+   * Select an answer option (A/B/C/D).
+   * Stored locally only — not synced to Firebase until lockAnswer() is called.
+   * Can be called freely until the answer is locked.
    */
   const selectAnswer = useCallback(
     (option) => {
-      const result = selectAnswerAction(option);
+      // Disallow changes once locked (or after confirmation)
+      if (isLocked || validationResult) return;
 
+      const result = selectAnswerAction(option);
       if (!result.success) {
         console.warn('Invalid answer selection:', result.error);
       }
-
-      setLockError(null);
+      setActionError(null);
     },
-    [selectAnswerAction],
+    [isLocked, validationResult, selectAnswerAction],
   );
 
   /**
-   * Clear selected answer
+   * Clear the selected answer (only available in phase 1).
    */
   const clearSelection = useCallback(() => {
+    if (isLocked || validationResult) return;
     clearSelectedAnswer();
-    setLockError(null);
-  }, [clearSelectedAnswer]);
+    setActionError(null);
+  }, [isLocked, validationResult, clearSelectedAnswer]);
+
+  // ============================================================
+  // PHASE 1 → 2 — Lock Answer
+  // ============================================================
 
   /**
-   * Lock answer and trigger validation
-   * This is the main action that validates and updates game state
+   * Lock the selected answer.
+   *
+   * Writes `selected-option` to Firebase so the public display immediately
+   * shows the chosen option highlighted in amber (deliberation state).
+   * Does NOT validate or reveal — that only happens on confirmAnswer().
    */
   const lockAnswer = useCallback(async () => {
+    if (!selectedAnswer || isLocked || isLocking || !hostQuestion) return;
+
     setIsLocking(true);
-    setLockError(null);
+    setActionError(null);
 
     try {
-      // Validate locally first
-      const validationResult = validateSelectedAnswer();
+      await databaseService.lockAnswerSelection(selectedAnswer);
+      setIsLocked(true);
+      console.log(
+        `🔒 Answer locked: ${selectedAnswer} — awaiting host confirmation`,
+      );
+    } catch (err) {
+      console.error('Failed to lock answer:', err);
+      setActionError(err.message);
+    } finally {
+      setIsLocking(false);
+    }
+  }, [selectedAnswer, isLocked, isLocking, hostQuestion]);
 
-      if (!validationResult.success) {
-        throw new Error(validationResult.error || 'Validation failed');
+  // ============================================================
+  // PHASE 2 → 1 — Change Answer (undo lock)
+  // ============================================================
+
+  /**
+   * Undo the lock and return to Phase 1.
+   *
+   * Clears `selected-option` in Firebase so the display goes back to default
+   * state. The previously selected option remains highlighted in the host panel
+   * so the host can easily re-lock the same choice or pick a different one.
+   */
+  const changeAnswer = useCallback(async () => {
+    if (!isLocked || isConfirming || validationResult) return;
+
+    setIsLocking(true);
+    setActionError(null);
+
+    try {
+      await databaseService.clearLockedAnswer();
+      setIsLocked(false);
+      console.log('↩️ Lock released — host can change selection');
+    } catch (err) {
+      console.error('Failed to clear locked answer:', err);
+      setActionError(err.message);
+    } finally {
+      setIsLocking(false);
+    }
+  }, [isLocked, isConfirming, validationResult]);
+
+  // ============================================================
+  // PHASE 2 → 3 — Confirm Answer (final)
+  // ============================================================
+
+  /**
+   * Confirm the locked answer — this is the final, irreversible action.
+   *
+   * Flow:
+   * 1. Validate locally against the correct answer (host-only data)
+   * 2. Reveal answer in Firebase (answerRevealed: true + correctOption)
+   * 3. If correct: update prize, advance question (or complete team)
+   * 4. If incorrect: eliminate team (WWBAM rules), auto-complete if last team
+   */
+  const confirmAnswer = useCallback(async () => {
+    if (!isLocked || isConfirming || validationResult || !hostQuestion) return;
+
+    setIsConfirming(true);
+    setActionError(null);
+
+    try {
+      // Step 1: Local validation (reads from host-only question-sets node)
+      const validation = validateSelectedAnswer();
+
+      if (!validation.success) {
+        throw new Error(validation.error || 'Validation failed');
       }
 
-      const { result } = validationResult;
+      const { result } = validation;
       const { isCorrect, correctAnswer } = result;
 
-      // Reveal answer in Firebase
+      // Step 2: Reveal answer on Firebase (triggers correct/wrong colours on display)
       await databaseService.revealAnswer(
         correctAnswer,
         result.selectedAnswer,
-        result.isCorrect,
+        isCorrect,
       );
 
+      // Step 3: Update team/game state
       if (isCorrect) {
-        // CORRECT ANSWER FLOW
-        console.log('✅ Correct answer! Updating team progress...');
+        console.log('✅ Correct answer confirmed! Updating team progress...');
 
-        // Calculate new prize
         const newPrize = getPrizeForQuestion(
           currentQuestionNumber,
           prizeStructure,
         );
 
-        // ─── FIX: Use currentQuestionNumber (game store) to detect the last
-        // question, NOT questionsAnswered (team store).
-        //
-        // questionsAnswered only increments on correct answers, so if any
-        // questions were skipped earlier, it lags behind the real position.
-        // currentQuestionNumber is advanced by BOTH answers AND skips, making
-        // it the reliable source of truth for "where are we in the set".
+        // Use currentQuestionNumber (not questionsAnswered) — it advances on
+        // both correct answers AND skips, making it the reliable position marker.
         const isLastQuestion = currentQuestionNumber >= QUESTIONS_PER_SET;
 
         if (isLastQuestion) {
-          // Team completed all questions - mark as completed
-          console.log(
-            `🏆 Team completed all ${QUESTIONS_PER_SET} questions! Final prize: Rs.${newPrize}`,
-          );
+          console.log(`🏆 Team completed all ${QUESTIONS_PER_SET} questions!`);
+          await completeTeam(currentTeamId, newPrize, currentQuestionNumber);
 
-          const completeResult = await completeTeam(
-            currentTeamId,
-            newPrize,
-            currentQuestionNumber,
-          );
-
-          if (!completeResult.success) {
-            throw new Error('Failed to mark team as completed');
-          }
-
-          console.log(`✅ Team marked as completed with prize Rs.${newPrize}`);
-
-          // Check if this was the last team — if so, complete the game automatically
+          // Auto-complete game if this was the last team in the queue.
+          // completeGame() sets gameStatus = COMPLETED, which triggers
+          // GameCompletedDialog in GameControls via its useEffect.
           const playQueue = useGameStore.getState().playQueue;
           if (isLastTeamInQueue(currentTeamId, playQueue)) {
             console.log(
               '🏁 Last team completed — ending game automatically...',
             );
-            const completeGameAction = useGameStore.getState().completeGame;
-            await completeGameAction();
+            await useGameStore.getState().completeGame();
             console.log('✅ Game completed automatically');
           }
         } else {
-          // Team progresses to next question
-          const updateResult = await moveToNextQuestion(
-            currentTeamId,
-            newPrize,
-          );
-
-          if (!updateResult.success) {
-            throw new Error('Failed to update team progress');
-          }
-
-          console.log(
-            `🎉 Team advanced to question ${currentQuestionNumber + 1}! Prize: Rs.${newPrize}`,
-          );
+          console.log(`✅ Team advances. New prize: Rs.${newPrize}`);
+          await moveToNextQuestion(currentTeamId, newPrize);
         }
       } else {
-        // INCORRECT ANSWER FLOW — WWBAM rules: wrong answer = immediate elimination
-        console.log('❌ Incorrect answer! Eliminating team (WWBAM rules)...');
+        // INCORRECT — immediate elimination (WWBAM rules)
+        console.log(
+          '❌ Incorrect answer confirmed! Eliminating team (WWBAM rules)...',
+        );
 
         const eliminateResult = await eliminateTeam(currentTeamId);
-
         if (!eliminateResult.success) {
           throw new Error('Failed to eliminate team');
         }
 
         console.log(`🚫 Team ${currentTeamId} eliminated`);
 
-        // Check if this was the last team — if so, complete the game automatically
+        // Auto-complete game if this was the last team
         const playQueue = useGameStore.getState().playQueue;
         if (isLastTeamInQueue(currentTeamId, playQueue)) {
           console.log('🏁 Last team eliminated — ending game automatically...');
-          const completeGameAction = useGameStore.getState().completeGame;
-          await completeGameAction();
+          await useGameStore.getState().completeGame();
           console.log('✅ Game completed automatically');
         }
       }
-
-      setIsLocking(false);
     } catch (err) {
-      console.error('Failed to lock answer:', err);
-      setLockError(err.message);
-      setIsLocking(false);
+      console.error('Failed to confirm answer:', err);
+      setActionError(err.message);
       throw err;
+    } finally {
+      setIsConfirming(false);
     }
   }, [
+    isLocked,
+    isConfirming,
+    validationResult,
+    hostQuestion,
     validateSelectedAnswer,
     currentTeamId,
     currentQuestionNumber,
@@ -220,24 +294,53 @@ export function useAnswerSelection() {
     eliminateTeam,
   ]);
 
-  /**
-   * Can lock answer?
-   * Only if answer is selected and not already locked
-   */
+  // ============================================================
+  // DERIVED FLAGS
+  // ============================================================
+
+  /** Phase 1: can lock → answer selected, not yet locked, question visible */
   const canLock =
-    !!selectedAnswer && !validationResult && !isLocking && !!hostQuestion;
+    !!selectedAnswer &&
+    !isLocked &&
+    !isLocking &&
+    !!hostQuestion &&
+    questionVisible &&
+    !validationResult;
+
+  /** Phase 2: can confirm → locked, not already confirming/confirmed */
+  const canConfirm = isLocked && !isConfirming && !validationResult;
+
+  /** Phase 2: can change → locked, not busy */
+  const canChange =
+    isLocked && !isConfirming && !isLocking && !validationResult;
+
+  // ── Expose current phase for UI consumption ──────────────────────────────
+  const phase = validationResult
+    ? 'confirmed'
+    : isLocked
+      ? 'locked'
+      : 'selecting';
 
   return {
     // State
     selectedAnswer,
     validationResult,
+    isLocked,
     isLocking,
+    isConfirming,
+    phase,
+    error: actionError,
+
+    // Phase flags
     canLock,
-    error: lockError,
+    canConfirm,
+    canChange,
 
     // Actions
     selectAnswer,
     clearSelection,
     lockAnswer,
+    changeAnswer,
+    confirmAnswer,
   };
 }
