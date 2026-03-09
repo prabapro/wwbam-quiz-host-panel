@@ -82,12 +82,12 @@ export const convertKeysToKebab = (obj) => {
         ) {
           const convertedInner = {};
           Object.entries(value).forEach(([innerKey, innerValue]) => {
-            convertedInner[innerKey] = convertKeysToKebab(innerValue, innerKey);
+            convertedInner[innerKey] = convertKeysToKebab(innerValue);
           });
           return [kebabKey, convertedInner];
         }
 
-        return [kebabKey, convertKeysToKebab(value, key)];
+        return [kebabKey, convertKeysToKebab(value)];
       }),
     );
   }
@@ -600,9 +600,15 @@ export const clearLifelineTimer = async () => {
   }
 };
 
-export const activateFiftyFiftyLifeline = async (teamId, remainingOptions) => {
+export const activateFiftyFiftyLifeline = async (
+  teamId,
+  filteredOptionsObj,
+) => {
   try {
     const updates = {};
+
+    // Write the trimmed options object so the display only shows the 2 remaining options
+    updates['game-state/current-question/options'] = filteredOptionsObj;
     updates['game-state/active-lifeline'] = 'fifty-fifty';
     updates['game-state/last-updated'] = serverTimestamp();
     updates[`${DB_PATHS.TEAMS}/${teamId}/lifelines-available/fifty-fifty`] =
@@ -610,7 +616,10 @@ export const activateFiftyFiftyLifeline = async (teamId, remainingOptions) => {
     updates[`${DB_PATHS.TEAMS}/${teamId}/last-updated`] = serverTimestamp();
 
     await update(ref(database), updates);
-    console.log('✅ 50/50 lifeline activated:', teamId, remainingOptions);
+    console.log('✅ 50/50 lifeline activated:', {
+      teamId,
+      filteredOptions: filteredOptionsObj,
+    });
   } catch (error) {
     console.error('Error activating 50/50 lifeline:', error);
     throw error;
