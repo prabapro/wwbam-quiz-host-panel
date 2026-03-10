@@ -7,7 +7,6 @@ import { Button } from '@components/ui/button';
 import { Alert, AlertDescription } from '@components/ui/alert';
 import {
   Eye,
-  Lock,
   LockKeyhole,
   CheckCircle2,
   XCircle,
@@ -249,7 +248,7 @@ function StatusStrip({
   if (phase === 'locked') {
     return (
       <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground py-1">
-        <Lock className="w-3.5 h-3.5 shrink-0" />
+        <LockKeyhole className="w-3.5 h-3.5 shrink-0" />
         <span>
           <span className="font-semibold text-foreground">
             {selectedAnswer}

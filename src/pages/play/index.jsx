@@ -10,8 +10,7 @@ import { useGameStore } from '@stores/useGameStore';
 import { useTeamsStore } from '@stores/useTeamsStore';
 import { useQuestionsStore } from '@stores/useQuestionsStore';
 import { GAME_STATUS } from '@constants/gameStates';
-import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
-import { cn } from '@lib/utils';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import GameStatusBar from './components/GameStatusBar';
 import QuestionPanel from './components/QuestionPanel';
 import AnswerPad from './components/AnswerPad';
@@ -60,11 +59,6 @@ export default function Play() {
 
   // Game Store State
   const gameStatus = useGameStore((state) => state.gameStatus);
-  const currentQuestionNumber = useGameStore(
-    (state) => state.currentQuestionNumber,
-  );
-  const questionVisible = useGameStore((state) => state.questionVisible);
-  const answerRevealed = useGameStore((state) => state.answerRevealed);
   const isDataReady = useGameStore((state) => state.isDataReady);
   const isSyncingData = useGameStore((state) => state.isSyncingData);
   const ensureDataReady = useGameStore((state) => state.ensureDataReady);
@@ -178,28 +172,6 @@ export default function Play() {
       navigate('/');
     }
   }, [gameStatus, navigate]);
-
-  // ============================================================
-  // DERIVED STATE FOR ANSWER PAD HIGHLIGHTING
-  // ============================================================
-
-  /**
-   * Answer pad is "active" when:
-   * - Question is visible to public
-   * - Answer hasn't been revealed yet
-   * - Answer hasn't been locked yet (no validation result)
-   */
-  const isAnswerPadActive =
-    questionVisible && !answerRevealed && !validationResult;
-
-  /**
-   * Answer pad is "waiting" when:
-   * - Question is loaded (host has it)
-   * - But question is not yet visible to public
-   * - Answer hasn't been revealed
-   */
-  const isWaitingForVisibility =
-    currentQuestionNumber > 0 && !questionVisible && !answerRevealed;
 
   // ============================================================
   // LOADING STATE - DATA NOT READY
@@ -320,17 +292,7 @@ export default function Play() {
 
         {/* Right Column - Answer Pad (1/4 width) */}
         <div className="lg:col-span-1 space-y-6">
-          <Card
-            className={cn(
-              'border transition-all duration-200',
-              // Low opacity when waiting for question to be shown
-              isWaitingForVisibility && 'opacity-40',
-              // Full opacity with ring animation when visible
-              isAnswerPadActive &&
-                'opacity-100 ring-2 ring-purple-500 dark:ring-purple-400 shadow-lg shadow-purple-500/50 bg-purple-100/50 dark:bg-purple-800/20',
-              // Normal state after answer revealed
-              answerRevealed && 'opacity-100',
-            )}>
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 Answer Pad
