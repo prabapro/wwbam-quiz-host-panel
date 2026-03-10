@@ -25,17 +25,17 @@ import { cn } from '@lib/utils';
  * Host interface for selecting and finalising the team's answer.
  * Sits in the right 1/4-width column of the Play page.
  *
- * ── Phase 1: SELECTING ──────────────────────────────────────────────────────
+ * ── Phase 1: ANSWER SELECTION ──────────────────────────────────────────────
  *   Four clickable A/B/C/D buttons. "Push to Display" enabled once an option
  *   is chosen. Host can clear selection freely.
  *
- * ── Phase 2: LOCKED (deliberation) ─────────────────────────────────────────
+ * ── Phase 2: SOFT LOCK (deliberation) ──────────────────────────────────────
  *   Display shows the selected option in amber (audience sees it).
  *   A/B/C/D buttons are disabled — the choice is committed to Firebase.
  *   "Change Answer" returns to Phase 1 (clears Firebase preview).
  *   "Lock Answer" triggers validation + reveal + all team/game updates.
  *
- * ── Phase 3: CONFIRMED ──────────────────────────────────────────────────────
+ * ── Phase 3: HARD LOCK (Confirmation) ──────────────────────────────────────
  *   Result shown (correct/incorrect). All controls disabled.
  *   State clears automatically when the next question is loaded.
  */
@@ -54,19 +54,24 @@ const PHASE_STEPS = [
 
 /**
  * Horizontal 3-step phase indicator.
- * Gives the host an at-a-glance position in the answer flow.
+ * Each step represents a completed HOST ACTION, not just the current phase:
+ *   Step 0 (Answer Selection) — done once A/B/C/D is clicked
+ *   Step 1 (Soft Lock)        — done once "Push to Display" is pressed
+ *   Step 2 (Hard Lock)        — done once "Lock Answer" is pressed
  */
-function PhaseSteps({ phase }) {
-  const currentIndex = PHASE_STEPS.findIndex((s) => s.id === phase);
-
-  // When fully confirmed, treat ALL steps (including the last) as done
-  const allDone = phase === 'confirmed';
+function PhaseSteps({ phase, selectedAnswer }) {
+  // Step done flags — driven by actions, not phase alone
+  const stepDone = [
+    !!selectedAnswer, // Answer Selection
+    phase === 'locked' || phase === 'confirmed', // Soft Lock
+    phase === 'confirmed', // Hard Lock
+  ];
 
   return (
     <div className="flex items-center gap-1 w-full">
       {PHASE_STEPS.map((step, i) => {
-        const isDone = allDone || i < currentIndex;
-        const isActive = !allDone && i === currentIndex;
+        const isDone = stepDone[i];
+        const isActive = !isDone && (i === 0 || stepDone[i - 1]);
 
         return (
           <div key={step.id} className="flex items-center flex-1 gap-1">
@@ -95,7 +100,7 @@ function PhaseSteps({ phase }) {
               <div
                 className={cn(
                   'h-px w-2 shrink-0 rounded-full transition-all duration-200',
-                  i < currentIndex
+                  stepDone[i]
                     ? 'bg-muted-foreground/40'
                     : 'bg-muted-foreground/20',
                 )}
@@ -322,7 +327,7 @@ export default function AnswerPad() {
   return (
     <div className="space-y-4">
       {/* ── Phase stepper ────────────────────────────────────────────────── */}
-      <PhaseSteps phase={phase} />
+      <PhaseSteps phase={phase} selectedAnswer={selectedAnswer} />
 
       {/* ── A / B / C / D grid ───────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-2.5">
