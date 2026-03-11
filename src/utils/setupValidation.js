@@ -128,7 +128,7 @@ export const validateTeams = (teamsObject) => {
   const hasIdeal = count >= IDEAL_MIN_TEAMS;
   const withinLimit = count <= MAX_TEAMS;
 
-  // FIX: Only return allValid: true if we have teams AND they're all valid
+  // Require at least one team — an empty set is not a valid pass
   const allValid = count > 0 && invalidTeams.length === 0;
 
   return {
@@ -224,7 +224,7 @@ export const validateQuestionSets = (questionSets) => {
 
   const hasMinimum = count >= 1;
 
-  // FIX: Only return allValid: true if we have sets AND they're all valid
+  // Require at least one set — an empty set is not a valid pass
   const allValid = count > 0 && invalidSets.length === 0;
 
   return {
@@ -301,7 +301,7 @@ export const validatePrizeStructure = (prizeStructure) => {
  * @returns {Object} Sufficiency check result
  */
 export const checkSufficientQuestionSets = (teamCount, questionSetCount) => {
-  // FIX: When both are 0, this is not a "pass" - it's an informational state
+  // 0/0 is not a valid pass — treat it as an incomplete state
   const isSufficient = questionSetCount >= teamCount && teamCount > 0;
   const bothZero = teamCount === 0 && questionSetCount === 0;
 

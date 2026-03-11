@@ -7,16 +7,16 @@ import { validateAnswer, normalizeOption } from '@utils/validation';
 
 /**
  * Questions Store
- * Manages loaded question sets and current question data
+ * Manages loaded question sets and current question state for gameplay.
  *
- * UPDATED: Added freshness validation and forced refresh capability
- * Question sets are stored in Firebase and loaded into memory for gameplay
- * This store does NOT persist to localStorage - questions always fetched fresh
+ * Question sets are always fetched fresh from Firebase — this store does not
+ * persist to localStorage. Cached sets are considered stale after 5 minutes
+ * and re-fetched automatically before each question is loaded.
  *
- * SECURITY MODEL:
- * - question-sets (Firebase): Contains correct answers, host-only access
- * - game-state (Firebase): Public readable, answers only added when revealed
- * - This store: Host view with correct answers, never pushed to localStorage
+ * Security model:
+ * - question-sets (Firebase): Host-only access, contains correct answers
+ * - game-state (Firebase): Public-readable, answers only pushed when revealed
+ * - This store: Host-side view with answers, never written to localStorage
  */
 export const useQuestionsStore = create()(
   devtools(
