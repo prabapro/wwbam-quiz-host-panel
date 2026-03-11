@@ -8,13 +8,10 @@ import { databaseService } from '@services/database.service';
 /**
  * useCurrentQuestion Hook
  *
- * Purpose: Manage current question state and visibility logic
- *
- * UPDATED: Fixed closure issues and added defensive data fetching
- * - Now reads fresh state on each execution instead of capturing at init
- * - Implements on-demand fetching if question set assignments are missing
- * - Added retry mechanism with fresh Firebase data
- * - Better error handling and recovery
+ * Manages the host-side question lifecycle: loading from the authenticated
+ * question-sets node, pushing to the public game-state node, and controlling
+ * visibility. Uses getState() calls throughout to read live Zustand state
+ * rather than closure-captured values (prevents stale assignment bugs).
  *
  * Responsibilities:
  * - Load question from question-sets (with correct answer for host ONLY)
@@ -63,7 +60,7 @@ export function useCurrentQuestion() {
   );
   const loadedSets = useQuestionsStore((state) => state.loadedSets);
 
-  // Game Store - NOTE: We'll read fresh state each time, not capture in closure
+  // Game Store — read via getState() inside callbacks to avoid stale closures
   const questionVisible = useGameStore((state) => state.questionVisible);
   const setQuestionNumber = useGameStore((state) => state.setQuestionNumber);
 
@@ -164,25 +161,16 @@ export function useCurrentQuestion() {
   };
 
   /**
-   * Load question from question-sets for host view
-   * Includes correct answer for host validation
+   * Load a question into the host view with the correct answer included.
    *
-   * UPDATED: Now reads fresh state and implements defensive fetching
+   * Validates the cached question set is fresh (< 5 min) and re-fetches from
+   * Firebase if stale. Clears 50/50 filtered options and resets previous
+   * question/lifeline state in Firebase so the public display is clean.
    *
-   * Flow:
-   * 1. Get fresh question set assignment (from store or Firebase)
-   * 2. Validate question set is fresh (< 5 min old)
-   * 3. If stale or not loaded, fetch fresh from Firebase
-   * 4. Load question into host view (with correct answer)
-   * 5. Clear filtered options (50/50 state)
-   * 6. Update question number in local game state
-   * 7. Clear previous question + lifeline state from Firebase game-state
+   * Stores locally only — does not push to Firebase. The host must click
+   * "Push to Display" (showQuestion) to make the question public.
    *
-   * ONLY loads into local state - does NOT push to Firebase yet
-   * Host must click "Push to Display" to push to Firebase game-state
-   * Clears previous question state AND lifeline state from Firebase game-state
-   *
-   * @param {number} questionNumber - Question number (1-20)
+   * @param {number} questionNumber - 1-based question number
    * @returns {Promise<void>}
    */
   const loadQuestion = async (questionNumber) => {
@@ -286,7 +274,7 @@ export function useCurrentQuestion() {
 
       // This resets visibility, answer flags, removes previous question,
       // AND clears active lifeline state
-      // SECURITY: No correct answer is sent to Firebase at this stage
+      // Correct answer is deliberately excluded — game-state is public-readable
       await databaseService.updateGameState({
         currentQuestionNumber: questionNumber,
         currentQuestion: null, // Clear previous question
@@ -319,11 +307,9 @@ export function useCurrentQuestion() {
   };
 
   /**
-   * Push current question to Firebase game-state for public display
-   * Strips correct answer before pushing to Firebase
-   *
-   * SECURITY: This is where the question becomes public WITHOUT the correct answer
-   * The correct answer stays in the host-only question-sets node
+   * Push the current question to Firebase game-state for public display.
+   * Strips the correct answer before pushing — game-state is public-readable,
+   * so the answer stays in the host-only question-sets node until revealAnswer().
    *
    * @returns {Promise<void>}
    */

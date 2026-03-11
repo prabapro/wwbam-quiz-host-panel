@@ -12,27 +12,21 @@ const appName = import.meta.env.VITE_APP_NAME || 'wwbam-quiz-host-panel';
 
 /**
  * Game State Store
- * Manages game flow, team rotation, question navigation
+ * Manages game flow, team rotation, and question navigation.
  *
- * UPDATED: Added data ready state and improved initialization sequence
- * - Added isDataReady flag to indicate when critical game data is synced
- * - Added ensureDataReady() method to force sync if needed
- * - Improved rehydration flow to prevent premature access
- * - Better handling of question set assignments sync
+ * Key behaviors:
+ * - isDataReady: set true after the first successful Firebase sync. The Play page
+ *   blocks rendering until this is confirmed (via ensureDataReady).
+ * - questionSetAssignments guard: the real-time listener never overwrites a populated
+ *   assignment map with an empty one. Phone-a-Friend resume triggers 3 rapid Firebase
+ *   writes which can briefly emit a snapshot where assignments appear absent.
+ * - Eager pre-load: nextTeam() non-blockingly pre-fetches the next team's question
+ *   set so it is cached before the host clicks "Load Question 1".
+ * - syncQuestionSets(): manual mid-game recovery that re-fetches all assignments and
+ *   reloads every question set. Exposed via GameControls "Sync" button.
  *
- * UPDATED (BUG FIX - 2026/02/22): Question set assignment stability
- * - startGameListener: Guards questionSetAssignments from being silently wiped
- *   to {} when Firebase emits rapid sequential onValue callbacks during Phone-a-Friend
- *   resume (3 writes: clearLifelineTimer → clearActiveLifeline → resumeGame).
- *   Preserves the existing local assignments if the incoming snapshot is empty.
- * - nextTeam(): Now pre-loads the next team's question set eagerly (non-blocking)
- *   so it is ready by the time the host clicks "Load Question 1".
- * - Added syncQuestionSets(): Manual mid-game recovery action that re-fetches
- *   all question set assignments from Firebase and pre-loads every set in the
- *   play queue. Exposed to the UI via useGameControls → GameControls "Sync" button.
- *
- * Reduced localStorage persistence - only critical game config is persisted.
- * All gameplay state is fetched fresh from Firebase.
+ * Only essential game config is persisted to localStorage. All gameplay state
+ * is fetched fresh from Firebase on mount.
  */
 export const useGameStore = create()(
   devtools(
@@ -360,21 +354,14 @@ export const useGameStore = create()(
 
         /**
          * Move to next team in play queue.
-         * Updates current team and resets question-related state.
+         * Sets the next team to active and resets all question-related state.
          *
-         * CRITICAL FIX: Does NOT modify previous team's status.
-         * The previous team's status should already be set correctly by:
-         * - completeTeam() → status: "completed"
-         * - eliminateTeam() → status: "eliminated"
-         * - (no action) → status remains "active" (team didn't finish)
+         * Does NOT modify the previous team's status — that must be set before calling
+         * this (via completeTeam or eliminateTeam). Changing it here would create a
+         * race condition with outstanding Firebase updates.
          *
-         * Only updates the NEXT team's status to "active".
-         *
-         * BUG FIX: After advancing, non-blockingly pre-loads the next team's
-         * question set from Firebase so it is ready when the host clicks
-         * "Load Question 1". Without this, a cold cache after team transition
-         * requires an extra Firebase round-trip inside loadQuestion(), which can
-         * fail silently and produce the "question set not assigned" error in prod.
+         * Non-blockingly pre-fetches the next team's question set so it is cached
+         * before the host clicks "Load Question 1".
          *
          * @returns {Promise<Object>} { success: boolean, error?: string, nextTeamId?: string }
          */
@@ -405,21 +392,14 @@ export const useGameStore = create()(
             const nextTeamId = playQueue[nextIndex];
             const timestamp = Date.now();
 
-            // ============================================================
-            // UPDATE NEXT TEAM TO ACTIVE
-            // ============================================================
-
+            // Activate next team
             await useTeamsStore.getState().updateTeam(nextTeamId, {
               status: 'active',
             });
 
             console.log(`➡️ Next team ${nextTeamId} set to active`);
 
-            // ============================================================
-            // UPDATE GAME STATE
-            // ============================================================
-
-            // Reset question state for new team
+            // Reset question state for the new team and sync to Firebase
             set({
               currentTeamId: nextTeamId,
               currentQuestionNumber: 0,
@@ -446,28 +426,11 @@ export const useGameStore = create()(
               optionWasCorrect: null,
             });
 
-            // ============================================================
-            // PREVIOUS TEAM STATUS - DO NOTHING
-            // ============================================================
-
-            // IMPORTANT: We do NOT modify the previous team's status here!
-            // Their status should already be correct:
-            // - "completed" (if they finished all questions)
-            // - "eliminated" (if they got eliminated)
-            // - "active" (if host manually skipped them without completing/eliminating)
-            //
-            // Modifying the status here creates race conditions with Firebase updates
-
             console.log(`✅ Moved to next team: ${nextTeamId}`);
 
-            // ============================================================
-            // PRE-LOAD NEXT TEAM'S QUESTION SET (non-blocking)
-            // ============================================================
-
-            // Eagerly fetch the next team's question set so it is warm in
-            // memory by the time the host clicks "Load Question 1".
-            // Any failure here is logged only — the lazy path inside
-            // loadQuestion() acts as a fallback.
+            // Eagerly fetch the next team's question set so it is warm in memory
+            // by the time the host clicks "Load Question 1". Failures are logged only
+            // — the lazy path inside loadQuestion() acts as a fallback.
             const nextTeamQuestionSetId =
               get().questionSetAssignments[nextTeamId];
 
@@ -505,18 +468,15 @@ export const useGameStore = create()(
         },
 
         /**
-         * Skip the current question.
+         * Clear all question-related UI state and sync to Firebase so the
+         * public display is retracted.
          *
-         * Clears all question-related UI state and syncs to Firebase so the
-         * public display is cleared.
+         * Does NOT increment currentQuestionNumber — the number is set when
+         * loadQuestion() is called, so incrementing here would cause the next
+         * load to skip a question.
          *
-         * IMPORTANT: Does NOT increment currentQuestionNumber.
-         * When a question is loaded, currentQuestionNumber is already set to
-         * that question's number (via setQuestionNumber inside loadQuestion).
-         * Incrementing here would cause the NEXT load to skip a question.
-         *
-         * Does NOT touch team status — handled by the caller
-         * (useGameControls › handleSkipQuestion) after this resolves.
+         * Does NOT change team status — the caller (useGameControls › handleSkipQuestion)
+         * is responsible for that after this resolves.
          *
          * @returns {Promise<{ success: boolean, error?: string }>}
          */
@@ -797,18 +757,13 @@ export const useGameStore = create()(
 
         /**
          * Start real-time Firebase listener for game state changes.
-         * Returns unsubscribe function for cleanup.
+         * Returns an unsubscribe function — call it on component unmount.
          *
-         * IMPORTANT: This ensures the store always has fresh data from Firebase.
-         * Call this in components/pages that need real-time game state updates.
-         *
-         * BUG FIX: questionSetAssignments guard
+         * Guards questionSetAssignments against being overwritten with an empty map.
          * The Phone-a-Friend resume flow triggers 3 rapid sequential Firebase writes
-         * (clearLifelineTimer → clearActiveLifeline → resumeGame). Each write fires
-         * the onValue callback with the full game-state snapshot. In practice the
-         * snapshot always contains questionSetAssignments, but to be safe we now
-         * preserve the existing local assignments when Firebase sends an empty/missing
-         * map — avoiding a race-condition wipe of the assignments mid-game.
+         * (clearLifelineTimer → clearActiveLifeline → resumeGame), each firing the
+         * onValue callback. If the incoming snapshot has empty assignments but local
+         * ones are populated, the local values are preserved to prevent a mid-game wipe.
          */
         startGameListener: () => {
           console.log('🔄 Starting real-time game state listener...');
@@ -855,8 +810,7 @@ export const useGameStore = create()(
                   );
                 }
 
-                // Update local state with Firebase data
-                // NOTE: We only update these fields to avoid overwriting local-only state
+                // Sync Firebase-owned fields only — local-only flags (isSyncingData, etc.) are untouched
                 set({
                   gameStatus: firebaseGameState.gameStatus,
                   currentTeamId: firebaseGameState.currentTeamId,
@@ -889,17 +843,16 @@ export const useGameStore = create()(
       }),
       {
         name: `${appName}-game`,
-        version: 4, // ← Incremented version for data ready state management
+        version: 4,
 
-        // ⚠️ REDUCED PERSISTENCE: Only persist essential game configuration
-        // Gameplay state is always fetched fresh from Firebase via listener
+        // Only essential game config is persisted. Gameplay state (current question,
+        // visibility flags, etc.) is always fetched fresh from Firebase on mount.
         partialize: (state) => ({
           gameStatus: state.gameStatus,
           playQueue: state.playQueue,
           questionSetAssignments: state.questionSetAssignments,
           initializedAt: state.initializedAt,
           startedAt: state.startedAt,
-          // NOT persisting: isDataReady (always start as false), currentQuestion, questionVisible, etc.
         }),
 
         onRehydrateStorage: () => (state) => {

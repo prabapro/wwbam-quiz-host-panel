@@ -538,9 +538,9 @@ export function useGameControls() {
     isNextQuestionLast,
     isCurrentQuestionLast,
 
-    // Warning signal: assignment appears missing in-memory.
-    // Used by GameControls to show a non-blocking warning indicator on the
-    // Load Question button — does NOT disable the button.
+    // False when the current team has no question set in local state.
+    // GameControls shows a warning indicator on "Load Question" if false —
+    // the button stays enabled since Firebase may still have the assignment.
     hasQuestionSetForCurrentTeam,
 
     // Loading States

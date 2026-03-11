@@ -20,28 +20,16 @@ import GameControls from './components/GameControls';
 
 /**
  * Play Page - Main Gameplay Interface
- * Orchestrates all gameplay components and pulls state from stores
+ * Orchestrates all gameplay components and pulls state from stores.
  *
- * UPDATED: Added data ready guard and better loading states
- * - Ensures critical game data is synced before allowing interactions
- * - Shows loading state while syncing from Firebase
- * - Provides retry mechanism if data sync fails
- * - Uses store-level Firebase listener for real-time sync
+ * On mount, blocks rendering until game data is confirmed synced from Firebase
+ * (via ensureDataReady). Both the game state and teams listeners run concurrently —
+ * the teams listener is required so lifeline availability changes propagate to the
+ * UI immediately without a page refresh.
  *
- * FIXED: Lifeline real-time sync issue
- * - Added teams listener alongside game state listener
- * - Ensures lifeline availability updates are received in real-time from Firebase
- * - When a lifeline is used, the UI now properly reflects the change immediately
- *
- * UPDATED: Game completion flow
- * - Removed auto-render summary page on game completion
- * - GameCompletedDialog (in GameControls) now handles completion UX
- * - User sees dialog first, then navigates to home via "Back to Dashboard" button
- *
- * UPDATED: Bottom row layout
- * - TeamStatusCard replaced by AllTeamsPanel (scrollable all-teams table)
- * - GameStatusBar now shows full current-team details (members, set, lifelines, prize)
- * - Bottom Row: Lifelines (1/4), All Teams (3/4)
+ * GAME_STATUS.COMPLETED is a valid state on this page. GameCompletedDialog (inside
+ * GameControls) handles the post-game UX and navigates the host to "/" when they
+ * click "Back to Dashboard".
  *
  * Layout:
  * - Top: Game Status Bar (full width — team info, set, progress, prize, lifelines)
@@ -113,11 +101,9 @@ export default function Play() {
   // ============================================================
 
   /**
-   * Start Firebase real-time listeners for game state and teams
-   *
-   * CRITICAL: Teams listener is required for lifeline availability sync
-   * When a lifeline is used, Firebase updates teams/{teamId}/lifelines-available
-   * Without this listener, the UI wouldn't know the lifeline was used until refresh
+   * Start Firebase real-time listeners for game state and teams.
+   * Both must run concurrently: the teams listener ensures lifeline availability
+   * changes (teams/{teamId}/lifelines-available) reach the UI without a page refresh.
    */
   useEffect(() => {
     console.log('🎮 Play Page: Starting Firebase listeners...');
@@ -126,7 +112,7 @@ export default function Play() {
     const unsubscribeGameState = startGameListener();
     console.log('✅ Game state listener started');
 
-    // Start teams listener (CRITICAL for lifeline availability sync)
+    // Start teams listener
     const unsubscribeTeams = startTeamsListener();
     console.log(
       '✅ Teams listener started (lifeline availability sync enabled)',
@@ -153,11 +139,9 @@ export default function Play() {
   // ============================================================
 
   /**
-   * Redirect if game is not in a valid play page state
-   *
-   * NOTE: GAME_STATUS.COMPLETED is still a valid state here.
-   * GameCompletedDialog (inside GameControls) handles the completion UX,
-   * then navigates to '/' when user clicks "Back to Dashboard".
+   * Redirect if game is not in a valid play state.
+   * GAME_STATUS.COMPLETED is intentionally allowed — GameCompletedDialog
+   * (inside GameControls) handles post-game UX before navigating away.
    */
   useEffect(() => {
     const isValidPlayPageState =
@@ -232,22 +216,6 @@ export default function Play() {
   // ============================================================
   // MAIN RENDER
   // ============================================================
-
-  /**
-   * NOTE: No redirect on GAME_STATUS.COMPLETED here.
-   * GameCompletedDialog (inside GameControls) handles the completion UX,
-   * then navigates to '/' when user clicks "Back to Dashboard".
-   *
-   * New flow:
-   * 1. Game completes → gameStatus = COMPLETED
-   * 2. GameCompletedDialog (in GameControls) auto-opens via useEffect
-   * 3. User sees dialog with leaderboard
-   * 4. User clicks "Back to Dashboard"
-   * 5. Navigate to '/' → Home page shows "Game Completed" card
-   *
-   * The dialog provides a better UX with the ranked leaderboard before
-   * sending the host back to the dashboard.
-   */
 
   return (
     <main className="container mx-auto py-8 px-4 max-w-7xl space-y-6">
