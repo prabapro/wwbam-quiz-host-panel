@@ -133,18 +133,6 @@ export const usePrizeStore = create()(
         },
 
         /**
-         * Reset edited structure to saved structure
-         * @deprecated Use discardChanges instead
-         */
-        resetEditedStructure: () => {
-          const { prizeStructure } = get();
-          set({
-            editedPrizeStructure: [...prizeStructure],
-            hasUnsavedChanges: false,
-          });
-        },
-
-        /**
          * Add a new prize level
          */
         addPrizeLevel: (value) => {
