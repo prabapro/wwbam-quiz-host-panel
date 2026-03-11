@@ -477,10 +477,10 @@ export const useTeamsStore = create()(
             }
 
             console.log('🔄 All teams progress reset');
-            return { success: true }; // ✅ Add return value
+            return { success: true };
           } catch (error) {
             console.error('Failed to reset teams progress:', error);
-            return { success: false, error: error.message }; // ✅ Return error
+            return { success: false, error: error.message };
           }
         },
         /**
